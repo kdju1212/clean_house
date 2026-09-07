@@ -64,7 +64,7 @@ npm run dev
 컨테이너 파일시스템이 재배포 시 초기화되므로 실제 운영 배포 전에는 반드시
 Cloudflare R2 등 영속 오브젝트 스토리지로 교체해야 합니다.
 
-## 프로젝트 구조 (Phase 2 기준)
+## 프로젝트 구조 (Phase 3 기준)
 
 ```
 prisma/schema.prisma        DB 스키마 (User/Account/Session, Company/CompanyService/
@@ -73,13 +73,22 @@ prisma/seed.ts               카테고리·지역 시드 데이터
 src/lib/prisma.ts            Prisma Client 싱글턴
 src/lib/auth.ts              Auth.js 설정 (OAuth 3사, JWT 세션)
 src/lib/storage.ts           업체 사진 저장 (dev: 로컬 디스크)
-src/app/page.tsx             홈 (지역 + 카테고리 선택 UI, 정적)
+src/lib/region.ts            쿠키 기반 선택 지역 조회
+src/app/page.tsx             홈 (지역 표시 + 카테고리 목록, DB 연동)
+src/app/regions/             지역 선택 화면 + 선택 저장 액션
+src/app/categories/[slug]/   카테고리별 업체 목록 (정렬/가격 필터)
+src/app/companies/[id]/      업체 상세페이지
+src/app/reservations/new/    예약 준비 중 안내(Phase 4에서 실제 구현 예정)
 src/app/login/page.tsx       로그인 (OAuth 버튼)
 src/app/mypage/page.tsx      마이페이지 (로그인 필요, 연락처 등록)
 src/app/company/register/    업체 최초 등록
 src/app/company/page.tsx     업체 관리 대시보드 (프로필/서비스·가격/지역/사진)
 proxy.ts                     보호된 라우트 접근 제어 (/mypage, /company)
 ```
+
+고객 탐색 화면은 업체 `status`가 `ACTIVE`인 경우에만 노출됩니다. 업체 승인
+기능(관리자)은 아직 Phase 10에서 구현 예정이라, 로컬에서 확인하려면 DB에서
+직접 `status`를 `ACTIVE`로 바꿔야 합니다.
 
 기능은 기획서의 Phase 순서(업체 시스템 → 고객 탐색 → 예약 → 채팅 → 리뷰 → QA)대로
 단계적으로 추가됩니다.
