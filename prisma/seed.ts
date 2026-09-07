@@ -33,11 +33,11 @@ async function main() {
     });
   }
 
-  for (const name of regions) {
+  for (const [index, name] of regions.entries()) {
     await prisma.region.upsert({
       where: { name },
-      update: {},
-      create: { name },
+      update: { order: index },
+      create: { name, order: index },
     });
   }
 

@@ -1,22 +1,23 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
+import { getSelectedRegion } from "@/lib/region";
 
 export async function Header() {
-  const session = await auth();
+  const [session, region] = await Promise.all([auth(), getSelectedRegion()]);
 
   return (
     <header className="sticky top-0 z-10 border-b border-neutral-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex w-full max-w-md items-center justify-between px-4 py-3">
-        <button
-          type="button"
+        <Link
+          href="/regions"
           className="flex items-center gap-1 text-sm font-semibold"
         >
           <span aria-hidden>📍</span>
-          <span>화성시</span>
+          <span>{region?.name ?? "지역 선택"}</span>
           <span aria-hidden className="text-neutral-400">
             ▾
           </span>
-        </button>
+        </Link>
 
         <div className="flex items-center gap-3">
           <Link

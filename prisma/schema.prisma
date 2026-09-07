@@ -51,8 +51,10 @@ model Category {
 }
 
 model Region {
-  id   String @id @default(cuid())
-  name String @unique
+  id        String   @id @default(cuid())
+  name      String   @unique
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
 
   companies CompanyRegion[]
 }
