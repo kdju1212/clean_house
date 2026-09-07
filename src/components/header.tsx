@@ -18,21 +18,29 @@ export async function Header() {
           </span>
         </button>
 
-        {session?.user ? (
+        <div className="flex items-center gap-3">
           <Link
-            href="/mypage"
-            className="text-sm font-medium text-neutral-600 hover:text-neutral-900"
+            href={session?.user ? "/company" : "/login"}
+            className="text-xs text-neutral-400 hover:text-neutral-600"
           >
-            마이페이지
+            사장님이신가요?
           </Link>
-        ) : (
-          <Link
-            href="/login"
-            className="text-sm font-medium text-neutral-600 hover:text-neutral-900"
-          >
-            로그인
-          </Link>
-        )}
+          {session?.user ? (
+            <Link
+              href="/mypage"
+              className="text-sm font-medium text-neutral-600 hover:text-neutral-900"
+            >
+              마이페이지
+            </Link>
+          ) : (
+            <Link
+              href="/login"
+              className="text-sm font-medium text-neutral-600 hover:text-neutral-900"
+            >
+              로그인
+            </Link>
+          )}
+        </div>
       </div>
     </header>
   );
