@@ -46,26 +46,39 @@ docker compose up -d postgres
 (Docker를 쓸 수 없는 환경이라면 로컬에 설치된 PostgreSQL을 사용해도 됩니다.
 이 경우 `.env`의 `DATABASE_URL`을 실제 접속 정보에 맞게 수정하세요.)
 
-### 3. 마이그레이션 + 실행
+### 3. 마이그레이션 + 시드 데이터 + 실행
 
 ```bash
 npm install
 npx prisma migrate dev
+npx prisma db seed   # 청소 카테고리 9종 + 화성시 테스트 지역 5곳
 npm run dev
 ```
 
 <http://localhost:3000> 접속.
 
-## 프로젝트 구조 (Phase 1 기준)
+### 4. 업체 사진 업로드
+
+현재는 로컬 디스크(`public/uploads/`)에 저장하도록 구현되어 있습니다
+(`src/lib/storage.ts`). **개발/테스트 전용**이며, Railway/Render 같은 호스팅은
+컨테이너 파일시스템이 재배포 시 초기화되므로 실제 운영 배포 전에는 반드시
+Cloudflare R2 등 영속 오브젝트 스토리지로 교체해야 합니다.
+
+## 프로젝트 구조 (Phase 2 기준)
 
 ```
-prisma/schema.prisma      DB 스키마 (User/Account/Session/VerificationToken)
-src/lib/prisma.ts         Prisma Client 싱글턴
-src/lib/auth.ts           Auth.js 설정 (OAuth 3사, JWT 세션)
-src/app/page.tsx          홈 (지역 + 카테고리 선택 UI, 정적)
-src/app/login/page.tsx    로그인 (OAuth 버튼)
-src/app/mypage/page.tsx   마이페이지 (로그인 필요, 연락처 등록)
-proxy.ts                  보호된 라우트 접근 제어
+prisma/schema.prisma        DB 스키마 (User/Account/Session, Company/CompanyService/
+                             CompanyPhoto/CompanyRegion, Category/Region)
+prisma/seed.ts               카테고리·지역 시드 데이터
+src/lib/prisma.ts            Prisma Client 싱글턴
+src/lib/auth.ts              Auth.js 설정 (OAuth 3사, JWT 세션)
+src/lib/storage.ts           업체 사진 저장 (dev: 로컬 디스크)
+src/app/page.tsx             홈 (지역 + 카테고리 선택 UI, 정적)
+src/app/login/page.tsx       로그인 (OAuth 버튼)
+src/app/mypage/page.tsx      마이페이지 (로그인 필요, 연락처 등록)
+src/app/company/register/    업체 최초 등록
+src/app/company/page.tsx     업체 관리 대시보드 (프로필/서비스·가격/지역/사진)
+proxy.ts                     보호된 라우트 접근 제어 (/mypage, /company)
 ```
 
 기능은 기획서의 Phase 순서(업체 시스템 → 고객 탐색 → 예약 → 채팅 → 리뷰 → QA)대로
