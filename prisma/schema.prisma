@@ -25,6 +25,14 @@ enum PhotoType {
   BEFORE_AFTER
 }
 
+enum ReservationStatus {
+  REQUESTED
+  ACCEPTED
+  REJECTED
+  CANCELLED
+  COMPLETED
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -36,9 +44,10 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts Account[]
-  sessions Session[]
-  company  Company?
+  accounts     Account[]
+  sessions     Session[]
+  company      Company?
+  reservations Reservation[]
 }
 
 model Category {
@@ -47,7 +56,8 @@ model Category {
   name  String
   order Int    @default(0)
 
-  services CompanyService[]
+  services     CompanyService[]
+  reservations Reservation[]
 }
 
 model Region {
@@ -72,10 +82,11 @@ model Company {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  owner    User             @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
-  services CompanyService[]
-  photos   CompanyPhoto[]
-  regions  CompanyRegion[]
+  owner        User             @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  services     CompanyService[]
+  photos       CompanyPhoto[]
+  regions      CompanyRegion[]
+  reservations Reservation[]
 }
 
 model CompanyService {
@@ -111,6 +122,26 @@ model CompanyRegion {
   region  Region  @relation(fields: [regionId], references: [id], onDelete: Cascade)
 
   @@id([companyId, regionId])
+}
+
+model Reservation {
+  id            String            @id @default(cuid())
+  customerId    String
+  companyId     String
+  categoryId    String
+  customerName  String
+  customerPhone String
+  address       String
+  addressDetail String?
+  desiredDate   DateTime          @db.Date
+  desiredTime   String
+  status        ReservationStatus @default(REQUESTED)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  customer User     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id])
 }
 
 model Account {

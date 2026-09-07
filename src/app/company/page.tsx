@@ -56,9 +56,12 @@ export default async function CompanyDashboardPage() {
     );
   }
 
-  const [allCategories, allRegions] = await Promise.all([
+  const [allCategories, allRegions, requestedCount] = await Promise.all([
     prisma.category.findMany({ orderBy: { order: "asc" } }),
     prisma.region.findMany({ orderBy: { name: "asc" } }),
+    prisma.reservation.count({
+      where: { companyId: company.id, status: "REQUESTED" },
+    }),
   ]);
 
   const usedCategoryIds = new Set(company.services.map((s) => s.categoryId));
@@ -78,6 +81,21 @@ export default async function CompanyDashboardPage() {
           자유롭게 준비해주세요.
         </p>
       )}
+
+      <Link
+        href="/company/reservations"
+        className="mt-4 flex items-center justify-between rounded-2xl border border-neutral-200 bg-white p-4 text-sm font-semibold"
+      >
+        예약 관리
+        <span className="flex items-center gap-2 text-neutral-400">
+          {requestedCount > 0 && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+              신규 {requestedCount}건
+            </span>
+          )}
+          →
+        </span>
+      </Link>
 
       {/* 프로필 */}
       <section className="mt-6 rounded-2xl border border-neutral-200 bg-white p-4">

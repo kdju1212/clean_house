@@ -3,29 +3,11 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { deleteLocalCompanyImage } from "@/lib/storage";
 import { createPresignedUploadUrl, deleteR2Object, r2KeyFromPublicUrl } from "@/lib/r2";
 import { assertValidImageMeta, IMAGE_EXT_BY_TYPE } from "@/lib/image";
-
-async function requireSession() {
-  const session = await auth();
-  if (!session?.user) {
-    throw new Error("로그인이 필요합니다.");
-  }
-  return session;
-}
-
-async function requireOwnedCompany(userId: string) {
-  const company = await prisma.company.findUnique({
-    where: { ownerUserId: userId },
-  });
-  if (!company) {
-    throw new Error("등록된 업체가 없습니다.");
-  }
-  return company;
-}
+import { requireSession, requireOwnedCompany } from "@/lib/company-auth";
 
 export async function createCompany(formData: FormData) {
   const session = await requireSession();

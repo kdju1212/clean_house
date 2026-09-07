@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -46,6 +47,16 @@ export default async function MyPage() {
           </button>
         </form>
       </section>
+
+      <Link
+        href="/reservations"
+        className="mt-4 flex items-center justify-between rounded-2xl border border-neutral-200 bg-white p-4 text-sm font-semibold"
+      >
+        내 예약
+        <span aria-hidden className="text-neutral-400">
+          →
+        </span>
+      </Link>
 
       <form
         action={async () => {
