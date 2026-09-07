@@ -79,6 +79,7 @@ export async function createReservation(formData: FormData) {
           : null,
       desiredDate,
       desiredTime,
+      chatRoom: { create: {} },
     },
   });
 

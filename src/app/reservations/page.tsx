@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -70,17 +71,25 @@ export default async function MyReservationsPage({
                 </div>
               </dl>
 
-              {(r.status === "REQUESTED" || r.status === "ACCEPTED") && (
-                <form action={cancelReservation} className="mt-3">
-                  <input type="hidden" name="reservationId" value={r.id} />
-                  <button
-                    type="submit"
-                    className="text-xs text-neutral-400 underline"
-                  >
-                    예약 취소
-                  </button>
-                </form>
-              )}
+              <div className="mt-3 flex items-center gap-3">
+                <Link
+                  href={`/reservations/${r.id}/chat`}
+                  className="text-xs font-medium text-neutral-600 underline"
+                >
+                  채팅하기
+                </Link>
+                {(r.status === "REQUESTED" || r.status === "ACCEPTED") && (
+                  <form action={cancelReservation}>
+                    <input type="hidden" name="reservationId" value={r.id} />
+                    <button
+                      type="submit"
+                      className="text-xs text-neutral-400 underline"
+                    >
+                      예약 취소
+                    </button>
+                  </form>
+                )}
+              </div>
             </li>
           ))}
         </ul>

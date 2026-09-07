@@ -48,6 +48,7 @@ model User {
   sessions     Session[]
   company      Company?
   reservations Reservation[]
+  chatMessages ChatMessage[]
 }
 
 model Category {
@@ -142,6 +143,29 @@ model Reservation {
   customer User     @relation(fields: [customerId], references: [id], onDelete: Cascade)
   company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   category Category @relation(fields: [categoryId], references: [id])
+  chatRoom ChatRoom?
+}
+
+model ChatRoom {
+  id            String   @id @default(cuid())
+  reservationId String   @unique
+  createdAt     DateTime @default(now())
+
+  reservation Reservation   @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  messages    ChatMessage[]
+}
+
+model ChatMessage {
+  id         String   @id @default(cuid())
+  chatRoomId String
+  senderId   String
+  content    String
+  imageUrl   String?
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  chatRoom ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  sender   User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
 }
 
 model Account {

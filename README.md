@@ -82,16 +82,18 @@ R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_BUCKET_NAME / R2_PU
 별도 마이그레이션 스크립트는 없으므로, 필요하면 업체가 사진을 다시
 업로드하거나 직접 R2로 옮긴 뒤 DB의 URL을 갱신해야 합니다.
 
-## 프로젝트 구조 (Phase 4 기준)
+## 프로젝트 구조 (Phase 5 기준)
 
 ```
 prisma/schema.prisma        DB 스키마 (User/Account/Session, Company/CompanyService/
-                             CompanyPhoto/CompanyRegion, Category/Region, Reservation)
+                             CompanyPhoto/CompanyRegion, Category/Region, Reservation,
+                             ChatRoom/ChatMessage)
 prisma/seed.ts               카테고리·지역 시드 데이터
 src/lib/prisma.ts            Prisma Client 싱글턴
 src/lib/auth.ts              Auth.js 설정 (OAuth 3사, JWT 세션, ADMIN_EMAILS 부트스트랩)
 src/lib/admin.ts             관리자 권한 검증 헬퍼
 src/lib/company-auth.ts      업체 소유권 검증 헬퍼 (세션 기준으로만 회사를 조회)
+src/lib/chat.ts              채팅방 접근 검증 (예약 당사자만 허용)
 src/lib/r2.ts                Cloudflare R2 presigned URL 발급/삭제 (서버 전용)
 src/lib/image.ts             업로드 허용 타입/용량 등 공통 검증
 src/lib/storage.ts           R2 이전 로컬 이미지 삭제 호환 코드
@@ -103,6 +105,8 @@ src/app/categories/[slug]/   카테고리별 업체 목록 (정렬/가격 필터
 src/app/companies/[id]/      업체 상세페이지 (ACTIVE만 노출)
 src/app/reservations/new/    예약 신청 폼 (로그인 필요)
 src/app/reservations/        내 예약 목록 + 취소
+src/app/reservations/[id]/chat/  예약별 1:1 채팅 (폴링 기반)
+src/app/api/reservations/[id]/messages/  채팅 메시지 조회/전송 API (폴링용)
 src/app/login/page.tsx       로그인 (OAuth 버튼)
 src/app/mypage/page.tsx      마이페이지 (로그인 필요, 연락처 등록, 내 예약 링크)
 src/app/company/register/    업체 최초 등록
@@ -121,6 +125,12 @@ proxy.ts                     보호된 라우트 접근 제어 (/mypage, /compan
 `CANCELLED`)로 흐릅니다. 업체는 자신의 예약만, 고객은 자신이 신청한 예약만
 볼 수 있고, 상태 전환도 항상 예상되는 현재 상태에서만 서버가 허용합니다
 (예: 이미 거절된 예약은 승인할 수 없음).
+
+채팅은 예약 1건당 채팅방 1개(`Reservation 1:1 ChatRoom 1:N ChatMessage`)이고,
+예약 생성 시 자동으로 만들어집니다. 실시간 소켓 대신 4초 간격 폴링(REST)으로
+동작하며, 해당 예약의 고객·업체만 조회/전송할 수 있습니다. 사진 전송은 아직
+지원하지 않지만 `ChatMessage.imageUrl` 필드를 미리 만들어둬서 나중에 이미지
+업로드만 얹으면 확장 가능하게 설계했습니다.
 
 기능은 기획서의 Phase 순서(업체 시스템 → 고객 탐색 → 예약 → 채팅 → 리뷰 → QA)대로
 단계적으로 추가됩니다.

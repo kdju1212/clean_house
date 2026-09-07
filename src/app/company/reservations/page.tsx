@@ -94,6 +94,13 @@ export default async function CompanyReservationsPage() {
                 <div>연락처 {r.customerPhone}</div>
               </dl>
 
+              <Link
+                href={`/reservations/${r.id}/chat`}
+                className="mt-3 inline-block text-xs font-medium text-neutral-600 underline"
+              >
+                채팅하기
+              </Link>
+
               {r.status === "REQUESTED" && (
                 <div className="mt-3 flex gap-2">
                   <form action={acceptReservation}>
