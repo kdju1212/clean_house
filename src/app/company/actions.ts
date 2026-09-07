@@ -1,10 +1,13 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { saveCompanyImage, deleteCompanyImage, InvalidImageError } from "@/lib/storage";
+import { deleteLocalCompanyImage } from "@/lib/storage";
+import { createPresignedUploadUrl, deleteR2Object, r2KeyFromPublicUrl } from "@/lib/r2";
+import { assertValidImageMeta, IMAGE_EXT_BY_TYPE } from "@/lib/image";
 
 async function requireSession() {
   const session = await auth();
@@ -164,27 +167,57 @@ export async function setRegions(formData: FormData) {
   revalidatePath("/company");
 }
 
-export async function uploadPhoto(formData: FormData) {
+type PhotoType = "MAIN" | "WORK" | "BEFORE_AFTER";
+
+function normalizePhotoType(value: unknown): PhotoType {
+  return value === "MAIN" || value === "BEFORE_AFTER" ? value : "WORK";
+}
+
+/**
+ * Step 1 of the direct-to-R2 upload flow: verify the caller owns a company
+ * and the declared file meta is acceptable, then hand back a short-lived
+ * presigned PUT URL. The browser uploads the file straight to R2 with this
+ * URL — the file itself never passes through our server.
+ */
+export async function requestPhotoUploadUrl(input: {
+  contentType: string;
+  size: number;
+}) {
   const session = await requireSession();
   const company = await requireOwnedCompany(session.user.id);
 
-  const file = formData.get("file");
-  const type = formData.get("type");
+  assertValidImageMeta(input.contentType, input.size);
 
-  if (!(file instanceof File) || file.size === 0) {
-    throw new Error("사진을 선택해주세요.");
-  }
-  const photoType = type === "MAIN" || type === "BEFORE_AFTER" ? type : "WORK";
+  const ext = IMAGE_EXT_BY_TYPE[input.contentType];
+  const key = `companies/${company.id}/${randomUUID()}.${ext}`;
 
-  let url: string;
-  try {
-    url = await saveCompanyImage(company.id, file);
-  } catch (error) {
-    if (error instanceof InvalidImageError) {
-      throw new Error(error.message);
-    }
-    throw error;
+  const { uploadUrl, publicUrl } = await createPresignedUploadUrl(
+    key,
+    input.contentType
+  );
+
+  return { uploadUrl, publicUrl, key };
+}
+
+/**
+ * Step 2: called by the client after the R2 PUT succeeds, to record the
+ * photo in the DB. Re-validates that the key actually belongs to the
+ * caller's own company before trusting it.
+ */
+export async function confirmPhotoUpload(input: { key: string; type?: string }) {
+  const session = await requireSession();
+  const company = await requireOwnedCompany(session.user.id);
+
+  if (!input.key.startsWith(`companies/${company.id}/`)) {
+    throw new Error("잘못된 업로드 정보입니다.");
   }
+
+  const publicUrlBase = process.env.R2_PUBLIC_URL;
+  if (!publicUrlBase) {
+    throw new Error("이미지 저장소가 아직 설정되지 않았어요.");
+  }
+  const url = `${publicUrlBase.replace(/\/$/, "")}/${input.key}`;
+  const photoType = normalizePhotoType(input.type);
 
   await prisma.companyPhoto.create({
     data: { companyId: company.id, url, type: photoType },
@@ -213,7 +246,13 @@ export async function deletePhoto(formData: FormData) {
   if (!photo) return;
 
   await prisma.companyPhoto.delete({ where: { id: photo.id } });
-  await deleteCompanyImage(photo.url);
+
+  const r2Key = r2KeyFromPublicUrl(photo.url);
+  if (r2Key) {
+    await deleteR2Object(r2Key).catch(() => {});
+  } else {
+    await deleteLocalCompanyImage(photo.url);
+  }
 
   if (company.mainImageUrl === photo.url) {
     await prisma.company.update({

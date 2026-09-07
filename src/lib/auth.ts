@@ -16,8 +16,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
+        let role = user.role;
+
+        const adminEmails = (process.env.ADMIN_EMAILS ?? "")
+          .split(",")
+          .map((email) => email.trim().toLowerCase())
+          .filter(Boolean);
+
+        if (
+          role !== "ADMIN" &&
+          user.email &&
+          adminEmails.includes(user.email.toLowerCase())
+        ) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { role: "ADMIN" },
+          });
+          role = "ADMIN";
+        }
+
         token.id = user.id;
-        token.role = user.role;
+        token.role = role;
         token.phone = user.phone ?? null;
       }
       return token;

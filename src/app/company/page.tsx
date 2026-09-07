@@ -9,8 +9,8 @@ import {
   deleteService,
   setRegions,
   updateProfile,
-  uploadPhoto,
 } from "./actions";
+import { PhotoUploadForm } from "./photo-upload-form";
 
 const STATUS_LABEL: Record<string, string> = {
   PENDING: "심사중",
@@ -262,29 +262,7 @@ export default async function CompanyDashboardPage() {
           </div>
         )}
 
-        <form action={uploadPhoto} className="mt-3 flex flex-col gap-2">
-          <select
-            name="type"
-            className="rounded-lg border border-neutral-200 px-3 py-2 text-sm"
-          >
-            <option value="WORK">작업사진</option>
-            <option value="MAIN">대표사진</option>
-            <option value="BEFORE_AFTER">전/후 비교</option>
-          </select>
-          <input
-            name="file"
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            required
-            className="text-sm"
-          />
-          <button
-            type="submit"
-            className="rounded-lg border border-neutral-900 px-4 py-2 text-sm font-medium"
-          >
-            업로드
-          </button>
-        </form>
+        <PhotoUploadForm />
       </section>
     </main>
   );
