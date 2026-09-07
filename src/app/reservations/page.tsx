@@ -27,7 +27,7 @@ export default async function MyReservationsPage({
 
   const reservations = await prisma.reservation.findMany({
     where: { customerId: session.user.id },
-    include: { company: true, category: true },
+    include: { company: true, category: true, review: true },
     orderBy: { createdAt: "desc" },
   });
 
@@ -89,6 +89,19 @@ export default async function MyReservationsPage({
                     </button>
                   </form>
                 )}
+                {r.status === "COMPLETED" &&
+                  (r.review ? (
+                    <span className="text-xs text-neutral-400">
+                      리뷰 작성 완료
+                    </span>
+                  ) : (
+                    <Link
+                      href={`/reservations/${r.id}/review`}
+                      className="text-xs font-medium text-neutral-600 underline"
+                    >
+                      리뷰 작성
+                    </Link>
+                  ))}
               </div>
             </li>
           ))}

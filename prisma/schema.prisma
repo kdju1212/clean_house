@@ -33,6 +33,15 @@ enum ReservationStatus {
   COMPLETED
 }
 
+enum ReportTargetType {
+  REVIEW
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -49,6 +58,8 @@ model User {
   company      Company?
   reservations Reservation[]
   chatMessages ChatMessage[]
+  reviews      Review[]
+  reports      Report[]
 }
 
 model Category {
@@ -88,6 +99,7 @@ model Company {
   photos       CompanyPhoto[]
   regions      CompanyRegion[]
   reservations Reservation[]
+  reviews      Review[]
 }
 
 model CompanyService {
@@ -144,6 +156,7 @@ model Reservation {
   company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   category Category @relation(fields: [categoryId], references: [id])
   chatRoom ChatRoom?
+  review   Review?
 }
 
 model ChatRoom {
@@ -166,6 +179,35 @@ model ChatMessage {
 
   chatRoom ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
   sender   User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+}
+
+model Review {
+  id            String   @id @default(cuid())
+  reservationId String   @unique
+  companyId     String
+  customerId    String
+  rating        Int
+  content       String
+  photoUrl      String?
+  createdAt     DateTime @default(now())
+
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  company     Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer    User        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+}
+
+/// targetId is a loose reference (no DB-level FK) since it can point at
+/// different target types as reporting expands beyond reviews.
+model Report {
+  id         String           @id @default(cuid())
+  reporterId String
+  targetType ReportTargetType
+  targetId   String
+  reason     String
+  status     ReportStatus     @default(PENDING)
+  createdAt  DateTime         @default(now())
+
+  reporter User @relation(fields: [reporterId], references: [id], onDelete: Cascade)
 }
 
 model Account {

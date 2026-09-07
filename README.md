@@ -82,18 +82,19 @@ R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_BUCKET_NAME / R2_PU
 별도 마이그레이션 스크립트는 없으므로, 필요하면 업체가 사진을 다시
 업로드하거나 직접 R2로 옮긴 뒤 DB의 URL을 갱신해야 합니다.
 
-## 프로젝트 구조 (Phase 5 기준)
+## 프로젝트 구조 (Phase 6 기준)
 
 ```
 prisma/schema.prisma        DB 스키마 (User/Account/Session, Company/CompanyService/
                              CompanyPhoto/CompanyRegion, Category/Region, Reservation,
-                             ChatRoom/ChatMessage)
+                             ChatRoom/ChatMessage, Review, Report)
 prisma/seed.ts               카테고리·지역 시드 데이터
 src/lib/prisma.ts            Prisma Client 싱글턴
 src/lib/auth.ts              Auth.js 설정 (OAuth 3사, JWT 세션, ADMIN_EMAILS 부트스트랩)
 src/lib/admin.ts             관리자 권한 검증 헬퍼
 src/lib/company-auth.ts      업체 소유권 검증 헬퍼 (세션 기준으로만 회사를 조회)
 src/lib/chat.ts              채팅방 접근 검증 (예약 당사자만 허용)
+src/lib/review.ts            리뷰 작성 가능 여부 검증 (완료된 본인 예약, 중복 방지)
 src/lib/r2.ts                Cloudflare R2 presigned URL 발급/삭제 (서버 전용)
 src/lib/image.ts             업로드 허용 타입/용량 등 공통 검증
 src/lib/storage.ts           R2 이전 로컬 이미지 삭제 호환 코드
@@ -101,11 +102,13 @@ src/lib/region.ts            쿠키 기반 선택 지역 조회
 src/lib/reservation.ts       예약 시간대/상태 라벨 공통 상수
 src/app/page.tsx             홈 (지역 표시 + 카테고리 목록, DB 연동)
 src/app/regions/             지역 선택 화면 + 선택 저장 액션
-src/app/categories/[slug]/   카테고리별 업체 목록 (정렬/가격 필터, ACTIVE만 노출)
-src/app/companies/[id]/      업체 상세페이지 (ACTIVE만 노출)
+src/app/categories/[slug]/   카테고리별 업체 목록 (정렬/가격 필터/평점순, ACTIVE만 노출)
+src/app/companies/[id]/      업체 상세페이지 (평점/리뷰 목록 포함, ACTIVE만 노출)
 src/app/reservations/new/    예약 신청 폼 (로그인 필요)
 src/app/reservations/        내 예약 목록 + 취소
-src/app/reservations/[id]/chat/  예약별 1:1 채팅 (폴링 기반)
+src/app/reservations/[id]/chat/    예약별 1:1 채팅 (폴링 기반)
+src/app/reservations/[id]/review/  완료된 예약에 대한 리뷰 작성 (평점/내용/사진)
+src/app/reviews/[id]/report/  리뷰 신고
 src/app/api/reservations/[id]/messages/  채팅 메시지 조회/전송 API (폴링용)
 src/app/login/page.tsx       로그인 (OAuth 버튼)
 src/app/mypage/page.tsx      마이페이지 (로그인 필요, 연락처 등록, 내 예약 링크)
@@ -114,7 +117,7 @@ src/app/company/page.tsx     업체 관리 대시보드 (프로필/서비스·�
 src/app/company/photo-upload-form.tsx  R2 direct upload 클라이언트 컴포넌트
 src/app/company/reservations/  업체 예약 관리 (승인/거절/완료 처리)
 src/app/admin/companies/     관리자 업체 승인/비활성화/재활성화 (ADMIN 전용)
-proxy.ts                     보호된 라우트 접근 제어 (/mypage, /company, /admin, /reservations)
+proxy.ts                     보호된 라우트 접근 제어 (/mypage, /company, /admin, /reservations, /reviews)
 ```
 
 고객 탐색 화면은 업체 `status`가 `ACTIVE`인 경우에만 노출됩니다. 신규 등록
@@ -131,6 +134,13 @@ proxy.ts                     보호된 라우트 접근 제어 (/mypage, /compan
 동작하며, 해당 예약의 고객·업체만 조회/전송할 수 있습니다. 사진 전송은 아직
 지원하지 않지만 `ChatMessage.imageUrl` 필드를 미리 만들어둬서 나중에 이미지
 업로드만 얹으면 확장 가능하게 설계했습니다.
+
+리뷰는 예약 1건당 1개(`Reservation 1:1 Review`)만 작성할 수 있고, 예약
+상태가 `COMPLETED`인 경우에만 본인이 작성할 수 있습니다. 평점은 업체별
+리뷰 평균으로 계산되어 업체 상세페이지와 목록 카드에 실시간으로 반영됩니다.
+사진은 선택 사항이며 업체 사진과 동일하게 R2 presigned URL로 업로드됩니다.
+신고(`Report`)는 우선 리뷰 대상만 지원하고, 관리자가 신고 내역을 확인·처리
+하는 화면은 아직 없습니다(향후 관리자 기능 확장 시 추가 예정).
 
 기능은 기획서의 Phase 순서(업체 시스템 → 고객 탐색 → 예약 → 채팅 → 리뷰 → QA)대로
 단계적으로 추가됩니다.

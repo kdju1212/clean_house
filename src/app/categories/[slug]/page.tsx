@@ -6,6 +6,7 @@ import { getSelectedRegion } from "@/lib/region";
 
 const SORT_OPTIONS = [
   { value: "latest", label: "최신순" },
+  { value: "rating_desc", label: "평점순" },
   { value: "price_asc", label: "가격낮은순" },
   { value: "price_desc", label: "가격높은순" },
 ] as const;
@@ -76,11 +77,33 @@ export default async function CategoryCompaniesPage({
     },
   });
 
+  const ratingByCompanyId =
+    companies.length > 0
+      ? await prisma.review.groupBy({
+          by: ["companyId"],
+          where: { companyId: { in: companies.map((c) => c.id) } },
+          _avg: { rating: true },
+          _count: true,
+        })
+      : [];
+  const ratingMap = new Map(
+    ratingByCompanyId.map((r) => [
+      r.companyId,
+      { average: r._avg.rating ?? 0, count: r._count },
+    ])
+  );
+
   const rows = companies
-    .map((c) => ({ ...c, price: c.services[0]?.price ?? 0 }))
+    .map((c) => ({
+      ...c,
+      price: c.services[0]?.price ?? 0,
+      rating: ratingMap.get(c.id)?.average ?? 0,
+      reviewCount: ratingMap.get(c.id)?.count ?? 0,
+    }))
     .sort((a, b) => {
       if (sort === "price_asc") return a.price - b.price;
       if (sort === "price_desc") return b.price - a.price;
+      if (sort === "rating_desc") return b.rating - a.rating;
       return b.createdAt.getTime() - a.createdAt.getTime();
     });
 
@@ -160,6 +183,14 @@ export default async function CategoryCompaniesPage({
                       </span>
                     )}
                   </div>
+                  {company.reviewCount > 0 && (
+                    <p className="mt-0.5 text-xs text-neutral-500">
+                      <span className="font-medium text-amber-500">
+                        ★ {company.rating.toFixed(1)}
+                      </span>{" "}
+                      리뷰 {company.reviewCount}개
+                    </p>
+                  )}
                   {company.introText && (
                     <p className="mt-0.5 truncate text-xs text-neutral-500">
                       {company.introText}

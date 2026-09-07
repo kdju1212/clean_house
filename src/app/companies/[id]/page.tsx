@@ -16,18 +16,33 @@ export default async function CompanyDetailPage({
 }) {
   const { id } = await params;
 
-  const company = await prisma.company.findUnique({
-    where: { id },
-    include: {
-      services: { include: { category: true }, orderBy: { createdAt: "asc" } },
-      photos: { orderBy: { createdAt: "desc" } },
-      regions: { include: { region: true } },
-    },
-  });
+  const [company, reviews, ratingSummary] = await Promise.all([
+    prisma.company.findUnique({
+      where: { id },
+      include: {
+        services: { include: { category: true }, orderBy: { createdAt: "asc" } },
+        photos: { orderBy: { createdAt: "desc" } },
+        regions: { include: { region: true } },
+      },
+    }),
+    prisma.review.findMany({
+      where: { companyId: id },
+      include: { customer: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.review.aggregate({
+      where: { companyId: id },
+      _avg: { rating: true },
+      _count: true,
+    }),
+  ]);
 
   if (!company || company.status !== "ACTIVE") {
     notFound();
   }
+
+  const averageRating = ratingSummary._avg.rating ?? 0;
+  const reviewCount = ratingSummary._count;
 
   const galleryPhotos = company.mainImageUrl
     ? [
@@ -63,6 +78,16 @@ export default async function CompanyDetailPage({
 
       <div className="px-4 py-4">
         <h1 className="text-xl font-bold">{company.name}</h1>
+        <p className="mt-1 text-sm text-neutral-500">
+          {reviewCount > 0 ? (
+            <>
+              <span className="font-semibold text-amber-500">★ {averageRating.toFixed(1)}</span>{" "}
+              리뷰 {reviewCount}개
+            </>
+          ) : (
+            "아직 리뷰가 없어요"
+          )}
+        </p>
         {company.introText && (
           <p className="mt-2 text-sm text-neutral-600">{company.introText}</p>
         )}
@@ -133,6 +158,59 @@ export default async function CompanyDetailPage({
               <span className="text-neutral-500">연락처</span>
               <span>{company.phone}</span>
             </div>
+          )}
+        </section>
+
+        <section className="mt-5">
+          <h2 className="text-sm font-semibold">
+            리뷰 {reviewCount > 0 ? `(${reviewCount})` : ""}
+          </h2>
+          {reviews.length === 0 ? (
+            <p className="mt-2 text-sm text-neutral-400">
+              아직 작성된 리뷰가 없어요.
+            </p>
+          ) : (
+            <ul className="mt-2 flex flex-col gap-3">
+              {reviews.map((review) => (
+                <li
+                  key={review.id}
+                  className="rounded-xl border border-neutral-200 p-3"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-semibold text-amber-500">
+                      {"★".repeat(review.rating)}
+                      {"☆".repeat(5 - review.rating)}
+                    </span>
+                    <span className="text-xs text-neutral-400">
+                      {review.createdAt.toLocaleDateString("ko-KR")}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-neutral-500">
+                    {review.customer.name ?? "익명"}
+                  </p>
+                  <p className="mt-2 text-sm text-neutral-700">
+                    {review.content}
+                  </p>
+                  {review.photoUrl && (
+                    <div className="relative mt-2 aspect-square w-24 overflow-hidden rounded-lg bg-neutral-100">
+                      <Image
+                        src={review.photoUrl}
+                        alt="리뷰 사진"
+                        fill
+                        sizes="96px"
+                        className="object-cover"
+                      />
+                    </div>
+                  )}
+                  <Link
+                    href={`/reviews/${review.id}/report`}
+                    className="mt-2 inline-block text-[11px] text-neutral-400 underline"
+                  >
+                    신고
+                  </Link>
+                </li>
+              ))}
+            </ul>
           )}
         </section>
       </div>
