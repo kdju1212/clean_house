@@ -89,7 +89,7 @@ model Company {
   introText     String?
   mainImageUrl  String?
   businessHours String?
-  isAvailable   Boolean       @default(false)
+  isAvailable   Boolean       @default(true)
   status        CompanyStatus @default(PENDING)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
