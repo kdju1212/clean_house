@@ -6,6 +6,7 @@ import {
   RESERVATION_STATUS_BADGE_CLASS,
   RESERVATION_STATUS_LABEL,
 } from "@/lib/reservation";
+import { SubmitButton } from "@/components/submit-button";
 import { acceptReservation, completeReservation, rejectReservation } from "./actions";
 
 // Needs-action items first, then soonest by desired date.
@@ -155,33 +156,33 @@ export default async function CompanyReservationsPage({
                 <div className="mt-3 flex gap-2">
                   <form action={acceptReservation}>
                     <input type="hidden" name="reservationId" value={r.id} />
-                    <button
-                      type="submit"
+                    <SubmitButton
                       className="rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white"
+                      pendingText="처리 중..."
                     >
                       승인
-                    </button>
+                    </SubmitButton>
                   </form>
                   <form action={rejectReservation}>
                     <input type="hidden" name="reservationId" value={r.id} />
-                    <button
-                      type="submit"
+                    <SubmitButton
                       className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-medium text-red-600"
+                      pendingText="처리 중..."
                     >
                       거절
-                    </button>
+                    </SubmitButton>
                   </form>
                 </div>
               )}
               {r.status === "ACCEPTED" && (
                 <form action={completeReservation} className="mt-3">
                   <input type="hidden" name="reservationId" value={r.id} />
-                  <button
-                    type="submit"
+                  <SubmitButton
                     className="rounded-lg border border-neutral-900 px-3 py-1.5 text-xs font-medium"
+                    pendingText="처리 중..."
                   >
                     청소 완료 처리
-                  </button>
+                  </SubmitButton>
                 </form>
               )}
             </li>

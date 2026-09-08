@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NOTIFICATION_TYPE_ICON } from "@/lib/notification";
+import { SubmitButton } from "@/components/submit-button";
 import { markAllNotificationsRead, openNotification } from "./actions";
 
 export default async function NotificationsPage() {
@@ -23,9 +24,9 @@ export default async function NotificationsPage() {
         <h1 className="text-lg font-bold">알림</h1>
         {hasUnread && (
           <form action={markAllNotificationsRead}>
-            <button type="submit" className="text-xs text-neutral-500 underline">
+            <SubmitButton className="text-xs text-neutral-500 underline" pendingText="처리 중...">
               모두 읽음 처리
-            </button>
+            </SubmitButton>
           </form>
         )}
       </div>
@@ -40,8 +41,7 @@ export default async function NotificationsPage() {
             <li key={n.id}>
               <form action={openNotification}>
                 <input type="hidden" name="notificationId" value={n.id} />
-                <button
-                  type="submit"
+                <SubmitButton
                   className={`flex w-full items-start gap-3 rounded-2xl border p-4 text-left ${
                     n.isRead
                       ? "border-neutral-200 bg-white"
@@ -70,7 +70,7 @@ export default async function NotificationsPage() {
                       {n.createdAt.toLocaleString("ko-KR")}
                     </span>
                   </span>
-                </button>
+                </SubmitButton>
               </form>
             </li>
           ))}

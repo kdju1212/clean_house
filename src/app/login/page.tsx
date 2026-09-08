@@ -1,4 +1,5 @@
 import { signIn } from "@/lib/auth";
+import { SubmitButton } from "@/components/submit-button";
 
 const providers: { id: "google" | "kakao" | "naver"; label: string }[] = [
   { id: "kakao", label: "카카오로 계속하기" },
@@ -31,12 +32,12 @@ export default async function LoginPage({
             await signIn(p.id, { redirectTo });
           }}
         >
-          <button
-            type="submit"
+          <SubmitButton
             className="w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm font-medium hover:bg-neutral-50"
+            pendingText="이동 중..."
           >
             {p.label}
-          </button>
+          </SubmitButton>
         </form>
       ))}
     </main>

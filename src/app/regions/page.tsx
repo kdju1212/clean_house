@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getSelectedRegion } from "@/lib/region";
+import { SubmitButton } from "@/components/submit-button";
 import { selectRegion } from "./actions";
 
 export default async function RegionsPage() {
@@ -30,12 +31,12 @@ export default async function RegionsPage() {
             {region.name}
           </label>
         ))}
-        <button
-          type="submit"
+        <SubmitButton
           className="mt-2 rounded-lg bg-neutral-900 px-4 py-3 text-sm font-medium text-white"
+          pendingText="저장 중..."
         >
           선택 완료
-        </button>
+        </SubmitButton>
       </form>
     </main>
   );

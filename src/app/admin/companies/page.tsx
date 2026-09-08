@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { SubmitButton } from "@/components/submit-button";
 import { approveCompany, reactivateCompany, suspendCompany } from "./actions";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -82,34 +83,34 @@ export default async function AdminCompaniesPage() {
                 {company.status === "PENDING" && (
                   <form action={approveCompany}>
                     <input type="hidden" name="companyId" value={company.id} />
-                    <button
-                      type="submit"
+                    <SubmitButton
                       className="rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white"
+                      pendingText="처리 중..."
                     >
                       승인
-                    </button>
+                    </SubmitButton>
                   </form>
                 )}
                 {company.status === "ACTIVE" && (
                   <form action={suspendCompany}>
                     <input type="hidden" name="companyId" value={company.id} />
-                    <button
-                      type="submit"
+                    <SubmitButton
                       className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-medium text-red-600"
+                      pendingText="처리 중..."
                     >
                       비활성화
-                    </button>
+                    </SubmitButton>
                   </form>
                 )}
                 {company.status === "SUSPENDED" && (
                   <form action={reactivateCompany}>
                     <input type="hidden" name="companyId" value={company.id} />
-                    <button
-                      type="submit"
+                    <SubmitButton
                       className="rounded-lg border border-neutral-900 px-3 py-1.5 text-xs font-medium"
+                      pendingText="처리 중..."
                     >
                       재활성화
-                    </button>
+                    </SubmitButton>
                   </form>
                 )}
               </div>

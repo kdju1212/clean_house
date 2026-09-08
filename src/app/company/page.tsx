@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { SubmitButton } from "@/components/submit-button";
 import {
   addService,
   deletePhoto,
@@ -145,12 +146,12 @@ export default async function CompanyDashboardPage() {
             />
             현재 예약 가능
           </label>
-          <button
-            type="submit"
+          <SubmitButton
             className="mt-1 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white"
+            pendingText="저장 중..."
           >
             저장
-          </button>
+          </SubmitButton>
         </form>
       </section>
 
@@ -174,9 +175,9 @@ export default async function CompanyDashboardPage() {
                 </div>
                 <form action={deleteService}>
                   <input type="hidden" name="serviceId" value={service.id} />
-                  <button type="submit" className="text-xs text-neutral-400 underline">
+                  <SubmitButton className="text-xs text-neutral-400 underline" pendingText="삭제 중...">
                     삭제
-                  </button>
+                  </SubmitButton>
                 </form>
               </li>
             ))}
@@ -211,12 +212,12 @@ export default async function CompanyDashboardPage() {
             placeholder="설명 (선택, 예: 25평 기준)"
             className="rounded-lg border border-neutral-200 px-3 py-2 text-sm"
           />
-          <button
-            type="submit"
+          <SubmitButton
             className="rounded-lg border border-neutral-900 px-4 py-2 text-sm font-medium"
+            pendingText="저장 중..."
           >
             추가 / 수정
-          </button>
+          </SubmitButton>
         </form>
       </section>
 
@@ -240,12 +241,12 @@ export default async function CompanyDashboardPage() {
               </label>
             ))}
           </div>
-          <button
-            type="submit"
+          <SubmitButton
             className="rounded-lg border border-neutral-900 px-4 py-2 text-sm font-medium"
+            pendingText="저장 중..."
           >
             저장
-          </button>
+          </SubmitButton>
         </form>
       </section>
 
@@ -271,9 +272,9 @@ export default async function CompanyDashboardPage() {
                 </p>
                 <form action={deletePhoto} className="text-center">
                   <input type="hidden" name="photoId" value={photo.id} />
-                  <button type="submit" className="text-[11px] text-neutral-400 underline">
+                  <SubmitButton className="text-[11px] text-neutral-400 underline" pendingText="삭제 중...">
                     삭제
-                  </button>
+                  </SubmitButton>
                 </form>
               </div>
             ))}

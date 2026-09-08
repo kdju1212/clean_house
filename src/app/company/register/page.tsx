@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { SubmitButton } from "@/components/submit-button";
 import { createCompany } from "../actions";
 
 export default async function CompanyRegisterPage() {
@@ -63,12 +64,12 @@ export default async function CompanyRegisterPage() {
           />
         </label>
 
-        <button
-          type="submit"
+        <SubmitButton
           className="mt-2 rounded-lg bg-neutral-900 px-4 py-3 text-sm font-medium text-white"
+          pendingText="등록 중..."
         >
           등록하기
-        </button>
+        </SubmitButton>
       </form>
     </main>
   );

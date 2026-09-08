@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { SubmitButton } from "@/components/submit-button";
 import { reportReview } from "./actions";
 
 export default async function ReportReviewPage({
@@ -49,12 +50,12 @@ export default async function ReportReviewPage({
           placeholder="신고 사유를 알려주세요"
           className="rounded-lg border border-neutral-200 px-3 py-2 text-sm"
         />
-        <button
-          type="submit"
+        <SubmitButton
           className="rounded-lg bg-neutral-900 px-4 py-3 text-sm font-medium text-white"
+          pendingText="접수 중..."
         >
           신고하기
-        </button>
+        </SubmitButton>
       </form>
     </main>
   );

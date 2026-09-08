@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { SubmitButton } from "@/components/submit-button";
 import { updatePhone } from "./actions";
 
 export default async function MyPage() {
@@ -39,12 +40,12 @@ export default async function MyPage() {
             placeholder="010-0000-0000"
             className="flex-1 rounded-lg border border-neutral-200 px-3 py-2 text-sm"
           />
-          <button
-            type="submit"
+          <SubmitButton
             className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white"
+            pendingText="저장 중..."
           >
             저장
-          </button>
+          </SubmitButton>
         </form>
       </section>
 
@@ -65,9 +66,9 @@ export default async function MyPage() {
         }}
         className="mt-6"
       >
-        <button type="submit" className="text-sm text-neutral-500 underline">
+        <SubmitButton className="text-sm text-neutral-500 underline" pendingText="로그아웃 중...">
           로그아웃
-        </button>
+        </SubmitButton>
       </form>
     </main>
   );

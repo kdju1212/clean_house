@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { TIME_SLOTS } from "@/lib/reservation";
+import { SubmitButton } from "@/components/submit-button";
 import { createReservation } from "../actions";
 
 export default async function NewReservationPage({
@@ -148,12 +149,12 @@ export default async function NewReservationPage({
           />
         </label>
 
-        <button
-          type="submit"
+        <SubmitButton
           className="mt-2 rounded-lg bg-neutral-900 px-4 py-3 text-sm font-medium text-white"
+          pendingText="신청 중..."
         >
           예약 신청하기
-        </button>
+        </SubmitButton>
       </form>
     </main>
   );

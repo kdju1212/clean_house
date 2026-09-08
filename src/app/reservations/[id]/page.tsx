@@ -6,6 +6,7 @@ import {
   RESERVATION_STATUS_BADGE_CLASS,
   RESERVATION_STATUS_LABEL,
 } from "@/lib/reservation";
+import { SubmitButton } from "@/components/submit-button";
 import { cancelReservation } from "../actions";
 
 export default async function ReservationDetailPage({
@@ -91,12 +92,12 @@ export default async function ReservationDetailPage({
           reservation.status === "ACCEPTED") && (
           <form action={cancelReservation}>
             <input type="hidden" name="reservationId" value={reservation.id} />
-            <button
-              type="submit"
+            <SubmitButton
               className="rounded-lg px-4 py-2 text-sm text-neutral-500 underline"
+              pendingText="취소 중..."
             >
               예약 취소
-            </button>
+            </SubmitButton>
           </form>
         )}
         {reservation.status === "COMPLETED" &&
