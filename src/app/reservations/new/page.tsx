@@ -138,6 +138,15 @@ export default async function NewReservationPage({
             className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
           />
         </label>
+        <label className="flex flex-col gap-1 text-sm font-medium">
+          요청사항 (선택)
+          <textarea
+            name="requestNote"
+            rows={3}
+            placeholder="업체에 미리 전달하고 싶은 내용을 적어주세요"
+            className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
+          />
+        </label>
 
         <button
           type="submit"

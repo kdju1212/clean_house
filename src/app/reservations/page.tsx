@@ -2,16 +2,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { RESERVATION_STATUS_LABEL } from "@/lib/reservation";
+import {
+  RESERVATION_STATUS_BADGE_CLASS,
+  RESERVATION_STATUS_LABEL,
+} from "@/lib/reservation";
 import { cancelReservation } from "./actions";
-
-const STATUS_BADGE_CLASS: Record<string, string> = {
-  REQUESTED: "bg-amber-100 text-amber-700",
-  ACCEPTED: "bg-green-100 text-green-700",
-  REJECTED: "bg-neutral-200 text-neutral-600",
-  CANCELLED: "bg-neutral-200 text-neutral-600",
-  COMPLETED: "bg-blue-100 text-blue-700",
-};
 
 export default async function MyReservationsPage({
   searchParams,
@@ -52,24 +47,29 @@ export default async function MyReservationsPage({
               key={r.id}
               className="rounded-2xl border border-neutral-200 bg-white p-4"
             >
-              <div className="flex items-center justify-between gap-2">
-                <p className="font-semibold">{r.company.name}</p>
-                <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE_CLASS[r.status]}`}
-                >
-                  {RESERVATION_STATUS_LABEL[r.status]}
-                </span>
-              </div>
-              <dl className="mt-2 flex flex-col gap-0.5 text-xs text-neutral-500">
-                <div>{r.category.name}</div>
-                <div>
-                  {r.desiredDate.toLocaleDateString("ko-KR")} {r.desiredTime}
+              <Link href={`/reservations/${r.id}`} className="block">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-semibold">{r.company.name}</p>
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${RESERVATION_STATUS_BADGE_CLASS[r.status]}`}
+                  >
+                    {RESERVATION_STATUS_LABEL[r.status]}
+                  </span>
                 </div>
-                <div>
-                  {r.address}
-                  {r.addressDetail ? ` ${r.addressDetail}` : ""}
-                </div>
-              </dl>
+                <dl className="mt-2 flex flex-col gap-0.5 text-xs text-neutral-500">
+                  <div>
+                    {r.category.name}
+                    {r.price ? ` · ${r.price.toLocaleString()}원` : ""}
+                  </div>
+                  <div>
+                    {r.desiredDate.toLocaleDateString("ko-KR")} {r.desiredTime}
+                  </div>
+                  <div>
+                    {r.address}
+                    {r.addressDetail ? ` ${r.addressDetail}` : ""}
+                  </div>
+                </dl>
+              </Link>
 
               <div className="mt-3 flex items-center gap-3">
                 <Link

@@ -25,6 +25,7 @@ export async function createReservation(formData: FormData) {
   const addressDetail = formData.get("addressDetail");
   const desiredDateRaw = formData.get("desiredDate");
   const desiredTime = formData.get("desiredTime");
+  const requestNote = formData.get("requestNote");
 
   if (typeof companyId !== "string" || companyId.length === 0) {
     throw new Error("업체 정보가 올바르지 않습니다.");
@@ -79,6 +80,13 @@ export async function createReservation(formData: FormData) {
           : null,
       desiredDate,
       desiredTime,
+      requestNote:
+        typeof requestNote === "string" && requestNote.trim().length > 0
+          ? requestNote.trim().slice(0, 1000)
+          : null,
+      // Snapshot the price at booking time — the company's price can change
+      // later, but this reservation should keep showing what was agreed.
+      price: company.services[0].price,
       chatRoom: { create: {} },
     },
   });
@@ -107,4 +115,5 @@ export async function cancelReservation(formData: FormData) {
   });
 
   revalidatePath("/reservations");
+  revalidatePath(`/reservations/${reservationId}`);
 }

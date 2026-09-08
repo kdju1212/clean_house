@@ -25,6 +25,7 @@ async function transitionStatus(
   });
 
   revalidatePath("/company/reservations");
+  revalidatePath(`/company/reservations/${reservationId}`);
 }
 
 export async function acceptReservation(formData: FormData) {

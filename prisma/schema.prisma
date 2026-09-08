@@ -148,6 +148,8 @@ model Reservation {
   addressDetail String?
   desiredDate   DateTime          @db.Date
   desiredTime   String
+  requestNote   String?
+  price         Int?
   status        ReservationStatus @default(REQUESTED)
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
