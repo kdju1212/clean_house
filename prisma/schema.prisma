@@ -42,6 +42,16 @@ enum ReportStatus {
   RESOLVED
 }
 
+enum NotificationType {
+  RESERVATION_REQUESTED
+  RESERVATION_ACCEPTED
+  RESERVATION_REJECTED
+  RESERVATION_CANCELLED
+  RESERVATION_COMPLETED
+  CHAT_MESSAGE
+  REVIEW_REQUEST
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -56,10 +66,11 @@ model User {
   accounts     Account[]
   sessions     Session[]
   company      Company?
-  reservations Reservation[]
-  chatMessages ChatMessage[]
-  reviews      Review[]
-  reports      Report[]
+  reservations  Reservation[]
+  chatMessages  ChatMessage[]
+  reviews       Review[]
+  reports       Report[]
+  notifications Notification[]
 }
 
 model Category {
@@ -210,6 +221,22 @@ model Report {
   createdAt  DateTime         @default(now())
 
   reporter User @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String?
+  link      String?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
 }
 
 model Account {

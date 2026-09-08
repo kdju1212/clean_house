@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { TIME_SLOTS } from "@/lib/reservation";
+import { createNotification } from "@/lib/notification";
 
 function startOfToday() {
   const now = new Date();
@@ -57,7 +58,7 @@ export async function createReservation(formData: FormData) {
   // re-derive it and make sure the company is actually bookable right now.
   const company = await prisma.company.findUnique({
     where: { id: companyId },
-    include: { services: { where: { categoryId } } },
+    include: { services: { where: { categoryId }, include: { category: true } } },
   });
   if (!company || company.status !== "ACTIVE" || !company.isAvailable) {
     throw new Error("현재 예약을 받을 수 없는 업체입니다.");
@@ -91,6 +92,14 @@ export async function createReservation(formData: FormData) {
     },
   });
 
+  await createNotification({
+    userId: company.ownerUserId,
+    type: "RESERVATION_REQUESTED",
+    title: "새 예약 요청이 들어왔어요",
+    body: `${name.trim()}님이 ${company.services[0].category.name} 예약을 신청했어요.`,
+    link: `/company/reservations/${reservation.id}`,
+  });
+
   redirect(`/reservations?created=${reservation.id}`);
 }
 
@@ -105,7 +114,7 @@ export async function cancelReservation(formData: FormData) {
 
   // Scoped to the caller's own reservation and only from a cancellable
   // state — an already-completed/rejected/cancelled booking can't change.
-  await prisma.reservation.updateMany({
+  const result = await prisma.reservation.updateMany({
     where: {
       id: reservationId,
       customerId: session.user.id,
@@ -113,6 +122,22 @@ export async function cancelReservation(formData: FormData) {
     },
     data: { status: "CANCELLED" },
   });
+
+  if (result.count > 0) {
+    const reservation = await prisma.reservation.findUnique({
+      where: { id: reservationId },
+      include: { company: true, category: true },
+    });
+    if (reservation) {
+      await createNotification({
+        userId: reservation.company.ownerUserId,
+        type: "RESERVATION_CANCELLED",
+        title: "예약이 취소됐어요",
+        body: `${reservation.customerName}님이 ${reservation.category.name} 예약을 취소했어요.`,
+        link: `/company/reservations/${reservation.id}`,
+      });
+    }
+  }
 
   revalidatePath("/reservations");
   revalidatePath(`/reservations/${reservationId}`);

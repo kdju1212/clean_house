@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requireChatAccess } from "@/lib/chat";
+import { notifyNewChatMessage } from "@/lib/notification";
 
 const MAX_MESSAGE_LENGTH = 1000;
 
@@ -78,6 +79,15 @@ export async function POST(
       senderId: session.user.id,
       content,
     },
+  });
+
+  const recipientId = access.isCustomer
+    ? access.reservation.company.ownerUserId
+    : access.reservation.customerId;
+  await notifyNewChatMessage({
+    userId: recipientId,
+    link: `/reservations/${id}/chat`,
+    preview: content.slice(0, 80),
   });
 
   return NextResponse.json({

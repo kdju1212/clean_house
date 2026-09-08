@@ -82,12 +82,12 @@ R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_BUCKET_NAME / R2_PU
 별도 마이그레이션 스크립트는 없으므로, 필요하면 업체가 사진을 다시
 업로드하거나 직접 R2로 옮긴 뒤 DB의 URL을 갱신해야 합니다.
 
-## 프로젝트 구조 (Phase 7 기준)
+## 프로젝트 구조 (Phase 8 기준)
 
 ```
 prisma/schema.prisma        DB 스키마 (User/Account/Session, Company/CompanyService/
                              CompanyPhoto/CompanyRegion, Category/Region, Reservation,
-                             ChatRoom/ChatMessage, Review, Report)
+                             ChatRoom/ChatMessage, Review, Report, Notification)
 prisma/seed.ts               카테고리·지역 시드 데이터
 src/lib/prisma.ts            Prisma Client 싱글턴
 src/lib/auth.ts              Auth.js 설정 (OAuth 3사, JWT 세션, ADMIN_EMAILS 부트스트랩)
@@ -100,6 +100,7 @@ src/lib/image.ts             업로드 허용 타입/용량 등 공통 검증
 src/lib/storage.ts           R2 이전 로컬 이미지 삭제 호환 코드
 src/lib/region.ts            쿠키 기반 선택 지역 조회
 src/lib/reservation.ts       예약 시간대/상태 라벨 공통 상수
+src/lib/notification.ts      알림 생성 헬퍼 (채팅 알림은 안 읽은 알림 1건으로 병합)
 src/app/page.tsx             홈 (지역 표시 + 카테고리 목록, DB 연동)
 src/app/regions/             지역 선택 화면 + 선택 저장 액션
 src/app/categories/[slug]/   카테고리별 업체 목록 (정렬/가격 필터/평점순, ACTIVE만 노출)
@@ -119,7 +120,8 @@ src/app/company/photo-upload-form.tsx  R2 direct upload 클라이언트 컴포�
 src/app/company/reservations/  업체 예약 관리 (상태별 필터 탭, 승인/거절/완료 처리)
 src/app/company/reservations/[id]/  업체용 예약 상세페이지 (승인/거절/완료 처리 포함)
 src/app/admin/companies/     관리자 업체 승인/비활성화/재활성화 (ADMIN 전용)
-proxy.ts                     보호된 라우트 접근 제어 (/mypage, /company, /admin, /reservations, /reviews)
+src/app/notifications/       알림 목록 (읽음 처리, 모두 읽음, 클릭 시 관련 페이지로 이동)
+proxy.ts                     보호된 라우트 접근 제어 (/mypage, /company, /admin, /reservations, /reviews, /notifications)
 ```
 
 고객 탐색 화면은 업체 `status`가 `ACTIVE`인 경우에만 노출됩니다. 신규 등록
@@ -146,6 +148,13 @@ proxy.ts                     보호된 라우트 접근 제어 (/mypage, /compan
 사진은 선택 사항이며 업체 사진과 동일하게 R2 presigned URL로 업로드됩니다.
 신고(`Report`)는 우선 리뷰 대상만 지원하고, 관리자가 신고 내역을 확인·처리
 하는 화면은 아직 없습니다(향후 관리자 기능 확장 시 추가 예정).
+
+알림은 사이트 내부 알림만 지원합니다(이메일/SMS/카카오톡 알림은 이후 단계).
+예약 신청/승인/거절/취소/완료, 새 채팅 메시지, 리뷰 작성 요청 시점에 상대방
+에게 알림이 생성되고, 헤더의 🔔 아이콘에 읽지 않은 개수가 표시됩니다.
+`/notifications`에서 목록을 확인하고, 항목을 클릭하면 읽음 처리와 함께
+관련 예약/채팅/리뷰 페이지로 이동합니다. 같은 채팅방에서 메시지를 여러 개
+보내도 안 읽은 알림 1건으로 병합되어 알림이 쌓이지 않습니다.
 
 기능은 Phase 1~12 계획(1 기본 구조 → 2 업체 시스템 → 3 고객 탐색 → 4 예약 →
 5 채팅 → 6 리뷰 → 7 예약 고도화 → 8 알림 → 9 마이페이지 → 10 관리자 시스템 →

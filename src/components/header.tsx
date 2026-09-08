@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { getSelectedRegion } from "@/lib/region";
+import { getUnreadNotificationCount } from "@/lib/notification";
 
 export async function Header() {
   const [session, region] = await Promise.all([auth(), getSelectedRegion()]);
+  const unreadCount = session?.user
+    ? await getUnreadNotificationCount(session.user.id)
+    : 0;
 
   return (
     <header className="sticky top-0 z-10 border-b border-neutral-200 bg-white/90 backdrop-blur">
@@ -43,6 +47,19 @@ export async function Header() {
           >
             사장님이신가요?
           </Link>
+          {session?.user && (
+            <Link href="/notifications" aria-label="알림" className="relative text-lg leading-none">
+              <span aria-hidden>🔔</span>
+              {unreadCount > 0 && (
+                <span
+                  aria-hidden
+                  className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white"
+                >
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </Link>
+          )}
           {session?.user ? (
             <Link
               href="/mypage"
