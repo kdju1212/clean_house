@@ -8,16 +8,25 @@ export async function Header() {
   return (
     <header className="sticky top-0 z-10 border-b border-neutral-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex w-full max-w-md items-center justify-between px-4 py-3">
-        <Link
-          href="/regions"
-          className="flex items-center gap-1 text-sm font-semibold"
-        >
-          <span aria-hidden>📍</span>
-          <span>{region?.name ?? "지역 선택"}</span>
-          <span aria-hidden className="text-neutral-400">
-            ▾
-          </span>
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/"
+            aria-label="홈으로"
+            className="text-lg leading-none"
+          >
+            <span aria-hidden>🏠</span>
+          </Link>
+          <Link
+            href="/regions"
+            className="flex items-center gap-1 text-sm font-semibold"
+          >
+            <span aria-hidden>📍</span>
+            <span>{region?.name ?? "지역 선택"}</span>
+            <span aria-hidden className="text-neutral-400">
+              ▾
+            </span>
+          </Link>
+        </div>
 
         <div className="flex items-center gap-3">
           {session?.user?.role === "ADMIN" && (
