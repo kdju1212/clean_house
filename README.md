@@ -82,7 +82,7 @@ R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_BUCKET_NAME / R2_PU
 별도 마이그레이션 스크립트는 없으므로, 필요하면 업체가 사진을 다시
 업로드하거나 직접 R2로 옮긴 뒤 DB의 URL을 갱신해야 합니다.
 
-## 프로젝트 구조 (Phase 6 기준)
+## 프로젝트 구조 (Phase 7 기준)
 
 ```
 prisma/schema.prisma        DB 스키마 (User/Account/Session, Company/CompanyService/
@@ -104,8 +104,9 @@ src/app/page.tsx             홈 (지역 표시 + 카테고리 목록, DB 연동
 src/app/regions/             지역 선택 화면 + 선택 저장 액션
 src/app/categories/[slug]/   카테고리별 업체 목록 (정렬/가격 필터/평점순, ACTIVE만 노출)
 src/app/companies/[id]/      업체 상세페이지 (평점/리뷰 목록 포함, ACTIVE만 노출)
-src/app/reservations/new/    예약 신청 폼 (로그인 필요)
-src/app/reservations/        내 예약 목록 + 취소
+src/app/reservations/new/    예약 신청 폼 (요청사항 포함, 로그인 필요)
+src/app/reservations/        내 예약 목록 (가격 표시, 상세페이지 링크) + 취소
+src/app/reservations/[id]/   예약 상세페이지 (업체/서비스/가격/주소/요청사항/상태)
 src/app/reservations/[id]/chat/    예약별 1:1 채팅 (폴링 기반)
 src/app/reservations/[id]/review/  완료된 예약에 대한 리뷰 작성 (평점/내용/사진)
 src/app/reviews/[id]/report/  리뷰 신고
@@ -115,7 +116,8 @@ src/app/mypage/page.tsx      마이페이지 (로그인 필요, 연락처 등록
 src/app/company/register/    업체 최초 등록
 src/app/company/page.tsx     업체 관리 대시보드 (프로필/서비스·가격/지역/사진)
 src/app/company/photo-upload-form.tsx  R2 direct upload 클라이언트 컴포넌트
-src/app/company/reservations/  업체 예약 관리 (승인/거절/완료 처리)
+src/app/company/reservations/  업체 예약 관리 (상태별 필터 탭, 승인/거절/완료 처리)
+src/app/company/reservations/[id]/  업체용 예약 상세페이지 (승인/거절/완료 처리 포함)
 src/app/admin/companies/     관리자 업체 승인/비활성화/재활성화 (ADMIN 전용)
 proxy.ts                     보호된 라우트 접근 제어 (/mypage, /company, /admin, /reservations, /reviews)
 ```
@@ -127,7 +129,10 @@ proxy.ts                     보호된 라우트 접근 제어 (/mypage, /compan
 예약 상태는 `REQUESTED → ACCEPTED/REJECTED → COMPLETED` (또는 고객이 언제든
 `CANCELLED`)로 흐릅니다. 업체는 자신의 예약만, 고객은 자신이 신청한 예약만
 볼 수 있고, 상태 전환도 항상 예상되는 현재 상태에서만 서버가 허용합니다
-(예: 이미 거절된 예약은 승인할 수 없음).
+(예: 이미 거절된 예약은 승인할 수 없음). 예약에는 선택 입력인 요청사항
+(`requestNote`)과, 예약 시점 서비스 가격을 스냅샷으로 저장하는 `price`가
+있습니다 — 이후 업체가 가격을 바꿔도 이미 잡힌 예약에는 예약 당시 가격이
+그대로 표시됩니다.
 
 채팅은 예약 1건당 채팅방 1개(`Reservation 1:1 ChatRoom 1:N ChatMessage`)이고,
 예약 생성 시 자동으로 만들어집니다. 실시간 소켓 대신 4초 간격 폴링(REST)으로
@@ -142,10 +147,11 @@ proxy.ts                     보호된 라우트 접근 제어 (/mypage, /compan
 신고(`Report`)는 우선 리뷰 대상만 지원하고, 관리자가 신고 내역을 확인·처리
 하는 화면은 아직 없습니다(향후 관리자 기능 확장 시 추가 예정).
 
-기능은 기획서의 Phase 순서(업체 시스템 → 고객 탐색 → 예약 → 채팅 → 리뷰 → QA)대로
-단계적으로 추가됩니다.
+기능은 Phase 1~12 계획(1 기본 구조 → 2 업체 시스템 → 3 고객 탐색 → 4 예약 →
+5 채팅 → 6 리뷰 → 7 예약 고도화 → 8 알림 → 9 마이페이지 → 10 관리자 시스템 →
+11 광고 → 12 최종 안정화) 순서대로 단계적으로 추가됩니다.
 
-## QA (Phase 7)
+## QA 노트
 
 고객/업체/관리자 세 역할을 모두 실제 세션으로 재현해 전체 플로우
 (업체 등록 → 관리자 승인 → 고객 탐색/예약 → 채팅 → 완료 처리 → 리뷰 → 신고 →
