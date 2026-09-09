@@ -5,8 +5,8 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/company-auth";
 import { requireReviewableReservation } from "@/lib/review";
-import { createPresignedUploadUrl } from "@/lib/r2";
-import { assertValidImageMeta, IMAGE_EXT_BY_TYPE } from "@/lib/image";
+import { createPresignedUploadUrl, deleteR2Object, headR2Object, r2KeyFromPublicUrl } from "@/lib/r2";
+import { assertValidImageMeta, assertValidUploadedImage, IMAGE_EXT_BY_TYPE } from "@/lib/image";
 
 /**
  * Called directly from a Client Component (not a <form action>), but the
@@ -35,7 +35,8 @@ export async function requestReviewPhotoUploadUrl(input: {
 
     const { uploadUrl, publicUrl } = await createPresignedUploadUrl(
       key,
-      input.contentType
+      input.contentType,
+      input.size
     );
 
     return { uploadUrl, publicUrl, key };
@@ -73,10 +74,26 @@ export async function createReview(input: {
 
     // The photo, if any, must actually be one this reservation's review just
     // uploaded — never trust an arbitrary URL from the client.
-    const photoUrl =
+    let photoUrl =
       input.photoUrl && input.photoUrl.includes(`/reviews/${reservation.id}/`)
         ? input.photoUrl
         : null;
+
+    // Re-check what was actually stored in R2 (never the client's earlier
+    // claims) before letting the review reference it. A photo that fails
+    // this is dropped — same as an already-invalid URL — rather than
+    // blocking the whole review, and the bad object is deleted instead of
+    // being left behind as an orphan.
+    if (photoUrl) {
+      const key = r2KeyFromPublicUrl(photoUrl);
+      const meta = key ? await headR2Object(key) : null;
+      try {
+        assertValidUploadedImage(meta);
+      } catch {
+        if (key) await deleteR2Object(key).catch(() => {});
+        photoUrl = null;
+      }
+    }
 
     await prisma.review.create({
       data: {

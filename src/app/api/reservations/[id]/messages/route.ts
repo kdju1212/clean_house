@@ -6,6 +6,14 @@ import { notifyNewChatMessage } from "@/lib/notification";
 
 const MAX_MESSAGE_LENGTH = 1000;
 
+// DB-backed instead of an in-memory counter: this deploys as Vercel
+// serverless functions, where separate invocations can land on different
+// instances, so a process-local Map wouldn't reliably enforce a per-user
+// limit. A count() against the (senderId, createdAt) index is cheap and
+// needs no new infra (Redis, etc.) beyond the Postgres already in use.
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const RATE_LIMIT_MAX_MESSAGES = 20;
+
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -60,6 +68,19 @@ export async function POST(
   const access = await requireChatAccess(id, session.user.id);
   if (!access) {
     return NextResponse.json({ error: "접근 권한이 없습니다." }, { status: 403 });
+  }
+
+  const recentCount = await prisma.chatMessage.count({
+    where: {
+      senderId: session.user.id,
+      createdAt: { gte: new Date(Date.now() - RATE_LIMIT_WINDOW_MS) },
+    },
+  });
+  if (recentCount >= RATE_LIMIT_MAX_MESSAGES) {
+    return NextResponse.json(
+      { error: "메시지를 너무 빨리 보내고 있어요. 잠시 후 다시 시도해주세요." },
+      { status: 429 }
+    );
   }
 
   const body = await req.json().catch(() => null);

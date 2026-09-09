@@ -5,10 +5,26 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { deleteLocalCompanyImage } from "@/lib/storage";
-import { createPresignedUploadUrl, deleteR2Object, r2KeyFromPublicUrl } from "@/lib/r2";
-import { assertValidImageMeta, IMAGE_EXT_BY_TYPE } from "@/lib/image";
+import {
+  createPresignedUploadUrl,
+  deleteR2Object,
+  headR2Object,
+  r2KeyFromPublicUrl,
+} from "@/lib/r2";
+import {
+  assertValidImageMeta,
+  assertValidUploadedImage,
+  IMAGE_EXT_BY_TYPE,
+} from "@/lib/image";
 import { requireSession, requireOwnedCompany } from "@/lib/company-auth";
 import { toActionError, type ActionState } from "@/lib/action-state";
+
+const MAX_NAME_LENGTH = 60;
+const MAX_PHONE_LENGTH = 30;
+const MAX_INTRO_LENGTH = 1000;
+const MAX_BUSINESS_HOURS_LENGTH = 100;
+const MAX_SERVICE_DESCRIPTION_LENGTH = 200;
+const MAX_SERVICE_PRICE = 10_000_000;
 
 export async function createCompany(
   _prevState: ActionState,
@@ -30,8 +46,23 @@ export async function createCompany(
       if (typeof name !== "string" || name.trim().length === 0) {
         throw new Error("업체명을 입력해주세요.");
       }
+      if (name.trim().length > MAX_NAME_LENGTH) {
+        throw new Error(`업체명은 ${MAX_NAME_LENGTH}자 이하로 입력해주세요.`);
+      }
       if (typeof phone !== "string" || phone.trim().length === 0) {
         throw new Error("연락처를 입력해주세요.");
+      }
+      if (phone.trim().length > MAX_PHONE_LENGTH) {
+        throw new Error("연락처가 너무 길어요.");
+      }
+      if (typeof introText === "string" && introText.trim().length > MAX_INTRO_LENGTH) {
+        throw new Error(`업체 소개는 ${MAX_INTRO_LENGTH}자 이하로 입력해주세요.`);
+      }
+      if (
+        typeof businessHours === "string" &&
+        businessHours.trim().length > MAX_BUSINESS_HOURS_LENGTH
+      ) {
+        throw new Error("영업시간이 너무 길어요.");
       }
 
       await prisma.$transaction([
@@ -75,8 +106,23 @@ export async function updateProfile(
     if (typeof name !== "string" || name.trim().length === 0) {
       throw new Error("업체명을 입력해주세요.");
     }
+    if (name.trim().length > MAX_NAME_LENGTH) {
+      throw new Error(`업체명은 ${MAX_NAME_LENGTH}자 이하로 입력해주세요.`);
+    }
     if (typeof phone !== "string" || phone.trim().length === 0) {
       throw new Error("연락처를 입력해주세요.");
+    }
+    if (phone.trim().length > MAX_PHONE_LENGTH) {
+      throw new Error("연락처가 너무 길어요.");
+    }
+    if (typeof introText === "string" && introText.trim().length > MAX_INTRO_LENGTH) {
+      throw new Error(`업체 소개는 ${MAX_INTRO_LENGTH}자 이하로 입력해주세요.`);
+    }
+    if (
+      typeof businessHours === "string" &&
+      businessHours.trim().length > MAX_BUSINESS_HOURS_LENGTH
+    ) {
+      throw new Error("영업시간이 너무 길어요.");
     }
 
     await prisma.company.update({
@@ -115,6 +161,15 @@ export async function addService(
     const price = Number(priceRaw);
     if (!Number.isInteger(price) || price <= 0) {
       throw new Error("가격을 올바르게 입력해주세요.");
+    }
+    if (price > MAX_SERVICE_PRICE) {
+      throw new Error("가격이 너무 높아요.");
+    }
+    if (
+      typeof description === "string" &&
+      description.trim().length > MAX_SERVICE_DESCRIPTION_LENGTH
+    ) {
+      throw new Error(`설명은 ${MAX_SERVICE_DESCRIPTION_LENGTH}자 이하로 입력해주세요.`);
     }
 
     await prisma.companyService.upsert({
@@ -201,7 +256,8 @@ export async function requestPhotoUploadUrl(input: {
 
     const { uploadUrl, publicUrl } = await createPresignedUploadUrl(
       key,
-      input.contentType
+      input.contentType,
+      input.size
     );
 
     return { uploadUrl, publicUrl, key };
@@ -213,7 +269,10 @@ export async function requestPhotoUploadUrl(input: {
 /**
  * Step 2: called by the client after the R2 PUT succeeds, to record the
  * photo in the DB. Re-validates that the key actually belongs to the
- * caller's own company before trusting it.
+ * caller's own company before trusting it, then re-checks the actually
+ * stored object (never the client's earlier claims) before persisting
+ * anything — an object that fails this check is deleted immediately
+ * instead of being left behind as an orphan.
  */
 export async function confirmPhotoUpload(input: {
   key: string;
@@ -225,6 +284,13 @@ export async function confirmPhotoUpload(input: {
 
     if (!input.key.startsWith(`companies/${company.id}/`)) {
       throw new Error("잘못된 업로드 정보입니다.");
+    }
+
+    try {
+      assertValidUploadedImage(await headR2Object(input.key));
+    } catch (err) {
+      await deleteR2Object(input.key).catch(() => {});
+      throw err;
     }
 
     const publicUrlBase = process.env.R2_PUBLIC_URL;
