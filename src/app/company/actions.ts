@@ -8,7 +8,9 @@ import { deleteLocalCompanyImage } from "@/lib/storage";
 import {
   createPresignedUploadUrl,
   deleteR2Object,
+  getR2ObjectBuffer,
   headR2Object,
+  putR2Object,
   r2KeyFromPublicUrl,
 } from "@/lib/r2";
 import {
@@ -16,6 +18,7 @@ import {
   assertValidUploadedImage,
   IMAGE_EXT_BY_TYPE,
 } from "@/lib/image";
+import { processImageToWebp } from "@/lib/image-process";
 import { requireSession, requireOwnedCompany } from "@/lib/company-auth";
 import { toActionError, type ActionState } from "@/lib/action-state";
 
@@ -270,9 +273,15 @@ export async function requestPhotoUploadUrl(input: {
  * Step 2: called by the client after the R2 PUT succeeds, to record the
  * photo in the DB. Re-validates that the key actually belongs to the
  * caller's own company before trusting it, then re-checks the actually
- * stored object (never the client's earlier claims) before persisting
- * anything — an object that fails this check is deleted immediately
- * instead of being left behind as an orphan.
+ * stored original (never the client's earlier claims) — an object that
+ * fails this check is deleted immediately instead of being left behind
+ * as an orphan.
+ *
+ * The verified original is never kept: it's re-encoded server-side into
+ * a resized WebP (see processImageToWebp) and only the WebP is what
+ * actually gets persisted — the original upload key is always deleted
+ * once we're done with it, success or failure, so R2 never accumulates
+ * both an original and a processed copy.
  */
 export async function confirmPhotoUpload(input: {
   key: string;
@@ -293,11 +302,25 @@ export async function confirmPhotoUpload(input: {
       throw err;
     }
 
+    const finalKey = `companies/${company.id}/${randomUUID()}.webp`;
+    try {
+      const original = await getR2ObjectBuffer(input.key);
+      const webp = await processImageToWebp(original);
+      await putR2Object(finalKey, webp, "image/webp");
+      // Verify what actually landed in R2, not just what we think we sent.
+      assertValidUploadedImage(await headR2Object(finalKey));
+    } catch {
+      await deleteR2Object(finalKey).catch(() => {});
+      throw new Error("이미지 처리에 실패했어요. 다른 사진으로 다시 시도해주세요.");
+    } finally {
+      await deleteR2Object(input.key).catch(() => {});
+    }
+
     const publicUrlBase = process.env.R2_PUBLIC_URL;
     if (!publicUrlBase) {
       throw new Error("이미지 저장소가 아직 설정되지 않았어요.");
     }
-    const url = `${publicUrlBase.replace(/\/$/, "")}/${input.key}`;
+    const url = `${publicUrlBase.replace(/\/$/, "")}/${finalKey}`;
     const photoType = normalizePhotoType(input.type);
 
     await prisma.companyPhoto.create({

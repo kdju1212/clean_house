@@ -5,8 +5,16 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/company-auth";
 import { requireReviewableReservation } from "@/lib/review";
-import { createPresignedUploadUrl, deleteR2Object, headR2Object, r2KeyFromPublicUrl } from "@/lib/r2";
+import {
+  createPresignedUploadUrl,
+  deleteR2Object,
+  getR2ObjectBuffer,
+  headR2Object,
+  putR2Object,
+  r2KeyFromPublicUrl,
+} from "@/lib/r2";
 import { assertValidImageMeta, assertValidUploadedImage, IMAGE_EXT_BY_TYPE } from "@/lib/image";
+import { processImageToWebp } from "@/lib/image-process";
 
 /**
  * Called directly from a Client Component (not a <form action>), but the
@@ -81,17 +89,43 @@ export async function createReview(input: {
 
     // Re-check what was actually stored in R2 (never the client's earlier
     // claims) before letting the review reference it. A photo that fails
-    // this is dropped — same as an already-invalid URL — rather than
-    // blocking the whole review, and the bad object is deleted instead of
-    // being left behind as an orphan.
+    // this — or that fails the WebP re-encode below — is dropped rather
+    // than blocking the whole review, and any bad/orphaned object is
+    // deleted instead of being left behind.
     if (photoUrl) {
-      const key = r2KeyFromPublicUrl(photoUrl);
-      const meta = key ? await headR2Object(key) : null;
+      const originalKey = r2KeyFromPublicUrl(photoUrl);
+      const meta = originalKey ? await headR2Object(originalKey) : null;
+      let validOriginal = true;
       try {
         assertValidUploadedImage(meta);
       } catch {
-        if (key) await deleteR2Object(key).catch(() => {});
-        photoUrl = null;
+        validOriginal = false;
+        if (originalKey) await deleteR2Object(originalKey).catch(() => {});
+      }
+
+      photoUrl = null;
+      if (validOriginal && originalKey) {
+        // Re-encode server-side into a resized WebP — same policy as
+        // company photos — rather than keeping the browser-uploaded
+        // original. The original is always deleted once we're done with
+        // it, whether the re-encode succeeds or not.
+        const finalKey = `reviews/${reservation.id}/${randomUUID()}.webp`;
+        const publicUrlBase = process.env.R2_PUBLIC_URL;
+        try {
+          const original = await getR2ObjectBuffer(originalKey);
+          const webp = await processImageToWebp(original);
+          await putR2Object(finalKey, webp, "image/webp");
+          assertValidUploadedImage(await headR2Object(finalKey));
+          if (publicUrlBase) {
+            photoUrl = `${publicUrlBase.replace(/\/$/, "")}/${finalKey}`;
+          } else {
+            await deleteR2Object(finalKey).catch(() => {});
+          }
+        } catch {
+          await deleteR2Object(finalKey).catch(() => {});
+        } finally {
+          await deleteR2Object(originalKey).catch(() => {});
+        }
       }
     }
 

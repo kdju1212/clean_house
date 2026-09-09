@@ -4,6 +4,7 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
   HeadObjectCommand,
+  GetObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
@@ -99,6 +100,48 @@ export async function headR2Object(
   } catch {
     return null;
   }
+}
+
+/**
+ * Downloads an object's bytes from R2 into memory, for server-side
+ * re-processing (the WebP re-encode pipeline). Only ever called on
+ * objects already HEAD-verified to be within the 5MB original-upload
+ * ceiling, so this never buffers more than that in memory.
+ */
+export async function getR2ObjectBuffer(key: string): Promise<Buffer> {
+  const env = getR2Env();
+  const client = getClient(env);
+  const result = await client.send(
+    new GetObjectCommand({ Bucket: env.bucket, Key: key })
+  );
+  if (!result.Body) {
+    throw new Error("원본 이미지를 불러오지 못했어요.");
+  }
+  const bytes = await result.Body.transformToByteArray();
+  return Buffer.from(bytes);
+}
+
+/**
+ * Uploads a buffer straight to R2 using our own server-side credentials —
+ * not a presigned URL — for the processed (WebP) output the browser never
+ * gets to touch directly.
+ */
+export async function putR2Object(
+  key: string,
+  body: Buffer,
+  contentType: string
+): Promise<void> {
+  const env = getR2Env();
+  const client = getClient(env);
+  await client.send(
+    new PutObjectCommand({
+      Bucket: env.bucket,
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+      ContentLength: body.length,
+    })
+  );
 }
 
 /** Extracts the object key from a public R2 URL, or null if it isn't one. */
