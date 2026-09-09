@@ -29,26 +29,35 @@ export function PhotoUploadForm() {
 
     startTransition(async () => {
       try {
-        const { uploadUrl, key } = await requestPhotoUploadUrl({
+        const urlResult = await requestPhotoUploadUrl({
           contentType: file.type,
           size: file.size,
         });
+        if ("error" in urlResult) {
+          setError(urlResult.error);
+          return;
+        }
 
-        const putResponse = await fetch(uploadUrl, {
+        const putResponse = await fetch(urlResult.uploadUrl, {
           method: "PUT",
           headers: { "Content-Type": file.type },
           body: file,
         });
         if (!putResponse.ok) {
-          throw new Error("업로드에 실패했어요. 다시 시도해주세요.");
+          setError("업로드에 실패했어요. 다시 시도해주세요.");
+          return;
         }
 
-        await confirmPhotoUpload({ key, type });
+        const confirmResult = await confirmPhotoUpload({ key: urlResult.key, type });
+        if ("error" in confirmResult) {
+          setError(confirmResult.error);
+          return;
+        }
 
         if (fileInputRef.current) fileInputRef.current.value = "";
         router.refresh();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "업로드에 실패했어요.");
+      } catch {
+        setError("업로드에 실패했어요.");
       }
     });
   }

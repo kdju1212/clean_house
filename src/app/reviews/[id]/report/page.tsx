@@ -1,8 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { SubmitButton } from "@/components/submit-button";
-import { reportReview } from "./actions";
+import { ReportForm } from "./report-form";
 
 export default async function ReportReviewPage({
   params,
@@ -41,22 +40,7 @@ export default async function ReportReviewPage({
         부적절한 내용이라고 생각되면 신고해주세요.
       </p>
 
-      <form action={reportReview} className="mt-6 flex flex-col gap-3">
-        <input type="hidden" name="reviewId" value={review.id} />
-        <textarea
-          name="reason"
-          required
-          rows={4}
-          placeholder="신고 사유를 알려주세요"
-          className="rounded-lg border border-neutral-200 px-3 py-2 text-sm"
-        />
-        <SubmitButton
-          className="rounded-lg bg-neutral-900 px-4 py-3 text-sm font-medium text-white"
-          pendingText="접수 중..."
-        >
-          신고하기
-        </SubmitButton>
-      </form>
+      <ReportForm reviewId={review.id} />
     </main>
   );
 }

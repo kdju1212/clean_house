@@ -4,14 +4,10 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SubmitButton } from "@/components/submit-button";
-import {
-  addService,
-  deletePhoto,
-  deleteService,
-  setRegions,
-  updateProfile,
-} from "./actions";
+import { deletePhoto, deleteService, setRegions } from "./actions";
 import { PhotoUploadForm } from "./photo-upload-form";
+import { ProfileForm } from "./profile-form";
+import { AddServiceForm } from "./add-service-form";
 
 const STATUS_LABEL: Record<string, string> = {
   PENDING: "심사중",
@@ -136,58 +132,13 @@ export default async function CompanyDashboardPage() {
       {/* 프로필 */}
       <section className="mt-6 rounded-2xl border border-neutral-200 bg-white p-4">
         <h2 className="text-sm font-semibold">기본 정보</h2>
-        <form action={updateProfile} className="mt-3 flex flex-col gap-3">
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            업체명
-            <input
-              name="name"
-              defaultValue={company.name}
-              required
-              className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            연락처
-            <input
-              name="phone"
-              defaultValue={company.phone ?? ""}
-              required
-              className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            업체 소개
-            <textarea
-              name="introText"
-              defaultValue={company.introText ?? ""}
-              rows={3}
-              className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            영업시간
-            <input
-              name="businessHours"
-              defaultValue={company.businessHours ?? ""}
-              placeholder="예: 09:00 - 18:00"
-              className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
-            />
-          </label>
-          <label className="flex items-center gap-2 text-sm font-medium">
-            <input
-              type="checkbox"
-              name="isAvailable"
-              defaultChecked={company.isAvailable}
-            />
-            현재 예약 가능
-          </label>
-          <SubmitButton
-            className="mt-1 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white"
-            pendingText="저장 중..."
-          >
-            저장
-          </SubmitButton>
-        </form>
+        <ProfileForm
+          name={company.name}
+          phone={company.phone ?? ""}
+          introText={company.introText ?? ""}
+          businessHours={company.businessHours ?? ""}
+          isAvailable={company.isAvailable}
+        />
       </section>
 
       {/* 서비스/가격 */}
@@ -219,41 +170,7 @@ export default async function CompanyDashboardPage() {
           </ul>
         )}
 
-        <form action={addService} className="mt-3 flex flex-col gap-2">
-          <select
-            name="categoryId"
-            required
-            className="rounded-lg border border-neutral-200 px-3 py-2 text-sm"
-          >
-            <option value="">청소 종류 선택</option>
-            {allCategories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-                {usedCategoryIds.has(c.id) ? " (등록됨 · 가격 수정)" : ""}
-              </option>
-            ))}
-          </select>
-          <input
-            name="price"
-            type="number"
-            min={0}
-            step={1000}
-            required
-            placeholder="가격 (원)"
-            className="rounded-lg border border-neutral-200 px-3 py-2 text-sm"
-          />
-          <input
-            name="description"
-            placeholder="설명 (선택, 예: 25평 기준)"
-            className="rounded-lg border border-neutral-200 px-3 py-2 text-sm"
-          />
-          <SubmitButton
-            className="rounded-lg border border-neutral-900 px-4 py-2 text-sm font-medium"
-            pendingText="저장 중..."
-          >
-            추가 / 수정
-          </SubmitButton>
-        </form>
+        <AddServiceForm categories={allCategories} usedCategoryIds={usedCategoryIds} />
       </section>
 
       {/* 서비스 지역 */}

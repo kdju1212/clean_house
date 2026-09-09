@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getSelectedRegion } from "@/lib/region";
-import { SubmitButton } from "@/components/submit-button";
-import { selectRegion } from "./actions";
+import { RegionSelectForm } from "./region-select-form";
 
 export default async function RegionsPage() {
   const [regions, selected] = await Promise.all([
@@ -16,28 +15,7 @@ export default async function RegionsPage() {
         현재는 화성시 일부 지역만 테스트로 제공하고 있어요.
       </p>
 
-      <form action={selectRegion} className="mt-6 flex flex-col gap-2">
-        {regions.map((region) => (
-          <label
-            key={region.id}
-            className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm has-checked:border-neutral-900"
-          >
-            <input
-              type="radio"
-              name="regionId"
-              value={region.id}
-              defaultChecked={region.id === selected?.id}
-            />
-            {region.name}
-          </label>
-        ))}
-        <SubmitButton
-          className="mt-2 rounded-lg bg-neutral-900 px-4 py-3 text-sm font-medium text-white"
-          pendingText="저장 중..."
-        >
-          선택 완료
-        </SubmitButton>
-      </form>
+      <RegionSelectForm regions={regions} selectedId={selected?.id} />
     </main>
   );
 }

@@ -82,7 +82,7 @@ R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_BUCKET_NAME / R2_PU
 별도 마이그레이션 스크립트는 없으므로, 필요하면 업체가 사진을 다시
 업로드하거나 직접 R2로 옮긴 뒤 DB의 URL을 갱신해야 합니다.
 
-## 프로젝트 구조 (Phase 11 기준)
+## 프로젝트 구조 (Phase 12 기준)
 
 ```
 prisma/schema.prisma        DB 스키마 (User/Account/Session, Company/CompanyService/
@@ -104,6 +104,10 @@ src/lib/storage.ts           R2 이전 로컬 이미지 삭제 호환 코드
 src/lib/region.ts            쿠키 기반 선택 지역 조회
 src/lib/reservation.ts       예약 시간대/상태 라벨 공통 상수
 src/lib/notification.ts      알림 생성 헬퍼 (채팅 알림은 안 읽은 알림 1건으로 병합)
+src/lib/action-state.ts      서버 액션 공통 에러 상태 타입(ActionState)과 변환 헬퍼(toActionError)
+src/app/error.tsx            일반 라우트 에러 바운더리 (에러 화면 + 다시 시도/홈으로)
+src/app/global-error.tsx     루트 레이아웃 자체가 실패했을 때의 최상위 에러 바운더리
+src/app/not-found.tsx        404 화면
 src/app/page.tsx             홈 (지역 표시 + 카테고리 목록, DB 연동)
 src/app/regions/             지역 선택 화면 + 선택 저장 액션
 src/app/categories/[slug]/   카테고리별 업체 목록 (정렬/가격 필터/평점순, ACTIVE만 노출)
@@ -206,6 +210,52 @@ proxy.ts                     보호된 라우트 접근 제어 (/mypage, /compan
 기능은 Phase 1~12 계획(1 기본 구조 → 2 업체 시스템 → 3 고객 탐색 → 4 예약 →
 5 채팅 → 6 리뷰 → 7 예약 고도화 → 8 알림 → 9 마이페이지 → 10 관리자 시스템 →
 11 광고 → 12 최종 안정화) 순서대로 단계적으로 추가됩니다.
+
+## Phase 12: 프로덕션 에러 메시지 노출 문제 수정
+
+프로덕션 빌드(`next start`)로 실제 배포 환경을 재현해 테스트하는 과정에서,
+Server Function에서 `throw new Error("한국어 메시지")`로 던진 에러가 Next.js
+16의 프로덕션 빌드에서는 클라이언트에 전달되지 않고 일반적인 문구로
+치환된다는 것을 발견했습니다(`<form action={fn}>` 방식과 클라이언트에서
+직접 호출하는 방식 모두 동일). 개발 모드(`next dev`)에서는 실제 메시지가
+그대로 보여서 이 문제가 드러나지 않았습니다. 그 결과 "전화번호 형식이
+올바르지 않아요" 같은 안내 대신 알 수 없는 오류 문구만 뜨거나, 사진
+업로드처럼 직접 호출하는 액션은 아예 React의 난독화된 에러(`Minified
+error #...`)만 노출되는 상태였습니다.
+
+Next.js 공식 문서(`node_modules/next/dist/docs/01-app/01-getting-started/
+10-error-handling.md`)에서 권장하는 방식대로, "예상 가능한 에러는 throw
+대신 반환값으로 모델링"하는 패턴으로 프로젝트 전체를 수정했습니다.
+
+- `<form action={fn}>`으로 바인딩되는 액션(예: `updatePhone`,
+  `createReservation`, `resolveReport`)은 `(prevState, formData) =>
+  ActionState` 시그니처로 바꾸고, 함수 본문 전체를 `try/catch`로 감싼 뒤
+  `catch`에서 `toActionError(err)`(`src/lib/action-state.ts`)를 반환하도록
+  했습니다. 함수 내부의 개별 `throw new Error(...)` 검증 로직은 그대로
+  두어 변경 범위를 최소화했습니다. 성공 시 페이지를 이동해야 하는 경우
+  `redirect()` 호출은 `try/catch` 바깥으로 옮겼습니다(`redirect`도 내부적으로
+  throw로 동작하기 때문에 catch에 잡히면 안 됨). 이 액션들은 원래 페이지에
+  있던 `<form>`을 `useActionState`를 쓰는 별도의 클라이언트 컴포넌트로
+  분리해야 했습니다(예: `mypage/phone-form.tsx`,
+  `reservations/new/new-reservation-form.tsx`,
+  `admin/reports/resolve-report-form.tsx` 등 10개 폼).
+- 클라이언트 컴포넌트에서 직접 호출하는 액션(사진 업로드용
+  `requestPhotoUploadUrl`/`confirmPhotoUpload`,
+  `requestReviewPhotoUploadUrl`/`createReview`)은 `{ error: string } | T`
+  형태의 값을 반환하도록 바꾸고, 호출하는 쪽에서 `"error" in result`로
+  분기해 에러 메시지를 화면에 표시합니다.
+
+이 외에도 Next.js 16 문서의 권장 방식대로 `error.tsx`(일반 에러 바운더리),
+`global-error.tsx`(루트 레이아웃 실패 시 최상위 바운더리), `not-found.tsx`
+(404 화면)를 추가했습니다.
+
+수정 후 실제로 프로덕션 빌드(`next build && next start`)를 띄워, 이 문제를
+처음 발견했던 두 시나리오(마이페이지에서 잘못된 전화번호 형식 입력, R2가
+설정되지 않은 환경에서 사진 업로드 시도)를 Playwright로 재현해 올바른
+한국어 에러 메시지가 화면에 뜨는지 확인했습니다. 이어서 고객/업체/관리자
+세 역할로 프로덕션 빌드에서 회귀 테스트(업체 등록 → 서비스 추가 → 프로필
+수정 → 지역 선택 → 연락처 저장 → 관리자 승인 → 광고 신청/취소)를 다시
+실행해 리팩터링으로 인한 정상 동작 경로 손상이 없음을 확인했습니다.
 
 ## 배포 (Vercel)
 

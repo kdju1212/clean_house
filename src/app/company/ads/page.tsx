@@ -2,9 +2,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { AD_SLOTS, AD_SLOT_PRICE, AD_STATUS_BADGE_CLASS, AD_STATUS_LABEL, getAdStatus } from "@/lib/ad";
+import { AD_STATUS_BADGE_CLASS, AD_STATUS_LABEL, getAdStatus } from "@/lib/ad";
 import { SubmitButton } from "@/components/submit-button";
-import { applyAd, cancelAd } from "./actions";
+import { cancelAd } from "./actions";
+import { ApplyAdForm } from "./apply-ad-form";
 
 export default async function CompanyAdsPage() {
   const session = await auth();
@@ -61,66 +62,7 @@ export default async function CompanyAdsPage() {
       ) : (
         <section className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4">
           <h2 className="text-sm font-semibold">광고 신청</h2>
-          <form action={applyAd} className="mt-3 flex flex-col gap-2">
-            <label className="flex flex-col gap-1 text-sm font-medium">
-              청소 종류
-              <select
-                name="categoryId"
-                required
-                className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
-              >
-                {company.services.map((s) => (
-                  <option key={s.categoryId} value={s.categoryId}>
-                    {s.category.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-1 text-sm font-medium">
-              광고 슬롯
-              <select
-                name="slot"
-                required
-                className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
-              >
-                {AD_SLOTS.map((slot) => (
-                  <option key={slot} value={slot}>
-                    {slot}번 슬롯 ({AD_SLOT_PRICE[slot].toLocaleString()}원/일)
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="flex gap-3">
-              <label className="flex flex-1 flex-col gap-1 text-sm font-medium">
-                시작일
-                <input
-                  name="startDate"
-                  type="date"
-                  min={todayStr}
-                  defaultValue={todayStr}
-                  required
-                  className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
-                />
-              </label>
-              <label className="flex flex-1 flex-col gap-1 text-sm font-medium">
-                종료일
-                <input
-                  name="endDate"
-                  type="date"
-                  min={todayStr}
-                  defaultValue={todayStr}
-                  required
-                  className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
-                />
-              </label>
-            </div>
-            <SubmitButton
-              className="mt-1 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white"
-              pendingText="신청 중..."
-            >
-              광고 신청
-            </SubmitButton>
-          </form>
+          <ApplyAdForm services={company.services} todayStr={todayStr} />
         </section>
       )}
 

@@ -3,8 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { COMPANY_STATUS_BADGE_CLASS, COMPANY_STATUS_LABEL } from "@/lib/company";
 import { requireAdmin } from "@/lib/admin";
-import { SubmitButton } from "@/components/submit-button";
-import { approveCompany, reactivateCompany, suspendCompany } from "../actions";
+import { CompanyStatusForm } from "../company-status-form";
 
 const PHOTO_TYPE_LABEL: Record<string, string> = {
   MAIN: "대표",
@@ -168,37 +167,13 @@ export default async function AdminCompanyDetailPage({
 
       <div className="mt-4 flex gap-2">
         {company.status === "PENDING" && (
-          <form action={approveCompany}>
-            <input type="hidden" name="companyId" value={company.id} />
-            <SubmitButton
-              className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white"
-              pendingText="처리 중..."
-            >
-              승인
-            </SubmitButton>
-          </form>
+          <CompanyStatusForm companyId={company.id} action="approve" size="md" />
         )}
         {company.status === "ACTIVE" && (
-          <form action={suspendCompany}>
-            <input type="hidden" name="companyId" value={company.id} />
-            <SubmitButton
-              className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-600"
-              pendingText="처리 중..."
-            >
-              비활성화
-            </SubmitButton>
-          </form>
+          <CompanyStatusForm companyId={company.id} action="suspend" size="md" />
         )}
         {company.status === "SUSPENDED" && (
-          <form action={reactivateCompany}>
-            <input type="hidden" name="companyId" value={company.id} />
-            <SubmitButton
-              className="rounded-lg border border-neutral-900 px-4 py-2 text-sm font-medium"
-              pendingText="처리 중..."
-            >
-              재활성화
-            </SubmitButton>
-          </form>
+          <CompanyStatusForm companyId={company.id} action="reactivate" size="md" />
         )}
       </div>
     </div>

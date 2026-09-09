@@ -26,20 +26,25 @@ export function ReviewForm({ reservationId }: { reservationId: string }) {
         let photoUrl: string | null = null;
         const file = fileInputRef.current?.files?.[0];
         if (file) {
-          const { uploadUrl, publicUrl } = await requestReviewPhotoUploadUrl({
+          const urlResult = await requestReviewPhotoUploadUrl({
             reservationId,
             contentType: file.type,
             size: file.size,
           });
-          const putResponse = await fetch(uploadUrl, {
+          if ("error" in urlResult) {
+            setError(urlResult.error);
+            return;
+          }
+          const putResponse = await fetch(urlResult.uploadUrl, {
             method: "PUT",
             headers: { "Content-Type": file.type },
             body: file,
           });
           if (!putResponse.ok) {
-            throw new Error("사진 업로드에 실패했어요.");
+            setError("사진 업로드에 실패했어요.");
+            return;
           }
-          photoUrl = publicUrl;
+          photoUrl = urlResult.publicUrl;
         }
 
         const result = await createReview({
@@ -48,9 +53,13 @@ export function ReviewForm({ reservationId }: { reservationId: string }) {
           content,
           photoUrl,
         });
+        if ("error" in result) {
+          setError(result.error);
+          return;
+        }
         router.push(`/companies/${result.companyId}`);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "리뷰 등록에 실패했어요.");
+      } catch {
+        setError("리뷰 등록에 실패했어요.");
       }
     });
   }

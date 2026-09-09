@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin";
-import { SubmitButton } from "@/components/submit-button";
-import { resolveReport } from "./actions";
+import { ResolveReportForm } from "./resolve-report-form";
 
 const STATUS_FILTERS = [
   { value: "PENDING", label: "처리 대기" },
@@ -121,26 +120,8 @@ export default async function AdminReportsPage({
 
                 {activeStatus === "PENDING" && review && (
                   <div className="mt-3 flex gap-2">
-                    <form action={resolveReport}>
-                      <input type="hidden" name="reportId" value={report.id} />
-                      <input type="hidden" name="action" value="hide" />
-                      <SubmitButton
-                        className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white"
-                        pendingText="처리 중..."
-                      >
-                        리뷰 숨기기
-                      </SubmitButton>
-                    </form>
-                    <form action={resolveReport}>
-                      <input type="hidden" name="reportId" value={report.id} />
-                      <input type="hidden" name="action" value="dismiss" />
-                      <SubmitButton
-                        className="rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-600"
-                        pendingText="처리 중..."
-                      >
-                        반려
-                      </SubmitButton>
-                    </form>
+                    <ResolveReportForm reportId={report.id} action="hide" />
+                    <ResolveReportForm reportId={report.id} action="dismiss" />
                   </div>
                 )}
               </li>

@@ -6,8 +6,7 @@ import {
   RESERVATION_STATUS_BADGE_CLASS,
   RESERVATION_STATUS_LABEL,
 } from "@/lib/reservation";
-import { SubmitButton } from "@/components/submit-button";
-import { cancelReservation } from "./actions";
+import { CancelReservationButton } from "./cancel-reservation-button";
 
 const STATUS_FILTERS = [
   { value: "", label: "전체", statuses: [] as const },
@@ -132,12 +131,10 @@ export default async function MyReservationsPage({
                   채팅하기
                 </Link>
                 {(r.status === "REQUESTED" || r.status === "ACCEPTED") && (
-                  <form action={cancelReservation}>
-                    <input type="hidden" name="reservationId" value={r.id} />
-                    <SubmitButton className="text-xs text-neutral-400 underline" pendingText="취소 중...">
-                      예약 취소
-                    </SubmitButton>
-                  </form>
+                  <CancelReservationButton
+                    reservationId={r.id}
+                    className="text-xs text-neutral-400 underline"
+                  />
                 )}
                 {r.status === "COMPLETED" &&
                   (r.review ? (

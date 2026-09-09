@@ -8,112 +8,133 @@ import { deleteLocalCompanyImage } from "@/lib/storage";
 import { createPresignedUploadUrl, deleteR2Object, r2KeyFromPublicUrl } from "@/lib/r2";
 import { assertValidImageMeta, IMAGE_EXT_BY_TYPE } from "@/lib/image";
 import { requireSession, requireOwnedCompany } from "@/lib/company-auth";
+import { toActionError, type ActionState } from "@/lib/action-state";
 
-export async function createCompany(formData: FormData) {
-  const session = await requireSession();
+export async function createCompany(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  try {
+    const session = await requireSession();
 
-  const existing = await prisma.company.findUnique({
-    where: { ownerUserId: session.user.id },
-  });
-  if (existing) {
-    redirect("/company");
+    const existing = await prisma.company.findUnique({
+      where: { ownerUserId: session.user.id },
+    });
+
+    if (!existing) {
+      const name = formData.get("name");
+      const phone = formData.get("phone");
+      const introText = formData.get("introText");
+      const businessHours = formData.get("businessHours");
+
+      if (typeof name !== "string" || name.trim().length === 0) {
+        throw new Error("업체명을 입력해주세요.");
+      }
+      if (typeof phone !== "string" || phone.trim().length === 0) {
+        throw new Error("연락처를 입력해주세요.");
+      }
+
+      await prisma.$transaction([
+        prisma.company.create({
+          data: {
+            ownerUserId: session.user.id,
+            name: name.trim(),
+            phone: phone.trim(),
+            introText: typeof introText === "string" ? introText.trim() : null,
+            businessHours:
+              typeof businessHours === "string" ? businessHours.trim() : null,
+          },
+        }),
+        prisma.user.update({
+          where: { id: session.user.id },
+          data: { role: "COMPANY" },
+        }),
+      ]);
+    }
+  } catch (err) {
+    return toActionError(err);
   }
 
-  const name = formData.get("name");
-  const phone = formData.get("phone");
-  const introText = formData.get("introText");
-  const businessHours = formData.get("businessHours");
+  redirect("/company");
+}
 
-  if (typeof name !== "string" || name.trim().length === 0) {
-    throw new Error("업체명을 입력해주세요.");
-  }
-  if (typeof phone !== "string" || phone.trim().length === 0) {
-    throw new Error("연락처를 입력해주세요.");
-  }
+export async function updateProfile(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  try {
+    const session = await requireSession();
+    const company = await requireOwnedCompany(session.user.id);
 
-  await prisma.$transaction([
-    prisma.company.create({
+    const name = formData.get("name");
+    const phone = formData.get("phone");
+    const introText = formData.get("introText");
+    const businessHours = formData.get("businessHours");
+    const isAvailable = formData.get("isAvailable") === "on";
+
+    if (typeof name !== "string" || name.trim().length === 0) {
+      throw new Error("업체명을 입력해주세요.");
+    }
+    if (typeof phone !== "string" || phone.trim().length === 0) {
+      throw new Error("연락처를 입력해주세요.");
+    }
+
+    await prisma.company.update({
+      where: { id: company.id },
       data: {
-        ownerUserId: session.user.id,
         name: name.trim(),
         phone: phone.trim(),
         introText: typeof introText === "string" ? introText.trim() : null,
         businessHours:
           typeof businessHours === "string" ? businessHours.trim() : null,
+        isAvailable,
       },
-    }),
-    prisma.user.update({
-      where: { id: session.user.id },
-      data: { role: "COMPANY" },
-    }),
-  ]);
+    });
 
-  redirect("/company");
+    revalidatePath("/company");
+  } catch (err) {
+    return toActionError(err);
+  }
 }
 
-export async function updateProfile(formData: FormData) {
-  const session = await requireSession();
-  const company = await requireOwnedCompany(session.user.id);
+export async function addService(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  try {
+    const session = await requireSession();
+    const company = await requireOwnedCompany(session.user.id);
 
-  const name = formData.get("name");
-  const phone = formData.get("phone");
-  const introText = formData.get("introText");
-  const businessHours = formData.get("businessHours");
-  const isAvailable = formData.get("isAvailable") === "on";
+    const categoryId = formData.get("categoryId");
+    const priceRaw = formData.get("price");
+    const description = formData.get("description");
 
-  if (typeof name !== "string" || name.trim().length === 0) {
-    throw new Error("업체명을 입력해주세요.");
+    if (typeof categoryId !== "string" || categoryId.length === 0) {
+      throw new Error("청소 종류를 선택해주세요.");
+    }
+    const price = Number(priceRaw);
+    if (!Number.isInteger(price) || price <= 0) {
+      throw new Error("가격을 올바르게 입력해주세요.");
+    }
+
+    await prisma.companyService.upsert({
+      where: { companyId_categoryId: { companyId: company.id, categoryId } },
+      update: {
+        price,
+        description: typeof description === "string" ? description.trim() : null,
+      },
+      create: {
+        companyId: company.id,
+        categoryId,
+        price,
+        description: typeof description === "string" ? description.trim() : null,
+      },
+    });
+
+    revalidatePath("/company");
+  } catch (err) {
+    return toActionError(err);
   }
-  if (typeof phone !== "string" || phone.trim().length === 0) {
-    throw new Error("연락처를 입력해주세요.");
-  }
-
-  await prisma.company.update({
-    where: { id: company.id },
-    data: {
-      name: name.trim(),
-      phone: phone.trim(),
-      introText: typeof introText === "string" ? introText.trim() : null,
-      businessHours:
-        typeof businessHours === "string" ? businessHours.trim() : null,
-      isAvailable,
-    },
-  });
-
-  revalidatePath("/company");
-}
-
-export async function addService(formData: FormData) {
-  const session = await requireSession();
-  const company = await requireOwnedCompany(session.user.id);
-
-  const categoryId = formData.get("categoryId");
-  const priceRaw = formData.get("price");
-  const description = formData.get("description");
-
-  if (typeof categoryId !== "string" || categoryId.length === 0) {
-    throw new Error("청소 종류를 선택해주세요.");
-  }
-  const price = Number(priceRaw);
-  if (!Number.isInteger(price) || price <= 0) {
-    throw new Error("가격을 올바르게 입력해주세요.");
-  }
-
-  await prisma.companyService.upsert({
-    where: { companyId_categoryId: { companyId: company.id, categoryId } },
-    update: {
-      price,
-      description: typeof description === "string" ? description.trim() : null,
-    },
-    create: {
-      companyId: company.id,
-      categoryId,
-      price,
-      description: typeof description === "string" ? description.trim() : null,
-    },
-  });
-
-  revalidatePath("/company");
 }
 
 export async function deleteService(formData: FormData) {
@@ -160,25 +181,33 @@ function normalizePhotoType(value: unknown): PhotoType {
  * and the declared file meta is acceptable, then hand back a short-lived
  * presigned PUT URL. The browser uploads the file straight to R2 with this
  * URL — the file itself never passes through our server.
+ *
+ * Called directly from a Client Component (not a <form action>), but the
+ * same production redaction applies to thrown errors from any Server
+ * Function — so this also returns an error string instead of throwing.
  */
 export async function requestPhotoUploadUrl(input: {
   contentType: string;
   size: number;
-}) {
-  const session = await requireSession();
-  const company = await requireOwnedCompany(session.user.id);
+}): Promise<{ error: string } | { uploadUrl: string; publicUrl: string; key: string }> {
+  try {
+    const session = await requireSession();
+    const company = await requireOwnedCompany(session.user.id);
 
-  assertValidImageMeta(input.contentType, input.size);
+    assertValidImageMeta(input.contentType, input.size);
 
-  const ext = IMAGE_EXT_BY_TYPE[input.contentType];
-  const key = `companies/${company.id}/${randomUUID()}.${ext}`;
+    const ext = IMAGE_EXT_BY_TYPE[input.contentType];
+    const key = `companies/${company.id}/${randomUUID()}.${ext}`;
 
-  const { uploadUrl, publicUrl } = await createPresignedUploadUrl(
-    key,
-    input.contentType
-  );
+    const { uploadUrl, publicUrl } = await createPresignedUploadUrl(
+      key,
+      input.contentType
+    );
 
-  return { uploadUrl, publicUrl, key };
+    return { uploadUrl, publicUrl, key };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "알 수 없는 오류가 발생했어요." };
+  }
 }
 
 /**
@@ -186,33 +215,41 @@ export async function requestPhotoUploadUrl(input: {
  * photo in the DB. Re-validates that the key actually belongs to the
  * caller's own company before trusting it.
  */
-export async function confirmPhotoUpload(input: { key: string; type?: string }) {
-  const session = await requireSession();
-  const company = await requireOwnedCompany(session.user.id);
+export async function confirmPhotoUpload(input: {
+  key: string;
+  type?: string;
+}): Promise<{ error: string } | { ok: true }> {
+  try {
+    const session = await requireSession();
+    const company = await requireOwnedCompany(session.user.id);
 
-  if (!input.key.startsWith(`companies/${company.id}/`)) {
-    throw new Error("잘못된 업로드 정보입니다.");
-  }
+    if (!input.key.startsWith(`companies/${company.id}/`)) {
+      throw new Error("잘못된 업로드 정보입니다.");
+    }
 
-  const publicUrlBase = process.env.R2_PUBLIC_URL;
-  if (!publicUrlBase) {
-    throw new Error("이미지 저장소가 아직 설정되지 않았어요.");
-  }
-  const url = `${publicUrlBase.replace(/\/$/, "")}/${input.key}`;
-  const photoType = normalizePhotoType(input.type);
+    const publicUrlBase = process.env.R2_PUBLIC_URL;
+    if (!publicUrlBase) {
+      throw new Error("이미지 저장소가 아직 설정되지 않았어요.");
+    }
+    const url = `${publicUrlBase.replace(/\/$/, "")}/${input.key}`;
+    const photoType = normalizePhotoType(input.type);
 
-  await prisma.companyPhoto.create({
-    data: { companyId: company.id, url, type: photoType },
-  });
-
-  if (photoType === "MAIN") {
-    await prisma.company.update({
-      where: { id: company.id },
-      data: { mainImageUrl: url },
+    await prisma.companyPhoto.create({
+      data: { companyId: company.id, url, type: photoType },
     });
-  }
 
-  revalidatePath("/company");
+    if (photoType === "MAIN") {
+      await prisma.company.update({
+        where: { id: company.id },
+        data: { mainImageUrl: url },
+      });
+    }
+
+    revalidatePath("/company");
+    return { ok: true };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "알 수 없는 오류가 발생했어요." };
+  }
 }
 
 export async function deletePhoto(formData: FormData) {

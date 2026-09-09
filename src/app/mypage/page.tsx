@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { auth, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SubmitButton } from "@/components/submit-button";
-import { updatePhone } from "./actions";
+import { PhoneForm } from "./phone-form";
 import { toggleFavorite } from "../companies/[id]/actions";
 
 const PROVIDER_LABEL: Record<string, string> = {
@@ -72,21 +72,7 @@ export default async function MyPage() {
           예약 시 업체에 전달되는 연락처예요. 소셜 로그인만으로는 확인되지
           않아 직접 등록해주세요.
         </p>
-        <form action={updatePhone} className="mt-3 flex gap-2">
-          <input
-            name="phone"
-            type="tel"
-            defaultValue={user.phone ?? ""}
-            placeholder="010-0000-0000"
-            className="flex-1 rounded-lg border border-neutral-200 px-3 py-2 text-sm"
-          />
-          <SubmitButton
-            className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white"
-            pendingText="저장 중..."
-          >
-            저장
-          </SubmitButton>
-        </form>
+        <PhoneForm initialPhone={user.phone ?? ""} />
       </section>
 
       <Link
