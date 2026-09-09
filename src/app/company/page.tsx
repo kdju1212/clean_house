@@ -123,6 +123,16 @@ export default async function CompanyDashboardPage() {
         </span>
       </Link>
 
+      <Link
+        href="/company/ads"
+        className="mt-3 flex items-center justify-between rounded-2xl border border-neutral-200 bg-white p-4 text-sm font-semibold"
+      >
+        광고 관리
+        <span aria-hidden className="text-neutral-400">
+          →
+        </span>
+      </Link>
+
       {/* 프로필 */}
       <section className="mt-6 rounded-2xl border border-neutral-200 bg-white p-4">
         <h2 className="text-sm font-semibold">기본 정보</h2>

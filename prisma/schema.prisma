@@ -80,8 +80,9 @@ model Category {
   name  String
   order Int    @default(0)
 
-  services     CompanyService[]
-  reservations Reservation[]
+  services       CompanyService[]
+  reservations   Reservation[]
+  advertisements Advertisement[]
 }
 
 model Region {
@@ -110,9 +111,10 @@ model Company {
   services     CompanyService[]
   photos       CompanyPhoto[]
   regions      CompanyRegion[]
-  reservations Reservation[]
-  reviews      Review[]
-  favoritedBy  Favorite[]
+  reservations   Reservation[]
+  reviews        Review[]
+  favoritedBy    Favorite[]
+  advertisements Advertisement[]
 }
 
 model CompanyService {
@@ -252,6 +254,27 @@ model Favorite {
   company  Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@unique([customerId, companyId])
+}
+
+/// CPT(기간) 광고. status는 저장하지 않고 cancelled + startDate/endDate로
+/// 항상 그 시점 상태(예정/진행중/종료/취소)를 계산한다 — 별도 배치 작업
+/// 없이도 상태가 stale해지지 않는다. 초기 버전은 실제 결제를 붙이지 않고
+/// 데이터 구조와 노출 로직만 구현한다.
+model Advertisement {
+  id          String   @id @default(cuid())
+  companyId   String
+  categoryId  String
+  slot        Int
+  startDate   DateTime @db.Date
+  endDate     DateTime @db.Date
+  pricePerDay Int
+  cancelled   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([categoryId, slot, startDate, endDate])
 }
 
 model Account {

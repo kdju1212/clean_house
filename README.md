@@ -82,14 +82,15 @@ R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_BUCKET_NAME / R2_PU
 별도 마이그레이션 스크립트는 없으므로, 필요하면 업체가 사진을 다시
 업로드하거나 직접 R2로 옮긴 뒤 DB의 URL을 갱신해야 합니다.
 
-## 프로젝트 구조 (Phase 10 기준)
+## 프로젝트 구조 (Phase 11 기준)
 
 ```
 prisma/schema.prisma        DB 스키마 (User/Account/Session, Company/CompanyService/
                              CompanyPhoto/CompanyRegion, Category/Region, Reservation,
                              ChatRoom/ChatMessage, Review(hidden), Report, Notification,
-                             Favorite)
+                             Favorite, Advertisement)
 src/lib/company.ts           업체 상태 라벨/배지 공통 상수
+src/lib/ad.ts                 광고 슬롯 가격, 상태 계산(cancelled+날짜로 매번 파생) 헬퍼
 prisma/seed.ts               카테고리·지역 시드 데이터
 src/lib/prisma.ts            Prisma Client 싱글턴
 src/lib/auth.ts              Auth.js 설정 (OAuth 3사, JWT 세션, ADMIN_EMAILS 부트스트랩)
@@ -107,6 +108,7 @@ src/app/page.tsx             홈 (지역 표시 + 카테고리 목록, DB 연동
 src/app/regions/             지역 선택 화면 + 선택 저장 액션
 src/app/categories/[slug]/   카테고리별 업체 목록 (정렬/가격 필터/평점순, ACTIVE만 노출)
 src/app/companies/[id]/      업체 상세페이지 (평점/리뷰 목록, 찜 토글, ACTIVE만 노출)
+src/components/company-list-card.tsx  업체 목록 카드 (광고/일반 공용, 광고는 "광고" 배지)
 src/app/reservations/new/    예약 신청 폼 (요청사항 포함, 로그인 필요)
 src/app/reservations/        내 예약 목록 (상태별 필터 탭, 가격 표시, 상세페이지 링크) + 취소
 src/app/reservations/[id]/   예약 상세페이지 (업체/서비스/가격/주소/요청사항/상태)
@@ -121,6 +123,7 @@ src/app/company/page.tsx     업체 관리 대시보드 (프로필/서비스·�
 src/app/company/photo-upload-form.tsx  R2 direct upload 클라이언트 컴포넌트
 src/app/company/reservations/  업체 예약 관리 (상태별 필터 탭, 승인/거절/완료 처리)
 src/app/company/reservations/[id]/  업체용 예약 상세페이지 (승인/거절/완료 처리 포함)
+src/app/company/ads/         업체 광고 신청/취소 (CPT 슬롯, 결제 미연동)
 src/app/admin/layout.tsx     관리자 권한 검증(ADMIN 아니면 리다이렉트) + 관리자 서브 내비게이션
 src/app/admin/page.tsx       관리자 대시보드 (승인 대기 업체/처리 대기 신고/신청 예약/전체 사용자 요약)
 src/app/admin/companies/     업체 목록 (상태별 필터) + 승인/비활성화/재활성화
@@ -154,8 +157,8 @@ proxy.ts                     보호된 라우트 접근 제어 (/mypage, /compan
 상태가 `COMPLETED`인 경우에만 본인이 작성할 수 있습니다. 평점은 업체별
 리뷰 평균으로 계산되어 업체 상세페이지와 목록 카드에 실시간으로 반영됩니다.
 사진은 선택 사항이며 업체 사진과 동일하게 R2 presigned URL로 업로드됩니다.
-신고(`Report`)는 우선 리뷰 대상만 지원하고, 관리자가 신고 내역을 확인·처리
-하는 화면은 아직 없습니다(향후 관리자 기능 확장 시 추가 예정).
+신고(`Report`)는 우선 리뷰 대상만 지원하며, `/admin/reports`에서 관리자가
+확인·처리합니다.
 
 알림은 사이트 내부 알림만 지원합니다(이메일/SMS/카카오톡 알림은 이후 단계).
 예약 신청/승인/거절/취소/완료, 새 채팅 메시지, 리뷰 작성 요청 시점에 상대방
@@ -185,6 +188,20 @@ proxy.ts                     보호된 라우트 접근 제어 (/mypage, /compan
 필터링해 조회하는 읽기 전용 화면입니다. `/admin/*` 하위 모든
 라우트는 레이아웃 단에서 ADMIN 권한을 서버에서 검증하며, 그 외
 권한 검증은 각 서버 액션에서 다시 한 번 확인합니다.
+
+광고는 CPT(기간) 방식이며 실제 결제는 아직 연동하지 않고 데이터 구조와
+노출 로직만 구현했습니다. 카테고리마다 1~3번 슬롯이 있고 슬롯별 일 단가는
+`src/lib/ad.ts`에 고정값으로 정의되어 있습니다(1번 5,000원/일, 2번
+4,000원/일, 3번 3,000원/일). `ACTIVE` 상태이고 서비스를 하나 이상 등록한
+업체만 `/company/ads`에서 광고를 신청할 수 있고, 신청 시 서버가 해당
+카테고리를 실제로 제공하는지와 같은 카테고리·슬롯·겹치는 기간의 광고가
+이미 있는지를 재검증합니다(동일 슬롯은 기간이 겹치면 예약 불가, 슬롯이
+다르면 기간이 겹쳐도 가능). 별도의 `status` 컬럼 없이 `cancelled` 플래그와
+시작일/종료일을 오늘 날짜와 비교해서 예정/진행중/종료/취소 상태를 그때그때
+계산합니다(상태를 최신으로 맞춰주는 배치 작업이 필요 없음). 고객이 보는
+카테고리 목록(`/categories/[slug]`)에서는 현재 진행중이고 고객이 선택한
+지역도 서비스하는 광고 업체가 상단에 "광고" 배지와 함께 먼저 노출되고,
+같은 업체가 아래 일반 목록에는 중복으로 뜨지 않습니다.
 
 기능은 Phase 1~12 계획(1 기본 구조 → 2 업체 시스템 → 3 고객 탐색 → 4 예약 →
 5 채팅 → 6 리뷰 → 7 예약 고도화 → 8 알림 → 9 마이페이지 → 10 관리자 시스템 →

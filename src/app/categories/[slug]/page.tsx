@@ -1,8 +1,9 @@
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSelectedRegion } from "@/lib/region";
+import { startOfToday } from "@/lib/ad";
+import { CompanyListCard } from "@/components/company-list-card";
 
 const SORT_OPTIONS = [
   { value: "latest", label: "최신순" },
@@ -60,28 +61,61 @@ export default async function CategoryCompaniesPage({
     );
   }
 
-  const companies = await prisma.company.findMany({
-    where: {
-      status: "ACTIVE",
-      regions: { some: { regionId: region.id } },
-      services: {
-        some: {
-          categoryId: category.id,
-          ...(maxPrice ? { price: { lte: maxPrice } } : {}),
+  const [companies, ads] = await Promise.all([
+    prisma.company.findMany({
+      where: {
+        status: "ACTIVE",
+        regions: { some: { regionId: region.id } },
+        services: {
+          some: {
+            categoryId: category.id,
+            ...(maxPrice ? { price: { lte: maxPrice } } : {}),
+          },
         },
       },
-    },
-    include: {
-      services: { where: { categoryId: category.id } },
-      regions: { include: { region: true } },
-    },
-  });
+      include: {
+        services: { where: { categoryId: category.id } },
+        regions: { include: { region: true } },
+      },
+    }),
+    // CPT ad slots for this category — only currently-running ones, and
+    // only for companies that are still ACTIVE and actually serve the
+    // customer's selected region, same as the organic listing above.
+    prisma.advertisement.findMany({
+      where: {
+        categoryId: category.id,
+        cancelled: false,
+        startDate: { lte: startOfToday() },
+        endDate: { gte: startOfToday() },
+        company: {
+          status: "ACTIVE",
+          regions: { some: { regionId: region.id } },
+        },
+      },
+      include: {
+        company: {
+          include: {
+            services: { where: { categoryId: category.id } },
+            regions: { include: { region: true } },
+          },
+        },
+      },
+      orderBy: { slot: "asc" },
+    }),
+  ]);
+
+  const adCompanyIds = new Set(ads.map((ad) => ad.companyId));
+  const organicCompanies = companies.filter((c) => !adCompanyIds.has(c.id));
+  const allCompanyIds = new Set([
+    ...companies.map((c) => c.id),
+    ...ads.map((ad) => ad.companyId),
+  ]);
 
   const ratingByCompanyId =
-    companies.length > 0
+    allCompanyIds.size > 0
       ? await prisma.review.groupBy({
           by: ["companyId"],
-          where: { companyId: { in: companies.map((c) => c.id) }, hidden: false },
+          where: { companyId: { in: [...allCompanyIds] }, hidden: false },
           _avg: { rating: true },
           _count: true,
         })
@@ -93,7 +127,14 @@ export default async function CategoryCompaniesPage({
     ])
   );
 
-  const rows = companies
+  const adRows = ads.map((ad) => ({
+    ...ad.company,
+    price: ad.company.services[0]?.price ?? 0,
+    rating: ratingMap.get(ad.companyId)?.average ?? 0,
+    reviewCount: ratingMap.get(ad.companyId)?.count ?? 0,
+  }));
+
+  const rows = organicCompanies
     .map((c) => ({
       ...c,
       price: c.services[0]?.price ?? 0,
@@ -147,63 +188,46 @@ export default async function CategoryCompaniesPage({
         </form>
       </div>
 
-      {rows.length === 0 ? (
+      {adRows.length > 0 && (
+        <ul className="mt-4 flex flex-col gap-3">
+          {adRows.map((company) => (
+            <li key={`ad-${company.id}`}>
+              <CompanyListCard
+                id={company.id}
+                name={company.name}
+                mainImageUrl={company.mainImageUrl}
+                isAvailable={company.isAvailable}
+                introText={company.introText}
+                price={company.price}
+                rating={company.rating}
+                reviewCount={company.reviewCount}
+                regionNames={company.regions.map((r) => r.region.name)}
+                isAd
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {rows.length === 0 && adRows.length === 0 ? (
         <p className="mt-10 text-center text-sm text-neutral-400">
           아직 {region.name}에 등록된 {category.name} 업체가 없어요.
         </p>
-      ) : (
+      ) : rows.length === 0 ? null : (
         <ul className="mt-4 flex flex-col gap-3">
           {rows.map((company) => (
             <li key={company.id}>
-              <Link
-                href={`/companies/${company.id}`}
-                className="flex gap-3 rounded-2xl border border-neutral-200 bg-white p-3"
-              >
-                <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-neutral-100">
-                  {company.mainImageUrl ? (
-                    <Image
-                      src={company.mainImageUrl}
-                      alt={company.name}
-                      fill
-                      sizes="80px"
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-2xl">
-                      🧽
-                    </div>
-                  )}
-                </div>
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="truncate font-medium">{company.name}</p>
-                    {!company.isAvailable && (
-                      <span className="shrink-0 rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-500">
-                        예약 마감
-                      </span>
-                    )}
-                  </div>
-                  {company.reviewCount > 0 && (
-                    <p className="mt-0.5 text-xs text-neutral-500">
-                      <span className="font-medium text-amber-500">
-                        ★ {company.rating.toFixed(1)}
-                      </span>{" "}
-                      리뷰 {company.reviewCount}개
-                    </p>
-                  )}
-                  {company.introText && (
-                    <p className="mt-0.5 truncate text-xs text-neutral-500">
-                      {company.introText}
-                    </p>
-                  )}
-                  <p className="mt-1 text-sm font-semibold">
-                    {company.price.toLocaleString()}원~
-                  </p>
-                  <p className="mt-auto truncate text-[11px] text-neutral-400">
-                    {company.regions.map((r) => r.region.name).join(", ")}
-                  </p>
-                </div>
-              </Link>
+              <CompanyListCard
+                id={company.id}
+                name={company.name}
+                mainImageUrl={company.mainImageUrl}
+                isAvailable={company.isAvailable}
+                introText={company.introText}
+                price={company.price}
+                rating={company.rating}
+                reviewCount={company.reviewCount}
+                regionNames={company.regions.map((r) => r.region.name)}
+              />
             </li>
           ))}
         </ul>
