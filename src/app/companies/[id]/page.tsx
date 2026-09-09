@@ -1,7 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { SubmitButton } from "@/components/submit-button";
+import { toggleFavorite } from "./actions";
 
 const PHOTO_TYPE_LABEL: Record<string, string> = {
   MAIN: "대표",
@@ -16,7 +19,8 @@ export default async function CompanyDetailPage({
 }) {
   const { id } = await params;
 
-  const [company, reviews, ratingSummary] = await Promise.all([
+  const [session, company, reviews, ratingSummary] = await Promise.all([
+    auth(),
     prisma.company.findUnique({
       where: { id },
       include: {
@@ -40,6 +44,12 @@ export default async function CompanyDetailPage({
   if (!company || company.status !== "ACTIVE") {
     notFound();
   }
+
+  const isFavorited = session?.user
+    ? !!(await prisma.favorite.findUnique({
+        where: { customerId_companyId: { customerId: session.user.id, companyId: id } },
+      }))
+    : false;
 
   const averageRating = ratingSummary._avg.rating ?? 0;
   const reviewCount = ratingSummary._count;
@@ -77,7 +87,28 @@ export default async function CompanyDetailPage({
       )}
 
       <div className="px-4 py-4">
-        <h1 className="text-xl font-bold">{company.name}</h1>
+        <div className="flex items-start justify-between gap-2">
+          <h1 className="text-xl font-bold">{company.name}</h1>
+          {session?.user ? (
+            <form action={toggleFavorite}>
+              <input type="hidden" name="companyId" value={company.id} />
+              <SubmitButton
+                aria-label={isFavorited ? "찜 해제" : "찜하기"}
+                className="text-2xl leading-none"
+              >
+                {isFavorited ? "♥" : "♡"}
+              </SubmitButton>
+            </form>
+          ) : (
+            <Link
+              href="/login"
+              aria-label="찜하려면 로그인"
+              className="text-2xl leading-none text-neutral-300"
+            >
+              ♡
+            </Link>
+          )}
+        </div>
         <p className="mt-1 text-sm text-neutral-500">
           {reviewCount > 0 ? (
             <>

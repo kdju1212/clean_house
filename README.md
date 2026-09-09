@@ -82,12 +82,12 @@ R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_BUCKET_NAME / R2_PU
 별도 마이그레이션 스크립트는 없으므로, 필요하면 업체가 사진을 다시
 업로드하거나 직접 R2로 옮긴 뒤 DB의 URL을 갱신해야 합니다.
 
-## 프로젝트 구조 (Phase 8 기준)
+## 프로젝트 구조 (Phase 9 기준)
 
 ```
 prisma/schema.prisma        DB 스키마 (User/Account/Session, Company/CompanyService/
                              CompanyPhoto/CompanyRegion, Category/Region, Reservation,
-                             ChatRoom/ChatMessage, Review, Report, Notification)
+                             ChatRoom/ChatMessage, Review, Report, Notification, Favorite)
 prisma/seed.ts               카테고리·지역 시드 데이터
 src/lib/prisma.ts            Prisma Client 싱글턴
 src/lib/auth.ts              Auth.js 설정 (OAuth 3사, JWT 세션, ADMIN_EMAILS 부트스트랩)
@@ -104,18 +104,18 @@ src/lib/notification.ts      알림 생성 헬퍼 (채팅 알림은 안 읽은 �
 src/app/page.tsx             홈 (지역 표시 + 카테고리 목록, DB 연동)
 src/app/regions/             지역 선택 화면 + 선택 저장 액션
 src/app/categories/[slug]/   카테고리별 업체 목록 (정렬/가격 필터/평점순, ACTIVE만 노출)
-src/app/companies/[id]/      업체 상세페이지 (평점/리뷰 목록 포함, ACTIVE만 노출)
+src/app/companies/[id]/      업체 상세페이지 (평점/리뷰 목록, 찜 토글, ACTIVE만 노출)
 src/app/reservations/new/    예약 신청 폼 (요청사항 포함, 로그인 필요)
-src/app/reservations/        내 예약 목록 (가격 표시, 상세페이지 링크) + 취소
+src/app/reservations/        내 예약 목록 (상태별 필터 탭, 가격 표시, 상세페이지 링크) + 취소
 src/app/reservations/[id]/   예약 상세페이지 (업체/서비스/가격/주소/요청사항/상태)
 src/app/reservations/[id]/chat/    예약별 1:1 채팅 (폴링 기반)
 src/app/reservations/[id]/review/  완료된 예약에 대한 리뷰 작성 (평점/내용/사진)
 src/app/reviews/[id]/report/  리뷰 신고
 src/app/api/reservations/[id]/messages/  채팅 메시지 조회/전송 API (폴링용)
 src/app/login/page.tsx       로그인 (OAuth 버튼)
-src/app/mypage/page.tsx      마이페이지 (로그인 필요, 연락처 등록, 내 예약 링크)
+src/app/mypage/page.tsx      마이페이지 (로그인 계정, 연락처 등록, 예약 요약, 내가 쓴 리뷰, 관심 업체)
 src/app/company/register/    업체 최초 등록
-src/app/company/page.tsx     업체 관리 대시보드 (프로필/서비스·가격/지역/사진)
+src/app/company/page.tsx     업체 관리 대시보드 (프로필/서비스·가격/지역/사진/받은 리뷰/평균 평점)
 src/app/company/photo-upload-form.tsx  R2 direct upload 클라이언트 컴포넌트
 src/app/company/reservations/  업체 예약 관리 (상태별 필터 탭, 승인/거절/완료 처리)
 src/app/company/reservations/[id]/  업체용 예약 상세페이지 (승인/거절/완료 처리 포함)
@@ -155,6 +155,15 @@ proxy.ts                     보호된 라우트 접근 제어 (/mypage, /compan
 `/notifications`에서 목록을 확인하고, 항목을 클릭하면 읽음 처리와 함께
 관련 예약/채팅/리뷰 페이지로 이동합니다. 같은 채팅방에서 메시지를 여러 개
 보내도 안 읽은 알림 1건으로 병합되어 알림이 쌓이지 않습니다.
+
+마이페이지는 역할별로 나뉩니다. 고객(`/mypage`)은 이름/이메일/로그인
+계정(OAuth 제공자)을 보고, 예약을 상태별 개수(예약 예정/진행 중/완료)와
+함께 요약해서 보여주며, 본인이 작성한 리뷰 목록과 찜한 업체 목록을
+확인할 수 있습니다. 예약 목록(`/reservations`)에는 상태별 필터 탭이
+추가되어 원하는 상태만 걸러볼 수 있습니다. 업체(`/company`)는 기존
+대시보드에 평균 평점과 받은 리뷰 목록이 추가됩니다. 찜(`Favorite`)은
+업체 상세페이지의 ♡ 버튼으로 토글하며, 본인 소유가 아닌 데이터는
+서버에서 항상 세션 기준으로 재검증합니다.
 
 기능은 Phase 1~12 계획(1 기본 구조 → 2 업체 시스템 → 3 고객 탐색 → 4 예약 →
 5 채팅 → 6 리뷰 → 7 예약 고도화 → 8 알림 → 9 마이페이지 → 10 관리자 시스템 →

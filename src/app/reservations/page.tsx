@@ -9,23 +9,53 @@ import {
 import { SubmitButton } from "@/components/submit-button";
 import { cancelReservation } from "./actions";
 
+const STATUS_FILTERS = [
+  { value: "", label: "전체", statuses: [] as const },
+  { value: "REQUESTED", label: "예약 예정", statuses: ["REQUESTED"] as const },
+  { value: "ACCEPTED", label: "진행 중", statuses: ["ACCEPTED"] as const },
+  { value: "COMPLETED", label: "완료", statuses: ["COMPLETED"] as const },
+  { value: "CANCELLED", label: "거절/취소", statuses: ["REJECTED", "CANCELLED"] as const },
+] as const;
+
+type StatusFilterValue = (typeof STATUS_FILTERS)[number]["value"];
+
 export default async function MyReservationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ created?: string }>;
+  searchParams: Promise<{ created?: string; status?: string }>;
 }) {
   const session = await auth();
   if (!session?.user) {
     redirect("/login");
   }
 
-  const { created } = await searchParams;
+  const { created, status: rawStatus } = await searchParams;
+  const activeStatus: StatusFilterValue = STATUS_FILTERS.some(
+    (f) => f.value === rawStatus
+  )
+    ? (rawStatus as StatusFilterValue)
+    : "";
+  const activeFilter = STATUS_FILTERS.find((f) => f.value === activeStatus)!;
 
-  const reservations = await prisma.reservation.findMany({
-    where: { customerId: session.user.id },
-    include: { company: true, category: true, review: true },
-    orderBy: { createdAt: "desc" },
-  });
+  const [reservations, statusCounts] = await Promise.all([
+    prisma.reservation.findMany({
+      where: {
+        customerId: session.user.id,
+        ...(activeFilter.statuses.length > 0
+          ? { status: { in: [...activeFilter.statuses] } }
+          : {}),
+      },
+      include: { company: true, category: true, review: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.reservation.groupBy({
+      by: ["status"],
+      where: { customerId: session.user.id },
+      _count: true,
+    }),
+  ]);
+  const countByStatus = new Map(statusCounts.map((s) => [s.status, s._count]));
+  const totalCount = statusCounts.reduce((sum, s) => sum + s._count, 0);
 
   return (
     <main className="mx-auto w-full max-w-md flex-1 px-4 py-6">
@@ -36,6 +66,28 @@ export default async function MyReservationsPage({
           예약 신청이 완료됐어요. 업체가 확인 후 승인하면 알려드려요.
         </p>
       )}
+
+      <div className="mt-4 flex gap-1 overflow-x-auto">
+        {STATUS_FILTERS.map((f) => {
+          const count =
+            f.statuses.length === 0
+              ? totalCount
+              : f.statuses.reduce((sum, s) => sum + (countByStatus.get(s) ?? 0), 0);
+          return (
+            <Link
+              key={f.value}
+              href={f.value ? `/reservations?status=${f.value}` : "/reservations"}
+              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium ${
+                activeStatus === f.value
+                  ? "border-neutral-900 bg-neutral-900 text-white"
+                  : "border-neutral-200 text-neutral-600"
+              }`}
+            >
+              {f.label} {count}
+            </Link>
+          );
+        })}
+      </div>
 
       {reservations.length === 0 ? (
         <p className="mt-10 text-center text-sm text-neutral-400">

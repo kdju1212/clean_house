@@ -71,6 +71,7 @@ model User {
   reviews       Review[]
   reports       Report[]
   notifications Notification[]
+  favorites     Favorite[]
 }
 
 model Category {
@@ -111,6 +112,7 @@ model Company {
   regions      CompanyRegion[]
   reservations Reservation[]
   reviews      Review[]
+  favoritedBy  Favorite[]
 }
 
 model CompanyService {
@@ -237,6 +239,18 @@ model Notification {
 
   @@index([userId, isRead])
   @@index([userId, createdAt])
+}
+
+model Favorite {
+  id         String   @id @default(cuid())
+  customerId String
+  companyId  String
+  createdAt  DateTime @default(now())
+
+  customer User    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  company  Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, companyId])
 }
 
 model Account {

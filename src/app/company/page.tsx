@@ -57,13 +57,26 @@ export default async function CompanyDashboardPage() {
     );
   }
 
-  const [allCategories, allRegions, requestedCount] = await Promise.all([
-    prisma.category.findMany({ orderBy: { order: "asc" } }),
-    prisma.region.findMany({ orderBy: { name: "asc" } }),
-    prisma.reservation.count({
-      where: { companyId: company.id, status: "REQUESTED" },
-    }),
-  ]);
+  const [allCategories, allRegions, requestedCount, reviews, ratingSummary] =
+    await Promise.all([
+      prisma.category.findMany({ orderBy: { order: "asc" } }),
+      prisma.region.findMany({ orderBy: { name: "asc" } }),
+      prisma.reservation.count({
+        where: { companyId: company.id, status: "REQUESTED" },
+      }),
+      prisma.review.findMany({
+        where: { companyId: company.id },
+        include: { customer: true },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.review.aggregate({
+        where: { companyId: company.id },
+        _avg: { rating: true },
+        _count: true,
+      }),
+    ]);
+  const averageRating = ratingSummary._avg.rating ?? 0;
+  const reviewCount = ratingSummary._count;
 
   const usedCategoryIds = new Set(company.services.map((s) => s.categoryId));
   const selectedRegionIds = new Set(company.regions.map((r) => r.regionId));
@@ -76,6 +89,18 @@ export default async function CompanyDashboardPage() {
           {STATUS_LABEL[company.status]}
         </span>
       </div>
+      <p className="mt-1 text-sm text-neutral-500">
+        {reviewCount > 0 ? (
+          <>
+            <span className="font-semibold text-amber-500">
+              ★ {averageRating.toFixed(1)}
+            </span>{" "}
+            리뷰 {reviewCount}개
+          </>
+        ) : (
+          "아직 리뷰가 없어요"
+        )}
+      </p>
       {company.status === "PENDING" && (
         <p className="mt-1 text-xs text-neutral-500">
           관리자 승인 후 고객에게 노출됩니다. 그 전까지 프로필/서비스/사진은
@@ -282,6 +307,43 @@ export default async function CompanyDashboardPage() {
         )}
 
         <PhotoUploadForm />
+      </section>
+
+      {/* 받은 리뷰 */}
+      <section className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4">
+        <h2 className="text-sm font-semibold">
+          받은 리뷰 {reviewCount > 0 ? `(${reviewCount})` : ""}
+        </h2>
+        {reviews.length === 0 ? (
+          <p className="mt-2 text-sm text-neutral-400">
+            아직 받은 리뷰가 없어요.
+          </p>
+        ) : (
+          <ul className="mt-3 flex flex-col gap-3">
+            {reviews.map((review) => (
+              <li
+                key={review.id}
+                className="rounded-lg border border-neutral-100 p-3"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold text-amber-500">
+                    {"★".repeat(review.rating)}
+                    {"☆".repeat(5 - review.rating)}
+                  </span>
+                  <span className="text-xs text-neutral-400">
+                    {review.createdAt.toLocaleDateString("ko-KR")}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-neutral-500">
+                  {review.customer.name ?? "익명"}
+                </p>
+                <p className="mt-2 text-sm text-neutral-700">
+                  {review.content}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </main>
   );
