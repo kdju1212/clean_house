@@ -56,32 +56,45 @@ export async function applyAd(
 
     // A slot is exclusive per category for any given day — reject if the
     // requested range overlaps an existing non-cancelled booking on it.
-    const overlapping = await prisma.advertisement.findFirst({
-      where: {
-        categoryId,
-        slot,
-        cancelled: false,
-        startDate: { lte: endDate },
-        endDate: { gte: startDate },
-      },
-    });
-    if (overlapping) {
-      throw new Error(
-        "해당 기간에는 이미 예약된 슬롯이에요. 다른 기간이나 슬롯을 선택해주세요."
-      );
-    }
+    // The overlap check and the insert must be atomic, or two requests for
+    // the same category+slot can both pass the check before either writes
+    // (classic check-then-act race). A plain unique index can't express a
+    // date-range overlap, and a real DB exclusion constraint would need the
+    // btree_gist extension — too big a schema change for this fix — so we
+    // serialize with a transaction-scoped Postgres advisory lock keyed on
+    // categoryId+slot instead: only one transaction per category+slot can
+    // be past this point at a time, and the lock is released automatically
+    // on commit or rollback.
+    await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${categoryId}:${slot}`})::bigint)`;
 
-    await prisma.advertisement.create({
-      data: {
-        companyId: company.id,
-        categoryId,
-        slot,
-        startDate,
-        endDate,
-        // Snapshot today's slot price — a later price change shouldn't alter
-        // an already-booked ad's price.
-        pricePerDay: AD_SLOT_PRICE[slot],
-      },
+      const overlapping = await tx.advertisement.findFirst({
+        where: {
+          categoryId,
+          slot,
+          cancelled: false,
+          startDate: { lte: endDate },
+          endDate: { gte: startDate },
+        },
+      });
+      if (overlapping) {
+        throw new Error(
+          "해당 기간에는 이미 예약된 슬롯이에요. 다른 기간이나 슬롯을 선택해주세요."
+        );
+      }
+
+      await tx.advertisement.create({
+        data: {
+          companyId: company.id,
+          categoryId,
+          slot,
+          startDate,
+          endDate,
+          // Snapshot today's slot price — a later price change shouldn't alter
+          // an already-booked ad's price.
+          pricePerDay: AD_SLOT_PRICE[slot],
+        },
+      });
     });
 
     revalidatePath("/company/ads");

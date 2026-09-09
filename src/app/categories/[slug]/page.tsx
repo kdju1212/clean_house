@@ -90,6 +90,12 @@ export default async function CategoryCompaniesPage({
         company: {
           status: "ACTIVE",
           regions: { some: { regionId: region.id } },
+          // Only filter on price when the customer actually picked a max
+          // price — otherwise leave the query exactly as before so
+          // unfiltered behavior doesn't change.
+          ...(maxPrice
+            ? { services: { some: { categoryId: category.id, price: { lte: maxPrice } } } }
+            : {}),
         },
       },
       include: {
