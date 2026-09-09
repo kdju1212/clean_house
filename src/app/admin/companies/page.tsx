@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { COMPANY_STATUS_BADGE_CLASS, COMPANY_STATUS_LABEL } from "@/lib/company";
+import { requireAdmin } from "@/lib/admin";
 import { SubmitButton } from "@/components/submit-button";
 import { approveCompany, reactivateCompany, suspendCompany } from "./actions";
 
@@ -18,6 +19,8 @@ export default async function AdminCompaniesPage({
 }: {
   searchParams: Promise<{ status?: string }>;
 }) {
+  await requireAdmin();
+
   const { status: rawStatus } = await searchParams;
   const activeStatus: StatusFilterValue = STATUS_FILTERS.some(
     (f) => f.value === rawStatus
@@ -30,7 +33,7 @@ export default async function AdminCompaniesPage({
       where: activeStatus ? { status: activeStatus } : {},
       orderBy: { createdAt: "desc" },
       include: {
-        owner: true,
+        owner: { select: { name: true, email: true } },
         services: { include: { category: true } },
         regions: { include: { region: true } },
       },
@@ -77,7 +80,7 @@ export default async function AdminCompaniesPage({
             >
               <Link href={`/admin/companies/${company.id}`} className="block">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="font-semibold">{company.name}</p>
+                  <p className="min-w-0 truncate font-semibold">{company.name}</p>
                   <span
                     className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${COMPANY_STATUS_BADGE_CLASS[company.status]}`}
                   >

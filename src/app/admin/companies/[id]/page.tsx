@@ -2,6 +2,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { COMPANY_STATUS_BADGE_CLASS, COMPANY_STATUS_LABEL } from "@/lib/company";
+import { requireAdmin } from "@/lib/admin";
 import { SubmitButton } from "@/components/submit-button";
 import { approveCompany, reactivateCompany, suspendCompany } from "../actions";
 
@@ -16,13 +17,15 @@ export default async function AdminCompanyDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requireAdmin();
+
   const { id } = await params;
 
   const [company, reservationCounts, ratingSummary] = await Promise.all([
     prisma.company.findUnique({
       where: { id },
       include: {
-        owner: true,
+        owner: { select: { name: true, email: true } },
         services: { include: { category: true } },
         regions: { include: { region: true } },
         photos: { orderBy: { createdAt: "desc" } },
@@ -48,7 +51,7 @@ export default async function AdminCompanyDetailPage({
   return (
     <div className="px-4 py-6">
       <div className="flex items-center justify-between gap-2">
-        <h1 className="text-lg font-bold">{company.name}</h1>
+        <h1 className="min-w-0 truncate text-lg font-bold">{company.name}</h1>
         <span
           className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${COMPANY_STATUS_BADGE_CLASS[company.status]}`}
         >

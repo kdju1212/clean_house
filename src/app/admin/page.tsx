@@ -1,7 +1,14 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/admin";
 
 export default async function AdminDashboardPage() {
+  // The layout above already redirects non-admins away before this ever
+  // renders, but every protected page in this app re-checks itself too
+  // (see mypage, company, etc.) — this stays true if the query below is
+  // ever reused from somewhere the layout doesn't guard.
+  await requireAdmin();
+
   const [pendingCompanies, pendingReports, requestedReservations, totalUsers] =
     await Promise.all([
       prisma.company.count({ where: { status: "PENDING" } }),

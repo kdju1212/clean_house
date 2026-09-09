@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/admin";
 import {
   RESERVATION_STATUS_BADGE_CLASS,
   RESERVATION_STATUS_LABEL,
@@ -16,36 +17,58 @@ const STATUS_FILTERS = [
 
 type StatusFilterValue = (typeof STATUS_FILTERS)[number]["value"];
 
+const PAGE_SIZE = 30;
+
 export default async function AdminReservationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; page?: string }>;
 }) {
-  const { status: rawStatus } = await searchParams;
+  await requireAdmin();
+
+  const { status: rawStatus, page: rawPage } = await searchParams;
   const activeStatus: StatusFilterValue = STATUS_FILTERS.some(
     (f) => f.value === rawStatus
   )
     ? (rawStatus as StatusFilterValue)
     : "";
 
+  // Never trust a raw page number from the client — clamp anything that
+  // isn't a positive integer back to page 1 instead of passing it to skip.
+  const parsedPage = Number(rawPage);
+  const page =
+    Number.isInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+
   const [reservations, statusCounts] = await Promise.all([
     prisma.reservation.findMany({
       where: activeStatus ? { status: activeStatus } : {},
-      include: { company: true, customer: true, category: true },
+      select: {
+        id: true,
+        customerName: true,
+        desiredDate: true,
+        desiredTime: true,
+        address: true,
+        addressDetail: true,
+        price: true,
+        status: true,
+        company: { select: { name: true } },
+        category: { select: { name: true } },
+      },
       orderBy: { createdAt: "desc" },
-      take: 200,
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
     }),
     prisma.reservation.groupBy({ by: ["status"], _count: true }),
   ]);
   const countByStatus = new Map(statusCounts.map((s) => [s.status, s._count]));
   const totalCount = statusCounts.reduce((sum, s) => sum + s._count, 0);
+  const totalForFilter = activeStatus ? (countByStatus.get(activeStatus) ?? 0) : totalCount;
+  const totalPages = Math.max(1, Math.ceil(totalForFilter / PAGE_SIZE));
 
   return (
     <div className="px-4 py-6">
       <h1 className="text-lg font-bold">예약 관리</h1>
-      <p className="mt-1 text-sm text-neutral-500">
-        전체 {totalCount}건 (최근 200건까지 표시)
-      </p>
+      <p className="mt-1 text-sm text-neutral-500">전체 {totalCount}건</p>
 
       <div className="mt-4 flex gap-1 overflow-x-auto">
         {STATUS_FILTERS.map((f) => {
@@ -78,7 +101,7 @@ export default async function AdminReservationsPage({
               className="rounded-xl border border-neutral-200 bg-white p-3 text-sm"
             >
               <div className="flex items-center justify-between gap-2">
-                <p className="truncate font-medium">
+                <p className="min-w-0 truncate font-medium">
                   {r.company.name} ← {r.customerName}
                 </p>
                 <span
@@ -95,7 +118,7 @@ export default async function AdminReservationsPage({
                 <div>
                   {r.desiredDate.toLocaleDateString("ko-KR")} {r.desiredTime}
                 </div>
-                <div>
+                <div className="truncate">
                   {r.address}
                   {r.addressDetail ? ` ${r.addressDetail}` : ""}
                 </div>
@@ -103,6 +126,34 @@ export default async function AdminReservationsPage({
             </li>
           ))}
         </ul>
+      )}
+
+      {totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-between text-sm">
+          {page > 1 ? (
+            <Link
+              href={`/admin/reservations?${activeStatus ? `status=${activeStatus}&` : ""}page=${page - 1}`}
+              className="rounded-lg border border-neutral-200 px-3 py-1.5 text-neutral-600"
+            >
+              이전
+            </Link>
+          ) : (
+            <span />
+          )}
+          <span className="text-xs text-neutral-400">
+            {page} / {totalPages}
+          </span>
+          {page < totalPages ? (
+            <Link
+              href={`/admin/reservations?${activeStatus ? `status=${activeStatus}&` : ""}page=${page + 1}`}
+              className="rounded-lg border border-neutral-200 px-3 py-1.5 text-neutral-600"
+            >
+              다음
+            </Link>
+          ) : (
+            <span />
+          )}
+        </div>
       )}
     </div>
   );

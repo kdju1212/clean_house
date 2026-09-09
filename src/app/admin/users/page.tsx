@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/admin";
 
 const ROLE_FILTERS = [
   { value: "", label: "전체" },
@@ -22,26 +23,46 @@ const ROLE_BADGE_CLASS: Record<string, string> = {
 
 type RoleFilterValue = (typeof ROLE_FILTERS)[number]["value"];
 
+const PAGE_SIZE = 30;
+
 export default async function AdminUsersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ role?: string }>;
+  searchParams: Promise<{ role?: string; page?: string }>;
 }) {
-  const { role: rawRole } = await searchParams;
+  await requireAdmin();
+
+  const { role: rawRole, page: rawPage } = await searchParams;
   const activeRole: RoleFilterValue = ROLE_FILTERS.some((f) => f.value === rawRole)
     ? (rawRole as RoleFilterValue)
     : "";
 
+  // Never trust a raw page number from the client — clamp anything that
+  // isn't a positive integer back to page 1 instead of passing it to skip.
+  const parsedPage = Number(rawPage);
+  const page =
+    Number.isInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+
   const [users, roleCounts] = await Promise.all([
     prisma.user.findMany({
       where: activeRole ? { role: activeRole } : {},
-      include: { company: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        company: { select: { name: true } },
+      },
       orderBy: { createdAt: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
     }),
     prisma.user.groupBy({ by: ["role"], _count: true }),
   ]);
   const countByRole = new Map(roleCounts.map((r) => [r.role, r._count]));
   const totalCount = roleCounts.reduce((sum, r) => sum + r._count, 0);
+  const totalForFilter = activeRole ? (countByRole.get(activeRole) ?? 0) : totalCount;
+  const totalPages = Math.max(1, Math.ceil(totalForFilter / PAGE_SIZE));
 
   return (
     <div className="px-4 py-6">
@@ -97,6 +118,34 @@ export default async function AdminUsersPage({
             </li>
           ))}
         </ul>
+      )}
+
+      {totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-between text-sm">
+          {page > 1 ? (
+            <Link
+              href={`/admin/users?${activeRole ? `role=${activeRole}&` : ""}page=${page - 1}`}
+              className="rounded-lg border border-neutral-200 px-3 py-1.5 text-neutral-600"
+            >
+              이전
+            </Link>
+          ) : (
+            <span />
+          )}
+          <span className="text-xs text-neutral-400">
+            {page} / {totalPages}
+          </span>
+          {page < totalPages ? (
+            <Link
+              href={`/admin/users?${activeRole ? `role=${activeRole}&` : ""}page=${page + 1}`}
+              className="rounded-lg border border-neutral-200 px-3 py-1.5 text-neutral-600"
+            >
+              다음
+            </Link>
+          ) : (
+            <span />
+          )}
+        </div>
       )}
     </div>
   );

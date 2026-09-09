@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/admin";
 import { SubmitButton } from "@/components/submit-button";
 import { resolveReport } from "./actions";
 
@@ -13,13 +14,15 @@ export default async function AdminReportsPage({
 }: {
   searchParams: Promise<{ status?: string }>;
 }) {
+  await requireAdmin();
+
   const { status: rawStatus } = await searchParams;
   const activeStatus = rawStatus === "RESOLVED" ? "RESOLVED" : "PENDING";
 
   const [reports, pendingCount, resolvedCount] = await Promise.all([
     prisma.report.findMany({
       where: { status: activeStatus },
-      include: { reporter: true },
+      include: { reporter: { select: { name: true } } },
       orderBy: { createdAt: "desc" },
     }),
     prisma.report.count({ where: { status: "PENDING" } }),
@@ -31,7 +34,10 @@ export default async function AdminReportsPage({
     .map((r) => r.targetId);
   const reviews = await prisma.review.findMany({
     where: { id: { in: reviewIds } },
-    include: { company: true, customer: true },
+    include: {
+      company: { select: { name: true } },
+      customer: { select: { name: true } },
+    },
   });
   const reviewById = new Map(reviews.map((r) => [r.id, r]));
   const countByStatus: Record<string, number> = {
@@ -79,7 +85,7 @@ export default async function AdminReportsPage({
                 className="rounded-2xl border border-neutral-200 bg-white p-4 text-sm"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <p className="font-semibold">
+                  <p className="min-w-0 truncate font-semibold">
                     {report.reporter.name ?? "익명"}님의 신고
                   </p>
                   <span className="shrink-0 text-xs text-neutral-400">
@@ -92,7 +98,7 @@ export default async function AdminReportsPage({
                 {review ? (
                   <div className="mt-3 rounded-lg bg-neutral-50 p-3">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-medium text-neutral-600">
+                      <p className="min-w-0 truncate text-xs font-medium text-neutral-600">
                         {review.company.name} · {review.customer.name ?? "익명"}
                       </p>
                       <span className="shrink-0 text-xs font-semibold text-amber-500">
