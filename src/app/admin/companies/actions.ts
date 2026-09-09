@@ -24,6 +24,7 @@ async function transitionStatus(
   });
 
   revalidatePath("/admin/companies");
+  revalidatePath(`/admin/companies/${companyId}`);
   revalidatePath("/company");
 }
 

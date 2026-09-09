@@ -204,6 +204,7 @@ model Review {
   rating        Int
   content       String
   photoUrl      String?
+  hidden        Boolean  @default(false)
   createdAt     DateTime @default(now())
 
   reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)

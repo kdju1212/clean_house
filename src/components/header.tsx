@@ -35,7 +35,7 @@ export async function Header() {
         <div className="flex items-center gap-3">
           {session?.user?.role === "ADMIN" && (
             <Link
-              href="/admin/companies"
+              href="/admin"
               className="text-xs text-neutral-400 hover:text-neutral-600"
             >
               관리자

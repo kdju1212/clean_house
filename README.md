@@ -82,12 +82,14 @@ R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_BUCKET_NAME / R2_PU
 별도 마이그레이션 스크립트는 없으므로, 필요하면 업체가 사진을 다시
 업로드하거나 직접 R2로 옮긴 뒤 DB의 URL을 갱신해야 합니다.
 
-## 프로젝트 구조 (Phase 9 기준)
+## 프로젝트 구조 (Phase 10 기준)
 
 ```
 prisma/schema.prisma        DB 스키마 (User/Account/Session, Company/CompanyService/
                              CompanyPhoto/CompanyRegion, Category/Region, Reservation,
-                             ChatRoom/ChatMessage, Review, Report, Notification, Favorite)
+                             ChatRoom/ChatMessage, Review(hidden), Report, Notification,
+                             Favorite)
+src/lib/company.ts           업체 상태 라벨/배지 공통 상수
 prisma/seed.ts               카테고리·지역 시드 데이터
 src/lib/prisma.ts            Prisma Client 싱글턴
 src/lib/auth.ts              Auth.js 설정 (OAuth 3사, JWT 세션, ADMIN_EMAILS 부트스트랩)
@@ -119,7 +121,13 @@ src/app/company/page.tsx     업체 관리 대시보드 (프로필/서비스·�
 src/app/company/photo-upload-form.tsx  R2 direct upload 클라이언트 컴포넌트
 src/app/company/reservations/  업체 예약 관리 (상태별 필터 탭, 승인/거절/완료 처리)
 src/app/company/reservations/[id]/  업체용 예약 상세페이지 (승인/거절/완료 처리 포함)
-src/app/admin/companies/     관리자 업체 승인/비활성화/재활성화 (ADMIN 전용)
+src/app/admin/layout.tsx     관리자 권한 검증(ADMIN 아니면 리다이렉트) + 관리자 서브 내비게이션
+src/app/admin/page.tsx       관리자 대시보드 (승인 대기 업체/처리 대기 신고/신청 예약/전체 사용자 요약)
+src/app/admin/companies/     업체 목록 (상태별 필터) + 승인/비활성화/재활성화
+src/app/admin/companies/[id]/  업체 상세 (소유자/서비스/지역/사진/예약 현황/평점) + 상태 변경
+src/app/admin/reports/       신고된 리뷰 목록 (처리 대기/완료), 리뷰 숨기기 또는 반려
+src/app/admin/users/         전체 사용자 목록 (역할별 필터, 읽기 전용)
+src/app/admin/reservations/  전체 예약 목록 (상태별 필터, 읽기 전용)
 src/app/notifications/       알림 목록 (읽음 처리, 모두 읽음, 클릭 시 관련 페이지로 이동)
 proxy.ts                     보호된 라우트 접근 제어 (/mypage, /company, /admin, /reservations, /reviews, /notifications)
 ```
@@ -164,6 +172,19 @@ proxy.ts                     보호된 라우트 접근 제어 (/mypage, /compan
 대시보드에 평균 평점과 받은 리뷰 목록이 추가됩니다. 찜(`Favorite`)은
 업체 상세페이지의 ♡ 버튼으로 토글하며, 본인 소유가 아닌 데이터는
 서버에서 항상 세션 기준으로 재검증합니다.
+
+관리자 기능(`/admin`)은 4개 섹션으로 나뉩니다. **업체**는 상태별
+필터(승인 대기/활성/정지)로 목록을 보고, 개별 업체 상세페이지에서
+소유자·서비스·지역·사진·예약 현황·평점을 확인하며 승인/비활성화/
+재활성화를 처리합니다. **신고**는 리뷰 신고만 지원하며, 신고 사유와
+원본 리뷰 내용을 함께 보고 "리뷰 숨기기"(해당 리뷰를 `hidden`
+처리해 고객 화면·평점 계산에서 제외하고, 같은 리뷰에 걸린 다른
+대기 중 신고도 함께 처리 완료로 전환) 또는 "반려"를 선택합니다.
+**사용자**는 역할별(고객/업체/관리자) 필터로 전체 목록을 조회하는
+읽기 전용 화면입니다. **예약**은 플랫폼 전체 예약을 상태별로
+필터링해 조회하는 읽기 전용 화면입니다. `/admin/*` 하위 모든
+라우트는 레이아웃 단에서 ADMIN 권한을 서버에서 검증하며, 그 외
+권한 검증은 각 서버 액션에서 다시 한 번 확인합니다.
 
 기능은 Phase 1~12 계획(1 기본 구조 → 2 업체 시스템 → 3 고객 탐색 → 4 예약 →
 5 채팅 → 6 리뷰 → 7 예약 고도화 → 8 알림 → 9 마이페이지 → 10 관리자 시스템 →

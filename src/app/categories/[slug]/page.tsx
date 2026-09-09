@@ -81,7 +81,7 @@ export default async function CategoryCompaniesPage({
     companies.length > 0
       ? await prisma.review.groupBy({
           by: ["companyId"],
-          where: { companyId: { in: companies.map((c) => c.id) } },
+          where: { companyId: { in: companies.map((c) => c.id) }, hidden: false },
           _avg: { rating: true },
           _count: true,
         })

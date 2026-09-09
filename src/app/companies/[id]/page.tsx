@@ -30,12 +30,12 @@ export default async function CompanyDetailPage({
       },
     }),
     prisma.review.findMany({
-      where: { companyId: id },
+      where: { companyId: id, hidden: false },
       include: { customer: true },
       orderBy: { createdAt: "desc" },
     }),
     prisma.review.aggregate({
-      where: { companyId: id },
+      where: { companyId: id, hidden: false },
       _avg: { rating: true },
       _count: true,
     }),
