@@ -61,6 +61,9 @@ export default async function CompanyDetailPage({
       ]
     : company.photos;
 
+  const workPhotos = company.photos.filter((p) => p.type === "WORK");
+  const beforeAfterPhotos = company.photos.filter((p) => p.type === "BEFORE_AFTER");
+
   return (
     <main className="mx-auto w-full max-w-md flex-1 pb-24">
       {galleryPhotos.length > 0 ? (
@@ -147,11 +150,33 @@ export default async function CompanyDetailPage({
           </ul>
         </section>
 
-        {company.photos.length > 0 && (
+        {workPhotos.length > 0 && (
           <section className="mt-5">
             <h2 className="text-sm font-semibold">작업 사진</h2>
             <div className="mt-2 grid grid-cols-3 gap-2">
-              {company.photos.map((photo) => (
+              {workPhotos.map((photo) => (
+                <div
+                  key={photo.id}
+                  className="relative aspect-square overflow-hidden rounded-lg bg-neutral-100"
+                >
+                  <Image
+                    src={photo.url}
+                    alt={PHOTO_TYPE_LABEL[photo.type]}
+                    fill
+                    sizes="120px"
+                    className="object-cover"
+                  />
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {beforeAfterPhotos.length > 0 && (
+          <section className="mt-5">
+            <h2 className="text-sm font-semibold">전/후 비교</h2>
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              {beforeAfterPhotos.map((photo) => (
                 <div
                   key={photo.id}
                   className="relative aspect-square overflow-hidden rounded-lg bg-neutral-100"

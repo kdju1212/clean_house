@@ -10,6 +10,12 @@ const TYPE_OPTIONS = [
   { value: "BEFORE_AFTER", label: "전/후 비교" },
 ];
 
+const TYPE_HINT: Record<string, string> = {
+  WORK: "고객이 보는 업체 상세페이지의 '작업 사진' 영역에 표시돼요.",
+  MAIN: "업체 상세페이지 맨 위 대표 이미지로 쓰이고, 목록 카드에도 노출돼요.",
+  BEFORE_AFTER: "업체 상세페이지의 '전/후 비교' 영역에 표시돼요.",
+};
+
 export function PhotoUploadForm() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [type, setType] = useState("WORK");
@@ -107,6 +113,7 @@ export function PhotoUploadForm() {
           </option>
         ))}
       </select>
+      <p className="text-[11px] text-neutral-400">{TYPE_HINT[type]}</p>
       <input
         ref={fileInputRef}
         type="file"
