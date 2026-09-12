@@ -208,28 +208,41 @@ export default async function CompanyDashboardPage() {
 
         {company.photos.length > 0 && (
           <div className="mt-3 grid grid-cols-3 gap-2">
-            {company.photos.map((photo) => (
-              <div key={photo.id} className="relative">
-                <div className="relative aspect-square overflow-hidden rounded-lg border border-neutral-100">
-                  <Image
-                    src={photo.url}
-                    alt={PHOTO_TYPE_LABEL[photo.type]}
-                    fill
-                    sizes="120px"
-                    className="object-cover"
-                  />
+            {company.photos.map((photo) => {
+              // company.mainImageUrl is the URL actually shown as this
+              // company's cover photo elsewhere (listing cards, etc.) — it's
+              // whichever photo was *most recently* uploaded as type MAIN,
+              // which can differ from "any photo tagged MAIN" if there's
+              // more than one, so mark the one that's actually active.
+              const isActiveMain = company.mainImageUrl === photo.url;
+              return (
+                <div key={photo.id} className="relative">
+                  <div className="relative aspect-square overflow-hidden rounded-lg border border-neutral-100">
+                    <Image
+                      src={photo.url}
+                      alt={PHOTO_TYPE_LABEL[photo.type]}
+                      fill
+                      sizes="120px"
+                      className="object-cover"
+                    />
+                    {isActiveMain && (
+                      <span className="absolute left-1 top-1 rounded-full bg-neutral-900/80 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                        ★ 대표
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-center text-[11px] text-neutral-500">
+                    {PHOTO_TYPE_LABEL[photo.type]}
+                  </p>
+                  <form action={deletePhoto} className="text-center">
+                    <input type="hidden" name="photoId" value={photo.id} />
+                    <SubmitButton className="text-[11px] text-neutral-400 underline" pendingText="삭제 중...">
+                      삭제
+                    </SubmitButton>
+                  </form>
                 </div>
-                <p className="mt-1 text-center text-[11px] text-neutral-500">
-                  {PHOTO_TYPE_LABEL[photo.type]}
-                </p>
-                <form action={deletePhoto} className="text-center">
-                  <input type="hidden" name="photoId" value={photo.id} />
-                  <SubmitButton className="text-[11px] text-neutral-400 underline" pendingText="삭제 중...">
-                    삭제
-                  </SubmitButton>
-                </form>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

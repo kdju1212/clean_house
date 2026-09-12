@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { confirmPhotoUpload, requestPhotoUploadUrl } from "./actions";
 
@@ -14,8 +14,33 @@ export function PhotoUploadForm() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [type, setType] = useState("WORK");
   const [error, setError] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+
+  // Revoke the object URL whenever it changes or the component unmounts,
+  // so selecting a new file (or navigating away) doesn't leak the blob.
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setError(null);
+    const file = e.target.files?.[0];
+    setPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return file ? URL.createObjectURL(file) : null;
+    });
+  }
+
+  function resetPreview() {
+    setPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -61,6 +86,7 @@ export function PhotoUploadForm() {
         }
 
         if (fileInputRef.current) fileInputRef.current.value = "";
+        resetPreview();
         router.refresh();
       } catch {
         setError("업로드에 실패했어요.");
@@ -86,8 +112,17 @@ export function PhotoUploadForm() {
         type="file"
         accept="image/jpeg,image/png,image/webp"
         required
+        onChange={handleFileChange}
         className="text-sm"
       />
+      {previewUrl && (
+        // eslint-disable-next-line @next/next/no-img-element -- local blob: preview, not a next/image-optimizable remote URL
+        <img
+          src={previewUrl}
+          alt="선택한 사진 미리보기"
+          className="h-32 w-32 rounded-lg border border-neutral-200 object-cover"
+        />
+      )}
       {error && <p className="text-xs text-red-600">{error}</p>}
       <button
         type="submit"
