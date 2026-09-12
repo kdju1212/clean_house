@@ -1,25 +1,11 @@
 import type { NextConfig } from "next";
 
-function r2RemotePattern(): NonNullable<NextConfig["images"]>["remotePatterns"] {
-  const publicUrl = process.env.R2_PUBLIC_URL;
-  if (!publicUrl) return [];
-
-  try {
-    const url = new URL(publicUrl);
-    return [
-      {
-        protocol: url.protocol.replace(":", "") as "http" | "https",
-        hostname: url.hostname,
-      },
-    ];
-  } catch {
-    return [];
-  }
-}
-
 const nextConfig: NextConfig = {
   images: {
-    remotePatterns: r2RemotePattern(),
+    // Cloudinary's delivery domain is fixed regardless of cloud name (the
+    // cloud name lives in the URL path, not the host), so unlike the old
+    // R2 setup this needs no env var at build time.
+    remotePatterns: [{ protocol: "https", hostname: "res.cloudinary.com" }],
   },
 };
 

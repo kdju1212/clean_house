@@ -6,18 +6,16 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { deleteLocalCompanyImage } from "@/lib/storage";
 import {
-  createPresignedUploadUrl,
-  deleteR2Object,
-  getR2ObjectBuffer,
-  headR2Object,
-  putR2Object,
-  r2KeyFromPublicUrl,
-} from "@/lib/r2";
-import {
-  assertValidImageMeta,
-  assertValidUploadedImage,
-  IMAGE_EXT_BY_TYPE,
-} from "@/lib/image";
+  cloudinaryDeliveryUrl,
+  cloudinaryPublicIdFromUrl,
+  createSignedUploadParams,
+  deleteCloudinaryObject,
+  fetchCloudinaryBuffer,
+  getCloudinaryCloudName,
+  getCloudinaryResource,
+  uploadBufferToCloudinary,
+} from "@/lib/cloudinary";
+import { assertValidImageMeta, assertValidUploadedImage } from "@/lib/image";
 import { processImageToWebp } from "@/lib/image-process";
 import { requireSession, requireOwnedCompany } from "@/lib/company-auth";
 import { toActionError, type ActionState } from "@/lib/action-state";
@@ -235,10 +233,10 @@ function normalizePhotoType(value: unknown): PhotoType {
 }
 
 /**
- * Step 1 of the direct-to-R2 upload flow: verify the caller owns a company
- * and the declared file meta is acceptable, then hand back a short-lived
- * presigned PUT URL. The browser uploads the file straight to R2 with this
- * URL — the file itself never passes through our server.
+ * Step 1 of the direct-to-Cloudinary upload flow: verify the caller owns a
+ * company and the declared file meta is acceptable, then hand back signed
+ * upload parameters. The browser uploads the file straight to Cloudinary
+ * with these — the file itself never passes through our server.
  *
  * Called directly from a Client Component (not a <form action>), but the
  * same production redaction applies to thrown errors from any Server
@@ -247,80 +245,81 @@ function normalizePhotoType(value: unknown): PhotoType {
 export async function requestPhotoUploadUrl(input: {
   contentType: string;
   size: number;
-}): Promise<{ error: string } | { uploadUrl: string; publicUrl: string; key: string }> {
+}): Promise<
+  | { error: string }
+  | { cloudName: string; apiKey: string; timestamp: number; signature: string; publicId: string }
+> {
   try {
     const session = await requireSession();
     const company = await requireOwnedCompany(session.user.id);
 
     assertValidImageMeta(input.contentType, input.size);
 
-    const ext = IMAGE_EXT_BY_TYPE[input.contentType];
-    const key = `companies/${company.id}/${randomUUID()}.${ext}`;
-
-    const { uploadUrl, publicUrl } = await createPresignedUploadUrl(
-      key,
-      input.contentType,
-      input.size
-    );
-
-    return { uploadUrl, publicUrl, key };
+    const publicId = `companies/${company.id}/${randomUUID()}`;
+    return createSignedUploadParams(publicId);
   } catch (err) {
     return { error: err instanceof Error ? err.message : "알 수 없는 오류가 발생했어요." };
   }
 }
 
 /**
- * Step 2: called by the client after the R2 PUT succeeds, to record the
- * photo in the DB. Re-validates that the key actually belongs to the
- * caller's own company before trusting it, then re-checks the actually
- * stored original (never the client's earlier claims) — an object that
- * fails this check is deleted immediately instead of being left behind
- * as an orphan.
+ * Step 2: called by the client after the Cloudinary upload succeeds, to
+ * record the photo in the DB. Re-validates that the public_id actually
+ * belongs to the caller's own company before trusting it, then re-checks
+ * the actually stored original (never the client's earlier claims) — an
+ * object that fails this check is deleted immediately instead of being
+ * left behind as an orphan.
  *
  * The verified original is never kept: it's re-encoded server-side into
  * a resized WebP (see processImageToWebp) and only the WebP is what
- * actually gets persisted — the original upload key is always deleted
- * once we're done with it, success or failure, so R2 never accumulates
+ * actually gets persisted — the original upload is always deleted once
+ * we're done with it, success or failure, so Cloudinary never accumulates
  * both an original and a processed copy.
  */
 export async function confirmPhotoUpload(input: {
-  key: string;
+  publicId: string;
   type?: string;
 }): Promise<{ error: string } | { ok: true }> {
   try {
     const session = await requireSession();
     const company = await requireOwnedCompany(session.user.id);
 
-    if (!input.key.startsWith(`companies/${company.id}/`)) {
+    if (!input.publicId.startsWith(`companies/${company.id}/`)) {
       throw new Error("잘못된 업로드 정보입니다.");
     }
 
+    let original: { secureUrl: string };
     try {
-      assertValidUploadedImage(await headR2Object(input.key));
+      const resource = await getCloudinaryResource(input.publicId);
+      assertValidUploadedImage(
+        resource ? { contentLength: resource.bytes, contentType: resource.contentType } : null
+      );
+      original = resource!;
     } catch (err) {
-      await deleteR2Object(input.key).catch(() => {});
+      await deleteCloudinaryObject(input.publicId).catch(() => {});
       throw err;
     }
 
-    const finalKey = `companies/${company.id}/${randomUUID()}.webp`;
+    const finalPublicId = `companies/${company.id}/${randomUUID()}`;
     try {
-      const original = await getR2ObjectBuffer(input.key);
-      const webp = await processImageToWebp(original);
-      await putR2Object(finalKey, webp, "image/webp");
-      // Verify what actually landed in R2, not just what we think we sent.
-      assertValidUploadedImage(await headR2Object(finalKey));
+      const buffer = await fetchCloudinaryBuffer(original.secureUrl);
+      const webp = await processImageToWebp(buffer);
+      await uploadBufferToCloudinary(finalPublicId, webp, "image/webp");
+      // Verify what actually landed in Cloudinary, not just what we sent.
+      const finalResource = await getCloudinaryResource(finalPublicId);
+      assertValidUploadedImage(
+        finalResource
+          ? { contentLength: finalResource.bytes, contentType: finalResource.contentType }
+          : null
+      );
     } catch {
-      await deleteR2Object(finalKey).catch(() => {});
+      await deleteCloudinaryObject(finalPublicId).catch(() => {});
       throw new Error("이미지 처리에 실패했어요. 다른 사진으로 다시 시도해주세요.");
     } finally {
-      await deleteR2Object(input.key).catch(() => {});
+      await deleteCloudinaryObject(input.publicId).catch(() => {});
     }
 
-    const publicUrlBase = process.env.R2_PUBLIC_URL;
-    if (!publicUrlBase) {
-      throw new Error("이미지 저장소가 아직 설정되지 않았어요.");
-    }
-    const url = `${publicUrlBase.replace(/\/$/, "")}/${finalKey}`;
+    const url = cloudinaryDeliveryUrl(getCloudinaryCloudName(), finalPublicId, "webp");
     const photoType = normalizePhotoType(input.type);
 
     await prisma.companyPhoto.create({
@@ -355,9 +354,9 @@ export async function deletePhoto(formData: FormData) {
 
   await prisma.companyPhoto.delete({ where: { id: photo.id } });
 
-  const r2Key = r2KeyFromPublicUrl(photo.url);
-  if (r2Key) {
-    await deleteR2Object(r2Key).catch(() => {});
+  const publicId = cloudinaryPublicIdFromUrl(photo.url);
+  if (publicId) {
+    await deleteCloudinaryObject(publicId).catch(() => {});
   } else {
     await deleteLocalCompanyImage(photo.url);
   }

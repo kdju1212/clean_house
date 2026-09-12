@@ -61,26 +61,34 @@ npm run dev
 
 <http://localhost:3000> 접속.
 
-### 4. 업체 사진 업로드 (Cloudflare R2)
+### 4. 업체 사진 업로드 (Cloudinary)
 
-업체 사진은 브라우저가 presigned URL로 R2에 직접 업로드하는 방식입니다
-(`src/lib/r2.ts`, `src/app/company/photo-upload-form.tsx`). Cloudflare
-대시보드에서 R2 버킷을 만들고 `.env`에 아래 값을 채워주세요.
+업체·리뷰 사진은 브라우저가 서명된 업로드 파라미터로 Cloudinary에 직접
+업로드하는 방식입니다(`src/lib/cloudinary.ts`,
+`src/app/company/photo-upload-form.tsx`). [cloudinary.com](https://cloudinary.com)
+가입 후 Dashboard 첫 화면에서 아래 값을 확인해 `.env`에 채워주세요.
 
 ```
-R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_BUCKET_NAME / R2_PUBLIC_URL
+CLOUDINARY_CLOUD_NAME / CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET
 ```
 
-`R2_PUBLIC_URL`은 버킷의 Public Development URL 또는 연결한 커스텀 도메인입니다.
 값이 비어 있어도 앱과 빌드는 정상 동작하며, 사진 업로드를 시도할 때만
 "이미지 저장소가 아직 설정되지 않았어요" 같은 안내 메시지가 표시됩니다.
+Cloudinary는 업로드 API가 기본적으로 모든 origin의 요청을 허용하므로,
+R2와 달리 별도 CORS 설정이 필요 없습니다.
 
-**기존 로컬 이미지(`public/uploads/`)와의 호환**: R2 도입 이전에 로컬 디스크에
-저장된 사진이 있다면 계속 정상적으로 보여집니다(파일을 지우지 않았고, 정적
-서빙 경로도 그대로 유지). 새 업로드만 R2를 사용하고, 삭제 시에도 URL 형태를
-보고 로컬/R2 중 알맞은 방식으로 삭제합니다. 기존 로컬 이미지를 R2로 옮기는
-별도 마이그레이션 스크립트는 없으므로, 필요하면 업체가 사진을 다시
-업로드하거나 직접 R2로 옮긴 뒤 DB의 URL을 갱신해야 합니다.
+업로드 흐름: 클라이언트가 서명 요청 → Cloudinary에 원본 직접 업로드 →
+서버가 Cloudinary Admin API로 실제 저장된 객체를 재검증하고 그 원본을
+내려받아 서버에서 WebP로 리사이즈·재인코딩(`src/lib/image-process.ts`,
+sharp 사용) → 처리된 WebP만 Cloudinary에 다시 업로드하고 원본은 삭제.
+원본 바이트는 브라우저↔Cloudinary 사이에서만 오가고 우리 서버로 들어오는
+요청 본문에는 절대 포함되지 않으므로, Vercel 서버리스 함수의 요청 크기
+제한과 무관하게 동작합니다.
+
+**기존 로컬 이미지(`public/uploads/`)와의 호환**: 로컬 디스크에 저장된
+사진이 있다면 계속 정상적으로 보여집니다(파일을 지우지 않았고, 정적
+서빙 경로도 그대로 유지). 삭제 시에도 URL 형태를 보고 로컬/Cloudinary 중
+알맞은 방식으로 삭제합니다.
 
 ## 프로젝트 구조 (Phase 12 기준)
 
@@ -98,9 +106,10 @@ src/lib/admin.ts             관리자 권한 검증 헬퍼
 src/lib/company-auth.ts      업체 소유권 검증 헬퍼 (세션 기준으로만 회사를 조회)
 src/lib/chat.ts              채팅방 접근 검증 (예약 당사자만 허용)
 src/lib/review.ts            리뷰 작성 가능 여부 검증 (완료된 본인 예약, 중복 방지)
-src/lib/r2.ts                Cloudflare R2 presigned URL 발급/삭제 (서버 전용)
+src/lib/cloudinary.ts        Cloudinary 서명 업로드/삭제/실제 객체 검증 (서버 전용)
 src/lib/image.ts             업로드 허용 타입/용량 등 공통 검증
-src/lib/storage.ts           R2 이전 로컬 이미지 삭제 호환 코드
+src/lib/image-process.ts     서버 측 EXIF 자동회전 + 리사이즈 + WebP 재인코딩 (sharp)
+src/lib/storage.ts           Cloudinary 이전 로컬 이미지 삭제 호환 코드
 src/lib/region.ts            쿠키 기반 선택 지역 조회
 src/lib/reservation.ts       예약 시간대/상태 라벨 공통 상수
 src/lib/notification.ts      알림 생성 헬퍼 (채팅 알림은 안 읽은 알림 1건으로 병합)
@@ -124,7 +133,7 @@ src/app/login/page.tsx       로그인 (OAuth 버튼)
 src/app/mypage/page.tsx      마이페이지 (로그인 계정, 연락처 등록, 예약 요약, 내가 쓴 리뷰, 관심 업체)
 src/app/company/register/    업체 최초 등록
 src/app/company/page.tsx     업체 관리 대시보드 (프로필/서비스·가격/지역/사진/받은 리뷰/평균 평점)
-src/app/company/photo-upload-form.tsx  R2 direct upload 클라이언트 컴포넌트
+src/app/company/photo-upload-form.tsx  Cloudinary direct upload 클라이언트 컴포넌트
 src/app/company/reservations/  업체 예약 관리 (상태별 필터 탭, 승인/거절/완료 처리)
 src/app/company/reservations/[id]/  업체용 예약 상세페이지 (승인/거절/완료 처리 포함)
 src/app/company/ads/         업체 광고 신청/취소 (CPT 슬롯, 결제 미연동)
@@ -160,7 +169,7 @@ proxy.ts                     보호된 라우트 접근 제어 (/mypage, /compan
 리뷰는 예약 1건당 1개(`Reservation 1:1 Review`)만 작성할 수 있고, 예약
 상태가 `COMPLETED`인 경우에만 본인이 작성할 수 있습니다. 평점은 업체별
 리뷰 평균으로 계산되어 업체 상세페이지와 목록 카드에 실시간으로 반영됩니다.
-사진은 선택 사항이며 업체 사진과 동일하게 R2 presigned URL로 업로드됩니다.
+사진은 선택 사항이며 업체 사진과 동일하게 Cloudinary 서명 업로드로 처리됩니다.
 신고(`Report`)는 우선 리뷰 대상만 지원하며, `/admin/reports`에서 관리자가
 확인·처리합니다.
 

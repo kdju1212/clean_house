@@ -29,26 +29,32 @@ export function PhotoUploadForm() {
 
     startTransition(async () => {
       try {
-        const urlResult = await requestPhotoUploadUrl({
+        const signed = await requestPhotoUploadUrl({
           contentType: file.type,
           size: file.size,
         });
-        if ("error" in urlResult) {
-          setError(urlResult.error);
+        if ("error" in signed) {
+          setError(signed.error);
           return;
         }
 
-        const putResponse = await fetch(urlResult.uploadUrl, {
-          method: "PUT",
-          headers: { "Content-Type": file.type },
-          body: file,
-        });
-        if (!putResponse.ok) {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("public_id", signed.publicId);
+        formData.append("timestamp", String(signed.timestamp));
+        formData.append("api_key", signed.apiKey);
+        formData.append("signature", signed.signature);
+
+        const uploadResponse = await fetch(
+          `https://api.cloudinary.com/v1_1/${signed.cloudName}/image/upload`,
+          { method: "POST", body: formData }
+        );
+        if (!uploadResponse.ok) {
           setError("업로드에 실패했어요. 다시 시도해주세요.");
           return;
         }
 
-        const confirmResult = await confirmPhotoUpload({ key: urlResult.key, type });
+        const confirmResult = await confirmPhotoUpload({ publicId: signed.publicId, type });
         if ("error" in confirmResult) {
           setError(confirmResult.error);
           return;

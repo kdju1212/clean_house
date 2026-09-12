@@ -6,14 +6,15 @@ import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/company-auth";
 import { requireReviewableReservation } from "@/lib/review";
 import {
-  createPresignedUploadUrl,
-  deleteR2Object,
-  getR2ObjectBuffer,
-  headR2Object,
-  putR2Object,
-  r2KeyFromPublicUrl,
-} from "@/lib/r2";
-import { assertValidImageMeta, assertValidUploadedImage, IMAGE_EXT_BY_TYPE } from "@/lib/image";
+  cloudinaryDeliveryUrl,
+  createSignedUploadParams,
+  deleteCloudinaryObject,
+  fetchCloudinaryBuffer,
+  getCloudinaryCloudName,
+  getCloudinaryResource,
+  uploadBufferToCloudinary,
+} from "@/lib/cloudinary";
+import { assertValidImageMeta, assertValidUploadedImage } from "@/lib/image";
 import { processImageToWebp } from "@/lib/image-process";
 
 /**
@@ -25,7 +26,10 @@ export async function requestReviewPhotoUploadUrl(input: {
   reservationId: string;
   contentType: string;
   size: number;
-}): Promise<{ error: string } | { uploadUrl: string; publicUrl: string; key: string }> {
+}): Promise<
+  | { error: string }
+  | { cloudName: string; apiKey: string; timestamp: number; signature: string; publicId: string }
+> {
   try {
     const session = await requireSession();
     const reservation = await requireReviewableReservation(
@@ -38,16 +42,8 @@ export async function requestReviewPhotoUploadUrl(input: {
 
     assertValidImageMeta(input.contentType, input.size);
 
-    const ext = IMAGE_EXT_BY_TYPE[input.contentType];
-    const key = `reviews/${reservation.id}/${randomUUID()}.${ext}`;
-
-    const { uploadUrl, publicUrl } = await createPresignedUploadUrl(
-      key,
-      input.contentType,
-      input.size
-    );
-
-    return { uploadUrl, publicUrl, key };
+    const publicId = `reviews/${reservation.id}/${randomUUID()}`;
+    return createSignedUploadParams(publicId);
   } catch (err) {
     return { error: err instanceof Error ? err.message : "알 수 없는 오류가 발생했어요." };
   }
@@ -57,7 +53,7 @@ export async function createReview(input: {
   reservationId: string;
   rating: number;
   content: string;
-  photoUrl?: string | null;
+  publicId?: string | null;
 }): Promise<{ error: string } | { companyId: string }> {
   try {
     const session = await requireSession();
@@ -81,50 +77,51 @@ export async function createReview(input: {
     }
 
     // The photo, if any, must actually be one this reservation's review just
-    // uploaded — never trust an arbitrary URL from the client.
-    let photoUrl =
-      input.photoUrl && input.photoUrl.includes(`/reviews/${reservation.id}/`)
-        ? input.photoUrl
+    // uploaded — never trust an arbitrary public_id from the client.
+    const originalPublicId =
+      input.publicId && input.publicId.startsWith(`reviews/${reservation.id}/`)
+        ? input.publicId
         : null;
 
-    // Re-check what was actually stored in R2 (never the client's earlier
-    // claims) before letting the review reference it. A photo that fails
-    // this — or that fails the WebP re-encode below — is dropped rather
-    // than blocking the whole review, and any bad/orphaned object is
-    // deleted instead of being left behind.
-    if (photoUrl) {
-      const originalKey = r2KeyFromPublicUrl(photoUrl);
-      const meta = originalKey ? await headR2Object(originalKey) : null;
+    // Re-check what was actually stored in Cloudinary (never the client's
+    // earlier claims) before letting the review reference it. A photo that
+    // fails this — or that fails the WebP re-encode below — is dropped
+    // rather than blocking the whole review, and any bad/orphaned object
+    // is deleted instead of being left behind.
+    let photoUrl: string | null = null;
+    if (originalPublicId) {
+      const resource = await getCloudinaryResource(originalPublicId);
       let validOriginal = true;
       try {
-        assertValidUploadedImage(meta);
+        assertValidUploadedImage(
+          resource ? { contentLength: resource.bytes, contentType: resource.contentType } : null
+        );
       } catch {
         validOriginal = false;
-        if (originalKey) await deleteR2Object(originalKey).catch(() => {});
+        await deleteCloudinaryObject(originalPublicId).catch(() => {});
       }
 
-      photoUrl = null;
-      if (validOriginal && originalKey) {
+      if (validOriginal && resource) {
         // Re-encode server-side into a resized WebP — same policy as
         // company photos — rather than keeping the browser-uploaded
         // original. The original is always deleted once we're done with
         // it, whether the re-encode succeeds or not.
-        const finalKey = `reviews/${reservation.id}/${randomUUID()}.webp`;
-        const publicUrlBase = process.env.R2_PUBLIC_URL;
+        const finalPublicId = `reviews/${reservation.id}/${randomUUID()}`;
         try {
-          const original = await getR2ObjectBuffer(originalKey);
+          const original = await fetchCloudinaryBuffer(resource.secureUrl);
           const webp = await processImageToWebp(original);
-          await putR2Object(finalKey, webp, "image/webp");
-          assertValidUploadedImage(await headR2Object(finalKey));
-          if (publicUrlBase) {
-            photoUrl = `${publicUrlBase.replace(/\/$/, "")}/${finalKey}`;
-          } else {
-            await deleteR2Object(finalKey).catch(() => {});
-          }
+          await uploadBufferToCloudinary(finalPublicId, webp, "image/webp");
+          const finalResource = await getCloudinaryResource(finalPublicId);
+          assertValidUploadedImage(
+            finalResource
+              ? { contentLength: finalResource.bytes, contentType: finalResource.contentType }
+              : null
+          );
+          photoUrl = cloudinaryDeliveryUrl(getCloudinaryCloudName(), finalPublicId, "webp");
         } catch {
-          await deleteR2Object(finalKey).catch(() => {});
+          await deleteCloudinaryObject(finalPublicId).catch(() => {});
         } finally {
-          await deleteR2Object(originalKey).catch(() => {});
+          await deleteCloudinaryObject(originalPublicId).catch(() => {});
         }
       }
     }

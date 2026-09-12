@@ -23,35 +23,42 @@ export function ReviewForm({ reservationId }: { reservationId: string }) {
 
     startTransition(async () => {
       try {
-        let photoUrl: string | null = null;
+        let publicId: string | null = null;
         const file = fileInputRef.current?.files?.[0];
         if (file) {
-          const urlResult = await requestReviewPhotoUploadUrl({
+          const signed = await requestReviewPhotoUploadUrl({
             reservationId,
             contentType: file.type,
             size: file.size,
           });
-          if ("error" in urlResult) {
-            setError(urlResult.error);
+          if ("error" in signed) {
+            setError(signed.error);
             return;
           }
-          const putResponse = await fetch(urlResult.uploadUrl, {
-            method: "PUT",
-            headers: { "Content-Type": file.type },
-            body: file,
-          });
-          if (!putResponse.ok) {
+
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("public_id", signed.publicId);
+          formData.append("timestamp", String(signed.timestamp));
+          formData.append("api_key", signed.apiKey);
+          formData.append("signature", signed.signature);
+
+          const uploadResponse = await fetch(
+            `https://api.cloudinary.com/v1_1/${signed.cloudName}/image/upload`,
+            { method: "POST", body: formData }
+          );
+          if (!uploadResponse.ok) {
             setError("사진 업로드에 실패했어요.");
             return;
           }
-          photoUrl = urlResult.publicUrl;
+          publicId = signed.publicId;
         }
 
         const result = await createReview({
           reservationId,
           rating,
           content,
-          photoUrl,
+          publicId,
         });
         if ("error" in result) {
           setError(result.error);
