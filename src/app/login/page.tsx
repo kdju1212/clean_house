@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { signIn } from "@/lib/auth";
 import { SubmitButton } from "@/components/submit-button";
 
@@ -40,6 +41,18 @@ export default async function LoginPage({
           </SubmitButton>
         </form>
       ))}
+
+      <p className="mt-2 text-center text-xs text-neutral-400">
+        계속하면{" "}
+        <Link href="/terms" className="underline">
+          이용약관
+        </Link>{" "}
+        및{" "}
+        <Link href="/privacy" className="underline">
+          개인정보처리방침
+        </Link>
+        에 동의하는 것으로 간주해요.
+      </p>
     </main>
   );
 }

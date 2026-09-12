@@ -193,6 +193,15 @@ export default async function MyPage() {
           로그아웃
         </SubmitButton>
       </form>
+
+      <div className="mt-4 flex gap-3 text-xs text-neutral-400">
+        <Link href="/terms" className="underline">
+          이용약관
+        </Link>
+        <Link href="/privacy" className="underline">
+          개인정보처리방침
+        </Link>
+      </div>
     </main>
   );
 }
