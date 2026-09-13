@@ -4,21 +4,16 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { TIME_SLOTS } from "@/lib/reservation";
-import { getSelectedRegion, getRegionAncestorIds } from "@/lib/region";
+import { getSelectedRegion } from "@/lib/region";
+import { createReservationForCustomer } from "@/lib/reservation-service";
 import { createNotification } from "@/lib/notification";
 import { toActionError, type ActionState } from "@/lib/action-state";
-
-function startOfToday() {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-}
 
 export async function createReservation(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  let redirectTo: string;
+  let reservationId: string;
 
   try {
     const session = await auth();
@@ -26,112 +21,32 @@ export async function createReservation(
       throw new Error("로그인이 필요합니다.");
     }
 
-    const companyId = formData.get("companyId");
-    const categoryId = formData.get("categoryId");
-    const name = formData.get("name");
-    const phone = formData.get("phone");
-    const address = formData.get("address");
-    const addressDetail = formData.get("addressDetail");
-    const desiredDateRaw = formData.get("desiredDate");
-    const desiredTime = formData.get("desiredTime");
-    const requestNote = formData.get("requestNote");
-
-    if (typeof companyId !== "string" || companyId.length === 0) {
-      throw new Error("업체 정보가 올바르지 않습니다.");
-    }
-    if (typeof categoryId !== "string" || categoryId.length === 0) {
-      throw new Error("청소 종류를 선택해주세요.");
-    }
-    if (typeof name !== "string" || name.trim().length === 0) {
-      throw new Error("이름을 입력해주세요.");
-    }
-    if (typeof phone !== "string" || phone.replace(/[^0-9]/g, "").length < 9) {
-      throw new Error("올바른 연락처를 입력해주세요.");
-    }
-    if (typeof address !== "string" || address.trim().length === 0) {
-      throw new Error("서비스 주소를 입력해주세요.");
-    }
-    if (typeof desiredTime !== "string" || !TIME_SLOTS.includes(desiredTime)) {
-      throw new Error("희망 시간을 선택해주세요.");
-    }
-    if (typeof desiredDateRaw !== "string") {
-      throw new Error("희망 날짜를 선택해주세요.");
-    }
-    const desiredDate = new Date(`${desiredDateRaw}T00:00:00`);
-    if (Number.isNaN(desiredDate.getTime()) || desiredDate < startOfToday()) {
-      throw new Error("오늘 이후 날짜를 선택해주세요.");
-    }
-
-    // Never trust that the company/category combo the client posted is real —
-    // re-derive it and make sure the company is actually bookable right now.
-    const company = await prisma.company.findUnique({
-      where: { id: companyId },
-      include: {
-        services: { where: { categoryId }, include: { category: true } },
-        regions: true,
-      },
-    });
-    if (!company || company.status !== "ACTIVE" || !company.isAvailable) {
-      throw new Error("현재 예약을 받을 수 없는 업체입니다.");
-    }
-    if (company.services.length === 0) {
-      throw new Error("해당 업체가 제공하지 않는 서비스입니다.");
-    }
-
-    // Re-verify region eligibility server-side too — the reservation form only
-    // shows companies that service the customer's selected region, but a direct
-    // POST could name any companyId, so redo that check independently here.
+    // The web app tracks the customer's region via a cookie (no per-request
+    // field for it); the mobile API takes it explicitly in the body instead
+    // — see src/app/api/mobile/reservations/route.ts.
     const customerRegion = await getSelectedRegion();
     if (!customerRegion) {
       throw new Error("지역을 먼저 선택해주세요.");
     }
-    const ancestorRegionIds = await getRegionAncestorIds(customerRegion.id);
-    const servicesCustomerRegion = company.regions.some((r) =>
-      ancestorRegionIds.includes(r.regionId)
-    );
-    if (!servicesCustomerRegion) {
-      throw new Error("해당 업체는 고객님의 지역을 서비스하지 않습니다.");
-    }
 
-    const reservation = await prisma.reservation.create({
-      data: {
-        customerId: session.user.id,
-        companyId: company.id,
-        categoryId,
-        customerName: name.trim(),
-        customerPhone: phone.trim(),
-        address: address.trim(),
-        addressDetail:
-          typeof addressDetail === "string" && addressDetail.trim().length > 0
-            ? addressDetail.trim()
-            : null,
-        desiredDate,
-        desiredTime,
-        requestNote:
-          typeof requestNote === "string" && requestNote.trim().length > 0
-            ? requestNote.trim().slice(0, 1000)
-            : null,
-        // Snapshot the price at booking time — the company's price can change
-        // later, but this reservation should keep showing what was agreed.
-        price: company.services[0].price,
-        chatRoom: { create: {} },
-      },
+    reservationId = await createReservationForCustomer({
+      customerId: session.user.id,
+      customerRegionId: customerRegion.id,
+      companyId: formData.get("companyId"),
+      categoryId: formData.get("categoryId"),
+      name: formData.get("name"),
+      phone: formData.get("phone"),
+      address: formData.get("address"),
+      addressDetail: formData.get("addressDetail"),
+      desiredDateRaw: formData.get("desiredDate"),
+      desiredTime: formData.get("desiredTime"),
+      requestNote: formData.get("requestNote"),
     });
-
-    await createNotification({
-      userId: company.ownerUserId,
-      type: "RESERVATION_REQUESTED",
-      title: "새 예약 요청이 들어왔어요",
-      body: `${name.trim()}님이 ${company.services[0].category.name} 예약을 신청했어요.`,
-      link: `/company/reservations/${reservation.id}`,
-    });
-
-    redirectTo = `/reservations?created=${reservation.id}`;
   } catch (err) {
     return toActionError(err);
   }
 
-  redirect(redirectTo);
+  redirect(`/reservations?created=${reservationId}`);
 }
 
 export async function cancelReservation(

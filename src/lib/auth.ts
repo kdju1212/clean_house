@@ -5,6 +5,7 @@ import Google from "next-auth/providers/google";
 import Kakao from "next-auth/providers/kakao";
 import Naver from "next-auth/providers/naver";
 import { prisma } from "@/lib/prisma";
+import { bootstrapAdminRole } from "@/lib/admin-bootstrap";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -16,24 +17,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        let role = user.role;
-
-        const adminEmails = (process.env.ADMIN_EMAILS ?? "")
-          .split(",")
-          .map((email) => email.trim().toLowerCase())
-          .filter(Boolean);
-
-        if (
-          role !== "ADMIN" &&
-          user.email &&
-          adminEmails.includes(user.email.toLowerCase())
-        ) {
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { role: "ADMIN" },
-          });
-          role = "ADMIN";
-        }
+        const role = await bootstrapAdminRole({
+          id: user.id ?? "",
+          email: user.email ?? null,
+          role: user.role,
+        });
 
         token.id = user.id;
         token.role = role;

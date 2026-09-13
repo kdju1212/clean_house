@@ -1,0 +1,178 @@
+import "server-only";
+import { prisma } from "@/lib/prisma";
+import { getRegionAncestorIds } from "@/lib/region";
+import { startOfToday } from "@/lib/ad";
+
+export type CompanySearchSort =
+  | "latest"
+  | "rating_desc"
+  | "price_asc"
+  | "price_desc";
+
+export type CompanySearchRow = {
+  id: string;
+  name: string;
+  mainImageUrl: string | null;
+  isAvailable: boolean;
+  introText: string | null;
+  price: number;
+  rating: number;
+  reviewCount: number;
+  regionNames: string[];
+};
+
+export type CompanySearchResult =
+  | { status: "category_not_found" }
+  | { status: "region_not_found" }
+  | {
+      status: "ok";
+      category: { id: string; slug: string; name: string };
+      region: { id: string; name: string };
+      adRows: CompanySearchRow[];
+      rows: CompanySearchRow[];
+    };
+
+type CompanyWithRegions = {
+  id: string;
+  name: string;
+  mainImageUrl: string | null;
+  isAvailable: boolean;
+  introText: string | null;
+  regions: { region: { name: string } }[];
+};
+
+/**
+ * Shared by the web category page and the mobile companies API route — same
+ * region-ancestor expansion (a company covering a parent 시/군/구 still
+ * matches a customer in any of its child 동), same "ads skip the price
+ * filter, organic doesn't" policy split, same ad/organic dedup and rating
+ * join. Only the caller (RSC page vs JSON API route) differs in how it
+ * renders the result.
+ */
+export async function searchCompaniesInCategory({
+  slug,
+  regionId,
+  maxPrice,
+  sort,
+}: {
+  slug: string;
+  regionId: string;
+  maxPrice?: number;
+  sort: CompanySearchSort;
+}): Promise<CompanySearchResult> {
+  const [category, region] = await Promise.all([
+    prisma.category.findUnique({ where: { slug } }),
+    prisma.region.findUnique({ where: { id: regionId } }),
+  ]);
+
+  if (!category) return { status: "category_not_found" };
+  if (!region) return { status: "region_not_found" };
+
+  const ancestorRegionIds = await getRegionAncestorIds(region.id);
+
+  const [companies, ads] = await Promise.all([
+    prisma.company.findMany({
+      where: {
+        status: "ACTIVE",
+        regions: { some: { regionId: { in: ancestorRegionIds } } },
+        services: {
+          some: {
+            categoryId: category.id,
+            ...(maxPrice ? { price: { lte: maxPrice } } : {}),
+          },
+        },
+      },
+      include: {
+        services: { where: { categoryId: category.id } },
+        regions: { include: { region: true } },
+      },
+    }),
+    // CPT ad slots for this category — only currently-running ones, and only
+    // for companies that are still ACTIVE and actually serve the customer's
+    // selected region, same as the organic listing above (but no price
+    // filter — ads are paid placements, shown regardless of price).
+    prisma.advertisement.findMany({
+      where: {
+        categoryId: category.id,
+        cancelled: false,
+        startDate: { lte: startOfToday() },
+        endDate: { gte: startOfToday() },
+        company: {
+          status: "ACTIVE",
+          regions: { some: { regionId: { in: ancestorRegionIds } } },
+        },
+      },
+      include: {
+        company: {
+          include: {
+            services: { where: { categoryId: category.id } },
+            regions: { include: { region: true } },
+          },
+        },
+      },
+      orderBy: { slot: "asc" },
+    }),
+  ]);
+
+  const adCompanyIds = new Set(ads.map((ad) => ad.companyId));
+  const organicCompanies = companies.filter((c) => !adCompanyIds.has(c.id));
+  const allCompanyIds = new Set([
+    ...companies.map((c) => c.id),
+    ...ads.map((ad) => ad.companyId),
+  ]);
+
+  const ratingByCompanyId =
+    allCompanyIds.size > 0
+      ? await prisma.review.groupBy({
+          by: ["companyId"],
+          where: { companyId: { in: [...allCompanyIds] }, hidden: false },
+          _avg: { rating: true },
+          _count: true,
+        })
+      : [];
+  const ratingMap = new Map(
+    ratingByCompanyId.map((r) => [
+      r.companyId,
+      { average: r._avg.rating ?? 0, count: r._count },
+    ])
+  );
+
+  function toRow(company: CompanyWithRegions, price: number): CompanySearchRow {
+    return {
+      id: company.id,
+      name: company.name,
+      mainImageUrl: company.mainImageUrl,
+      isAvailable: company.isAvailable,
+      introText: company.introText,
+      price,
+      rating: ratingMap.get(company.id)?.average ?? 0,
+      reviewCount: ratingMap.get(company.id)?.count ?? 0,
+      regionNames: company.regions.map((r) => r.region.name),
+    };
+  }
+
+  const adRows = ads.map((ad) =>
+    toRow(ad.company, ad.company.services[0]?.price ?? 0)
+  );
+
+  const rows = organicCompanies
+    .map((c) => ({
+      row: toRow(c, c.services[0]?.price ?? 0),
+      createdAt: c.createdAt,
+    }))
+    .sort((a, b) => {
+      if (sort === "price_asc") return a.row.price - b.row.price;
+      if (sort === "price_desc") return b.row.price - a.row.price;
+      if (sort === "rating_desc") return b.row.rating - a.row.rating;
+      return b.createdAt.getTime() - a.createdAt.getTime();
+    })
+    .map((x) => x.row);
+
+  return {
+    status: "ok",
+    category: { id: category.id, slug: category.slug, name: category.name },
+    region: { id: region.id, name: region.name },
+    adRows,
+    rows,
+  };
+}
