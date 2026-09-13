@@ -1,6 +1,53 @@
 import { NextResponse } from "next/server";
 import { getMobileUserId } from "@/lib/mobile-auth";
+import { prisma } from "@/lib/prisma";
 import { createReservationForCustomer } from "@/lib/reservation-service";
+import type { ReservationStatus } from "@/generated/prisma/client";
+
+const STATUS_GROUPS: Record<string, ReservationStatus[]> = {
+  REQUESTED: ["REQUESTED"],
+  ACCEPTED: ["ACCEPTED"],
+  COMPLETED: ["COMPLETED"],
+  CANCELLED: ["REJECTED", "CANCELLED"],
+};
+
+/** Mobile equivalent of the web /reservations list — same status grouping,
+ * so the app's filter chips can mirror the web ones 1:1. */
+export async function GET(request: Request) {
+  const customerId = await getMobileUserId(request);
+  if (!customerId) {
+    return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+  }
+
+  const url = new URL(request.url);
+  const statusParam = url.searchParams.get("status");
+  const statuses = statusParam ? STATUS_GROUPS[statusParam] : undefined;
+
+  const reservations = await prisma.reservation.findMany({
+    where: {
+      customerId,
+      ...(statuses ? { status: { in: statuses } } : {}),
+    },
+    include: { company: true, category: true, review: true },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return NextResponse.json({
+    reservations: reservations.map((r) => ({
+      id: r.id,
+      status: r.status,
+      companyId: r.companyId,
+      companyName: r.company.name,
+      categoryName: r.category.name,
+      price: r.price,
+      desiredDate: r.desiredDate.toISOString(),
+      desiredTime: r.desiredTime,
+      address: r.address,
+      addressDetail: r.addressDetail,
+      hasReview: Boolean(r.review),
+    })),
+  });
+}
 
 /**
  * Mobile equivalent of the web createReservation Server Action — same

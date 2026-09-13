@@ -1,18 +1,20 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getMobileUserId } from "@/lib/mobile-auth";
 import { getChatMessagesForUser, sendChatMessageForUser } from "@/lib/chat-service";
 
+/** Mobile equivalent of /api/reservations/[id]/messages — same shared
+ * chat-service functions, bearer token instead of a cookie session. */
 export async function GET(
-  _req: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user) {
+  const userId = await getMobileUserId(request);
+  if (!userId) {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
 
   const { id } = await params;
-  const result = await getChatMessagesForUser(id, session.user.id);
+  const result = await getChatMessagesForUser(id, userId);
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: result.status });
   }
@@ -21,17 +23,17 @@ export async function GET(
 }
 
 export async function POST(
-  req: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user) {
+  const userId = await getMobileUserId(request);
+  if (!userId) {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
 
   const { id } = await params;
-  const body = await req.json().catch(() => null);
-  const result = await sendChatMessageForUser(id, session.user.id, body?.content);
+  const body = await request.json().catch(() => null);
+  const result = await sendChatMessageForUser(id, userId, body?.content);
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: result.status });
   }
