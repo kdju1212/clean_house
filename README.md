@@ -55,7 +55,7 @@ docker compose up -d postgres
 ```bash
 npm install
 npx prisma migrate dev
-npx prisma db seed   # 청소 카테고리 9종 + 화성시 테스트 지역 5곳
+npx prisma db seed   # 청소 카테고리 9종 + 테스트 지역(경기 남부 일부 시/군/구·동)
 npm run dev
 ```
 
