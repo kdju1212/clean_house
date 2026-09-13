@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { getSelectedRegion } from "@/lib/region";
+import { getSelectedRegion, getRegionAncestorIds } from "@/lib/region";
 import { startOfToday } from "@/lib/ad";
 import { CompanyListCard } from "@/components/company-list-card";
 
@@ -61,11 +61,16 @@ export default async function CategoryCompaniesPage({
     );
   }
 
+  // A company that registered a *parent* region (e.g. "수원시 영통구 전체")
+  // should still match a customer browsing any of its child 동, so match
+  // against the customer's whole ancestor chain, not just the exact leaf id.
+  const ancestorRegionIds = await getRegionAncestorIds(region.id);
+
   const [companies, ads] = await Promise.all([
     prisma.company.findMany({
       where: {
         status: "ACTIVE",
-        regions: { some: { regionId: region.id } },
+        regions: { some: { regionId: { in: ancestorRegionIds } } },
         services: {
           some: {
             categoryId: category.id,
@@ -89,7 +94,7 @@ export default async function CategoryCompaniesPage({
         endDate: { gte: startOfToday() },
         company: {
           status: "ACTIVE",
-          regions: { some: { regionId: region.id } },
+          regions: { some: { regionId: { in: ancestorRegionIds } } },
         },
       },
       include: {

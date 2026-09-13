@@ -5,29 +5,36 @@ import { SubmitButton } from "@/components/submit-button";
 import { selectRegion } from "./actions";
 
 export function RegionSelectForm({
-  regions,
+  groupedRegions,
   selectedId,
 }: {
-  regions: { id: string; name: string }[];
+  groupedRegions: { label: string; regions: { id: string; name: string }[] }[];
   selectedId?: string;
 }) {
   const [state, formAction] = useActionState(selectRegion, undefined);
 
   return (
-    <form action={formAction} className="mt-6 flex flex-col gap-2">
-      {regions.map((region) => (
-        <label
-          key={region.id}
-          className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm has-checked:border-neutral-900"
-        >
-          <input
-            type="radio"
-            name="regionId"
-            value={region.id}
-            defaultChecked={region.id === selectedId}
-          />
-          {region.name}
-        </label>
+    <form action={formAction} className="mt-6 flex flex-col gap-4">
+      {groupedRegions.map((group) => (
+        <div key={group.label}>
+          <p className="mb-2 text-xs font-semibold text-neutral-400">{group.label}</p>
+          <div className="flex flex-col gap-2">
+            {group.regions.map((region) => (
+              <label
+                key={region.id}
+                className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm has-checked:border-neutral-900"
+              >
+                <input
+                  type="radio"
+                  name="regionId"
+                  value={region.id}
+                  defaultChecked={region.id === selectedId}
+                />
+                {region.name}
+              </label>
+            ))}
+          </div>
+        </div>
       ))}
       {state?.error && <p className="text-xs text-red-600">{state.error}</p>}
       <SubmitButton

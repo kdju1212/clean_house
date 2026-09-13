@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { TIME_SLOTS } from "@/lib/reservation";
+import { getSelectedRegion, getRegionAncestorIds } from "@/lib/region";
 import { createNotification } from "@/lib/notification";
 import { toActionError, type ActionState } from "@/lib/action-state";
 
@@ -65,13 +66,31 @@ export async function createReservation(
     // re-derive it and make sure the company is actually bookable right now.
     const company = await prisma.company.findUnique({
       where: { id: companyId },
-      include: { services: { where: { categoryId }, include: { category: true } } },
+      include: {
+        services: { where: { categoryId }, include: { category: true } },
+        regions: true,
+      },
     });
     if (!company || company.status !== "ACTIVE" || !company.isAvailable) {
       throw new Error("현재 예약을 받을 수 없는 업체입니다.");
     }
     if (company.services.length === 0) {
       throw new Error("해당 업체가 제공하지 않는 서비스입니다.");
+    }
+
+    // Re-verify region eligibility server-side too — the reservation form only
+    // shows companies that service the customer's selected region, but a direct
+    // POST could name any companyId, so redo that check independently here.
+    const customerRegion = await getSelectedRegion();
+    if (!customerRegion) {
+      throw new Error("지역을 먼저 선택해주세요.");
+    }
+    const ancestorRegionIds = await getRegionAncestorIds(customerRegion.id);
+    const servicesCustomerRegion = company.regions.some((r) =>
+      ancestorRegionIds.includes(r.regionId)
+    );
+    if (!servicesCustomerRegion) {
+      throw new Error("해당 업체는 고객님의 지역을 서비스하지 않습니다.");
     }
 
     const reservation = await prisma.reservation.create({

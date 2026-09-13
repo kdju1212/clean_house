@@ -20,6 +20,12 @@ export async function selectRegion(
     if (!region) {
       throw new Error("존재하지 않는 지역입니다.");
     }
+    // Customers always browse at 동 granularity — a 시/도 or 시/군/구 id
+    // here would be a client tampering with the submitted value, since the
+    // form only ever renders leaf-level radio options.
+    if (region.level !== "EUPMYEONDONG") {
+      throw new Error("동 단위 지역만 선택할 수 있어요.");
+    }
 
     const cookieStore = await cookies();
     cookieStore.set(REGION_COOKIE, region.id, {

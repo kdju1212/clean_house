@@ -42,6 +42,12 @@ enum ReportStatus {
   RESOLVED
 }
 
+enum RegionLevel {
+  SIDO // 시/도
+  SIGUNGU // 시/군/구
+  EUPMYEONDONG // 읍/면/동
+}
+
 enum NotificationType {
   RESERVATION_REQUESTED
   RESERVATION_ACCEPTED
@@ -85,13 +91,30 @@ model Category {
   advertisements Advertisement[]
 }
 
+/// Self-referencing so the same table covers 시/도 -> 시/군/구 -> 읍/면/동
+/// without a second region table. parentId is nullable (SIDO has none),
+/// and existing rows created before this hierarchy (level defaults to
+/// EUPMYEONDONG, parentId null) keep working exactly as before — they're
+/// just leaves with no parent, same as any other leaf.
+///
+/// Note: @@unique([parentId, name]) doesn't stop two NULL-parent rows from
+/// sharing a name (Postgres treats each NULL as distinct in a unique
+/// index) — acceptable here since top-level rows only ever come from the
+/// seed script, not user input.
 model Region {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  order     Int      @default(0)
-  createdAt DateTime @default(now())
+  id        String      @id @default(cuid())
+  name      String
+  level     RegionLevel @default(EUPMYEONDONG)
+  parentId  String?
+  order     Int         @default(0)
+  createdAt DateTime    @default(now())
 
+  parent    Region?         @relation("RegionHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Region[]        @relation("RegionHierarchy")
   companies CompanyRegion[]
+
+  @@unique([parentId, name])
+  @@index([parentId])
 }
 
 model Company {

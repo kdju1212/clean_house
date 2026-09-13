@@ -4,10 +4,11 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SubmitButton } from "@/components/submit-button";
-import { deletePhoto, deleteService, setRegions } from "./actions";
+import { deletePhoto, deleteService } from "./actions";
 import { PhotoUploadForm } from "./photo-upload-form";
 import { ProfileForm } from "./profile-form";
 import { AddServiceForm } from "./add-service-form";
+import { RegionSelectForm } from "./region-select-form";
 
 const STATUS_LABEL: Record<string, string> = {
   PENDING: "심사중",
@@ -53,10 +54,20 @@ export default async function CompanyDashboardPage() {
     );
   }
 
-  const [allCategories, allRegions, requestedCount, reviews, ratingSummary] =
+  const [allCategories, sigunguGroups, legacyRegions, requestedCount, reviews, ratingSummary] =
     await Promise.all([
       prisma.category.findMany({ orderBy: { order: "asc" } }),
-      prisma.region.findMany({ orderBy: { name: "asc" } }),
+      prisma.region.findMany({
+        where: { level: "SIGUNGU" },
+        include: { children: { orderBy: { order: "asc" } } },
+        orderBy: { order: "asc" },
+      }),
+      // Legacy flat regions predating the 시/도->시/군/구->동 hierarchy —
+      // still directly selectable, shown under their own "기타" group.
+      prisma.region.findMany({
+        where: { level: "EUPMYEONDONG", parentId: null },
+        orderBy: { order: "asc" },
+      }),
       prisma.reservation.count({
         where: { companyId: company.id, status: "REQUESTED" },
       }),
@@ -176,30 +187,15 @@ export default async function CompanyDashboardPage() {
       {/* 서비스 지역 */}
       <section className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4">
         <h2 className="text-sm font-semibold">서비스 지역</h2>
-        <form action={setRegions} className="mt-3 flex flex-col gap-3">
-          <div className="grid grid-cols-2 gap-2">
-            {allRegions.map((region) => (
-              <label
-                key={region.id}
-                className="flex items-center gap-2 text-sm"
-              >
-                <input
-                  type="checkbox"
-                  name="regionIds"
-                  value={region.id}
-                  defaultChecked={selectedRegionIds.has(region.id)}
-                />
-                {region.name}
-              </label>
-            ))}
-          </div>
-          <SubmitButton
-            className="rounded-lg border border-neutral-900 px-4 py-2 text-sm font-medium"
-            pendingText="저장 중..."
-          >
-            저장
-          </SubmitButton>
-        </form>
+        <p className="mt-1 text-xs text-neutral-400">
+          차량으로 이동 가능한 지역을 모두 선택해주세요. 구 전체를 선택하면
+          소속된 동 전체가 서비스 지역에 포함돼요.
+        </p>
+        <RegionSelectForm
+          sigunguGroups={sigunguGroups}
+          legacyRegions={legacyRegions}
+          initialSelectedIds={[...selectedRegionIds]}
+        />
       </section>
 
       {/* 사진 */}
