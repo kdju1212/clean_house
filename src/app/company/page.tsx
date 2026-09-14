@@ -33,7 +33,9 @@ export default async function CompanyDashboardPage() {
     include: {
       services: { include: { category: true }, orderBy: { createdAt: "asc" } },
       photos: { orderBy: { createdAt: "desc" } },
-      regions: { include: { region: true } },
+      // parent included so the region-select form can show "구 동" labels
+      // for the company's existing picks without a second query.
+      regions: { include: { region: { include: { parent: true } } } },
     },
   });
 
@@ -54,16 +56,14 @@ export default async function CompanyDashboardPage() {
     );
   }
 
-  const [allCategories, sigunguGroups, legacyRegions, requestedCount, reviews, ratingSummary] =
+  const [allCategories, legacyRegions, requestedCount, reviews, ratingSummary] =
     await Promise.all([
       prisma.category.findMany({ orderBy: { order: "asc" } }),
-      prisma.region.findMany({
-        where: { level: "SIGUNGU" },
-        include: { children: { orderBy: { order: "asc" } } },
-        orderBy: { order: "asc" },
-      }),
       // Legacy flat regions predating the 시/도->시/군/구->동 hierarchy —
       // still directly selectable, shown under their own "기타" group.
+      // (Search — see /api/mobile/regions/search-groups — replaced eagerly
+      // fetching all ~256 시/군/구 with all ~5,000 동 here; that full tree
+      // shipped down on every page load was what made this page slow.)
       prisma.region.findMany({
         where: { level: "EUPMYEONDONG", parentId: null },
         orderBy: { order: "asc" },
@@ -86,7 +86,10 @@ export default async function CompanyDashboardPage() {
   const reviewCount = ratingSummary._count;
 
   const usedCategoryIds = new Set(company.services.map((s) => s.categoryId));
-  const selectedRegionIds = new Set(company.regions.map((r) => r.regionId));
+  const initialSelectedRegions = company.regions.map((r) => ({
+    id: r.region.id,
+    label: r.region.parent ? `${r.region.parent.name} ${r.region.name}` : r.region.name,
+  }));
 
   return (
     <main className="mx-auto w-full max-w-md flex-1 px-4 py-6 pb-16">
@@ -192,9 +195,8 @@ export default async function CompanyDashboardPage() {
           소속된 동 전체가 서비스 지역에 포함돼요.
         </p>
         <RegionSelectForm
-          sigunguGroups={sigunguGroups}
           legacyRegions={legacyRegions}
-          initialSelectedIds={[...selectedRegionIds]}
+          initialSelectedRegions={initialSelectedRegions}
         />
       </section>
 

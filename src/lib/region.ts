@@ -95,6 +95,60 @@ export async function searchRegions(query: string, limit = 30): Promise<RegionSe
   }));
 }
 
+export type RegionGroupHit = {
+  id: string;
+  name: string;
+  children: { id: string; name: string }[];
+};
+
+/**
+ * Same word-matching as searchRegions(), but grouped by 시/군/구 with that
+ * group's *entire* 동 list attached (not just the matching ones) — this is
+ * what backs the company service-area picker: a company owner searches to
+ * find a 시/군/구 ("영통구"), then wants to freely check/uncheck any of its
+ * 동 or hit "전체", not just the one dong that happened to match. Capped to
+ * `groupLimit` distinct 시/군/구 so a too-broad query (e.g. a bare 시/도
+ * name) doesn't pull in dozens of groups worth of 동 at once.
+ */
+export async function searchRegionGroups(query: string, groupLimit = 8): Promise<RegionGroupHit[]> {
+  const words = query.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [];
+
+  const matches = await prisma.region.findMany({
+    where: {
+      level: "EUPMYEONDONG",
+      AND: words.map((word) => ({
+        OR: [
+          { name: { contains: word, mode: "insensitive" as const } },
+          { parent: { name: { contains: word, mode: "insensitive" as const } } },
+          { parent: { parent: { name: { contains: word, mode: "insensitive" as const } } } },
+        ],
+      })),
+    },
+    select: { parentId: true },
+    distinct: ["parentId"],
+    orderBy: [{ parentId: "asc" }],
+    take: groupLimit,
+  });
+
+  const sigunguIds = matches
+    .map((m) => m.parentId)
+    .filter((id): id is string => id !== null);
+  if (sigunguIds.length === 0) return [];
+
+  const groups = await prisma.region.findMany({
+    where: { id: { in: sigunguIds } },
+    include: { children: { orderBy: { order: "asc" } } },
+    orderBy: { order: "asc" },
+  });
+
+  return groups.map((g) => ({
+    id: g.id,
+    name: g.name,
+    children: g.children.map((c) => ({ id: c.id, name: c.name })),
+  }));
+}
+
 /**
  * Returns [regionId, its parentId, its grandparentId, ...] up to the root.
  * A company that services a *parent* region (e.g. picked "수원시 영통구"
