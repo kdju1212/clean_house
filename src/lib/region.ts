@@ -82,9 +82,10 @@ export async function searchRegions(query: string, limit = 30): Promise<RegionSe
   return rows.map((row) => ({
     id: row.id,
     name: row.name,
-    label: row.parent
-      ? `${row.parent.parent?.name ?? ""} ${row.parent.name} ${row.name}`.trim()
-      : row.name,
+    // "시/군/구 동" only, matching how the rest of the site labels a
+    // region — no 시/도 prefix (e.g. "광진구 화양동", not "서울특별시
+    // 광진구 화양동").
+    label: row.parent ? `${row.parent.name} ${row.name}` : row.name,
   }));
 }
 

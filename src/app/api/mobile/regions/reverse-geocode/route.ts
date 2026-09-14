@@ -75,9 +75,8 @@ export async function GET(request: Request) {
   return NextResponse.json({
     id: region.id,
     name: region.name,
-    // Full "시도 시군구 동" path, in the exact `${group.label} ${region.name}`
-    // shape the region-picker search views already build — lets a caller
-    // drop this straight into its search box to land on this one result.
-    path: `${legal.region_1depth_name} ${legal.region_2depth_name || legal.region_1depth_name} ${legal.region_3depth_name}`,
+    // "시/군/구 동" — matches the label shape searchRegions() returns (no
+    // 시/도 prefix), so a caller can show this as one more search result.
+    path: `${legal.region_2depth_name || legal.region_1depth_name} ${legal.region_3depth_name}`,
   });
 }
