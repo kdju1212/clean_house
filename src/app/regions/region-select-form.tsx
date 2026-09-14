@@ -39,7 +39,10 @@ export function RegionSelectForm({
             `/api/mobile/regions/reverse-geocode?lat=${position.coords.latitude}&lng=${position.coords.longitude}`
           );
           const json = await res.json();
-          if (!res.ok) throw new Error(json?.error ?? "위치로 지역을 찾지 못했어요.");
+          if (!res.ok) {
+            const detail = json?.detail ? ` (${json.detail})` : "";
+            throw new Error((json?.error ?? "위치로 지역을 찾지 못했어요.") + detail);
+          }
           // Drop the exact path into the search box — it's the same
           // `${group.label} ${region.name}` shape searchResults already
           // builds, so this lands on exactly this one result below.

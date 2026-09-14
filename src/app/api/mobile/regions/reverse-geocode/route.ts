@@ -46,7 +46,15 @@ export async function GET(request: Request) {
     { headers: { Authorization: `KakaoAK ${apiKey}` } }
   );
   if (!kakaoRes.ok) {
-    return NextResponse.json({ error: "위치 조회에 실패했어요." }, { status: 502 });
+    // Kakao's error body (errorType/message) is safe to log and to surface —
+    // it never echoes the key back — and is the only way to tell "REST API
+    // 키가 틀림" apart from "카카오맵 제품이 비활성화" apart from IP block, etc.
+    const detail = await kakaoRes.text().catch(() => "");
+    console.error(`Kakao coord2regioncode failed: ${kakaoRes.status} ${detail}`);
+    return NextResponse.json(
+      { error: "위치 조회에 실패했어요.", detail: detail || undefined },
+      { status: 502 }
+    );
   }
 
   const data: KakaoCoord2RegionResponse = await kakaoRes.json();
