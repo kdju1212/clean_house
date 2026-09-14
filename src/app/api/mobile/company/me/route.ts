@@ -15,7 +15,9 @@ export async function GET(request: Request) {
     where: { ownerUserId: userId },
     include: {
       services: { include: { category: true }, orderBy: { createdAt: "asc" } },
-      regions: { include: { region: true } },
+      // parent included so the app can show "구 동" labels for the
+      // company's existing picks without a second round trip.
+      regions: { include: { region: { include: { parent: true } } } },
       photos: { orderBy: { createdAt: "desc" } },
     },
   });
@@ -23,7 +25,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "등록된 업체가 없습니다." }, { status: 404 });
   }
 
-  const [requestedCount, ratingSummary] = await Promise.all([
+  const [requestedCount, ratingSummary, legacyRegions] = await Promise.all([
     prisma.reservation.count({
       where: { companyId: company.id, status: "REQUESTED" },
     }),
@@ -31,6 +33,13 @@ export async function GET(request: Request) {
       where: { companyId: company.id },
       _avg: { rating: true },
       _count: true,
+    }),
+    // Small fixed set (predates the region hierarchy) — cheap enough to
+    // always include here rather than a separate call from the app.
+    prisma.region.findMany({
+      where: { level: "EUPMYEONDONG", parentId: null },
+      orderBy: { order: "asc" },
+      select: { id: true, name: true },
     }),
   ]);
 
@@ -56,6 +65,11 @@ export async function GET(request: Request) {
       description: s.description,
     })),
     regionIds: company.regions.map((r) => r.regionId),
+    selectedRegions: company.regions.map((r) => ({
+      id: r.region.id,
+      label: r.region.parent ? `${r.region.parent.name} ${r.region.name}` : r.region.name,
+    })),
+    legacyRegions,
     photos: company.photos.map((p) => ({ id: p.id, url: p.url, type: p.type })),
   });
 }
