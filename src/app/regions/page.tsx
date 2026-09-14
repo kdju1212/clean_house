@@ -31,7 +31,7 @@ export default async function RegionsPage() {
     <main className="mx-auto w-full max-w-md flex-1 px-4 py-6">
       <h1 className="text-lg font-bold">지역 선택</h1>
       <p className="mt-1 text-sm text-neutral-500">
-        현재는 일부 지역만 테스트로 제공하고 있어요.
+        전국 어디든 동네를 선택할 수 있어요.
       </p>
 
       <RegionSelectForm groupedRegions={groupedRegions} selectedId={selected?.id} />

@@ -1,5 +1,10 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
@@ -32,43 +37,18 @@ const legacyFlatRegions = [
 // level — linking to a SIGUNGU (e.g. "수원시 영통구 전체") is treated by
 // the search/reservation matching logic as covering every EUPMYEONDONG
 // underneath it, without needing to also store a row per child.
+//
+// Sourced from the 행정안전부 법정동코드 전체자료 (전국, "존재" 상태만):
+// generated into regions-nationwide.json by filtering out 폐지 rows and
+// 리 단위 (rural sub-divisions), and collapsing 시/군/구 containers that
+// have no directly addressable 읍/면/동 of their own (e.g. a 시 that has
+// since been split entirely into 구). 세종특별자치시 has no 구 layer at
+// all, so it gets a synthetic SIGUNGU node with the same name as the
+// SIDO so the tree stays a uniform 3 levels deep — see build script notes.
 const regionTree: {
   name: string;
   children?: { name: string; children?: { name: string }[] }[];
-}[] = [
-  {
-    name: "경기도",
-    children: [
-      {
-        name: "수원시 영통구",
-        children: [
-          { name: "망포동" },
-          { name: "영통동" },
-          { name: "매탄동" },
-          { name: "원천동" },
-        ],
-      },
-      {
-        name: "용인시 수지구",
-        children: [{ name: "죽전동" }, { name: "풍덕천동" }],
-      },
-      {
-        name: "오산시",
-        children: [{ name: "오산동" }, { name: "세마동" }],
-      },
-      {
-        name: "화성시",
-        children: [
-          { name: "동탄동" },
-          { name: "병점동" },
-          { name: "남양읍" },
-          { name: "향남읍" },
-          { name: "봉담읍" },
-        ],
-      },
-    ],
-  },
-];
+}[] = JSON.parse(readFileSync(join(__dirname, "data/regions-nationwide.json"), "utf-8"));
 
 // Can't use prisma.region.upsert()'s compound-unique shorthand here — the
 // generated parentId_name key rejects a literal null, even though parentId
