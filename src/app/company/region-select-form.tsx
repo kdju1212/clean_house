@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { SubmitButton } from "@/components/submit-button";
 import { setRegions } from "./actions";
 
 type LeafRegion = { id: string; name: string };
 type SigunguGroup = { id: string; name: string; children: LeafRegion[] };
+
+const normalize = (text: string) => text.trim().replace(/\s+/g, "");
 
 /**
  * Lets a company pick many 동 without a wall of checkboxes: each 시/군/구
@@ -26,6 +28,36 @@ export function RegionSelectForm({
   initialSelectedIds: string[];
 }) {
   const [selected, setSelected] = useState<Set<string>>(() => new Set(initialSelectedIds));
+  const [query, setQuery] = useState("");
+
+  const normalizedQuery = normalize(query);
+
+  const fullChildrenById = useMemo(
+    () => new Map(sigunguGroups.map((g) => [g.id, g.children])),
+    [sigunguGroups]
+  );
+
+  // A group whose own name matches keeps every child visible (so "전체"
+  // still fans out to all of them); otherwise it's narrowed to just the
+  // matching children, and dropped entirely once that's empty too. Counts
+  // and the "전체" toggle always look children up via fullChildrenById
+  // instead of group.children here, so they stay correct against the
+  // group's true full 동 list even when this narrows what's displayed.
+  const visibleGroups = useMemo(() => {
+    if (!normalizedQuery) return sigunguGroups;
+    return sigunguGroups
+      .map((group) => {
+        if (normalize(group.name).includes(normalizedQuery)) return group;
+        const children = group.children.filter((c) => normalize(c.name).includes(normalizedQuery));
+        return { ...group, children };
+      })
+      .filter((group) => group.children.length > 0);
+  }, [sigunguGroups, normalizedQuery]);
+
+  const visibleLegacyRegions = useMemo(() => {
+    if (!normalizedQuery) return legacyRegions;
+    return legacyRegions.filter((r) => normalize(r.name).includes(normalizedQuery));
+  }, [legacyRegions, normalizedQuery]);
 
   function toggleLeaf(id: string) {
     setSelected((prev) => {
@@ -36,12 +68,12 @@ export function RegionSelectForm({
     });
   }
 
-  function toggleGroup(group: SigunguGroup, checked: boolean) {
+  function toggleGroup(childIds: string[], checked: boolean) {
     setSelected((prev) => {
       const next = new Set(prev);
-      for (const child of group.children) {
-        if (checked) next.add(child.id);
-        else next.delete(child.id);
+      for (const id of childIds) {
+        if (checked) next.add(id);
+        else next.delete(id);
       }
       return next;
     });
@@ -49,10 +81,24 @@ export function RegionSelectForm({
 
   return (
     <form action={setRegions} className="mt-3 flex flex-col gap-4">
-      {sigunguGroups.map((group) => {
-        const childIds = group.children.map((c) => c.id);
-        const checkedCount = childIds.filter((id) => selected.has(id)).length;
-        const allChecked = childIds.length > 0 && checkedCount === childIds.length;
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="지역 이름으로 검색 (예: 영통구)"
+        className="rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm"
+      />
+
+      {query && visibleGroups.length === 0 && visibleLegacyRegions.length === 0 && (
+        <p className="text-sm text-neutral-400">검색 결과가 없어요.</p>
+      )}
+
+      {visibleGroups.map((group) => {
+        // Counts and the "전체" toggle always act on the group's full 동
+        // list, not just what search narrowed the chips down to.
+        const fullChildIds = (fullChildrenById.get(group.id) ?? group.children).map((c) => c.id);
+        const checkedCount = fullChildIds.filter((id) => selected.has(id)).length;
+        const allChecked = fullChildIds.length > 0 && checkedCount === fullChildIds.length;
         const someChecked = !allChecked && checkedCount > 0;
 
         return (
@@ -64,7 +110,7 @@ export function RegionSelectForm({
                 ref={(el) => {
                   if (el) el.indeterminate = someChecked;
                 }}
-                onChange={(e) => toggleGroup(group, e.target.checked)}
+                onChange={(e) => toggleGroup(fullChildIds, e.target.checked)}
               />
               {group.name}
               {allChecked && (
@@ -92,11 +138,11 @@ export function RegionSelectForm({
         );
       })}
 
-      {legacyRegions.length > 0 && (
+      {visibleLegacyRegions.length > 0 && (
         <div>
           <p className="text-sm font-semibold">기타</p>
           <div className="mt-2 grid grid-cols-2 gap-2">
-            {legacyRegions.map((region) => (
+            {visibleLegacyRegions.map((region) => (
               <label key={region.id} className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
