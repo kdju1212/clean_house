@@ -1,20 +1,22 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { SubmitButton } from "@/components/submit-button";
 import { selectRegion } from "./actions";
 
-type Region = { id: string; name: string };
-type Group = { label: string; regions: Region[] };
+type LeafRegion = { id: string; name: string };
+type SearchHit = { id: string; name: string; label: string };
 
 const normalize = (text: string) => text.trim().replace(/\s+/g, "");
 
 export function RegionSelectForm({
-  groupedRegions,
+  legacyRegions,
   selectedId,
+  selectedName,
 }: {
-  groupedRegions: Group[];
+  legacyRegions: LeafRegion[];
   selectedId?: string;
+  selectedName?: string;
 }) {
   const [state, formAction] = useActionState(selectRegion, undefined);
   const [query, setQuery] = useState("");
@@ -24,6 +26,39 @@ export function RegionSelectForm({
   const [picked, setPicked] = useState(selectedId);
   const [locating, setLocating] = useState(false);
   const [locateError, setLocateError] = useState<string | null>(null);
+  const [searchResults, setSearchResults] = useState<SearchHit[] | null>(null);
+  const [searching, setSearching] = useState(false);
+
+  const normalizedQuery = normalize(query);
+
+  // Debounced server-side search — the region tree is ~5,000 rows, too much
+  // to ship to the client on page load just to filter locally (see
+  // searchRegions() in src/lib/region.ts for why that was slow). A GPS pick
+  // below sets searchResults directly instead of going through this.
+  useEffect(() => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      if (!normalizedQuery) {
+        setSearchResults(null);
+        setSearching(false);
+        return;
+      }
+      setSearching(true);
+      fetch(`/api/mobile/regions/search?q=${encodeURIComponent(query)}`, {
+        signal: controller.signal,
+      })
+        .then((res) => res.json())
+        .then((json) => setSearchResults(json.results ?? []))
+        .catch((err) => {
+          if (err?.name !== "AbortError") setSearchResults([]);
+        })
+        .finally(() => setSearching(false));
+    }, 250);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [query, normalizedQuery]);
 
   function handleLocate() {
     setLocateError(null);
@@ -43,10 +78,8 @@ export function RegionSelectForm({
             const detail = json?.detail ? ` (${json.detail})` : "";
             throw new Error((json?.error ?? "위치로 지역을 찾지 못했어요.") + detail);
           }
-          // Drop the exact path into the search box — it's the same
-          // `${group.label} ${region.name}` shape searchResults already
-          // builds, so this lands on exactly this one result below.
           setQuery(json.path);
+          setSearchResults([{ id: json.id, name: json.name, label: json.path }]);
           setPicked(json.id);
         } catch (err) {
           setLocateError(err instanceof Error ? err.message : "위치로 지역을 찾지 못했어요.");
@@ -60,21 +93,6 @@ export function RegionSelectForm({
       }
     );
   }
-
-  const normalizedQuery = normalize(query);
-  const searchResults = useMemo(() => {
-    if (!normalizedQuery) return null;
-    const results: { id: string; label: string }[] = [];
-    for (const group of groupedRegions) {
-      for (const region of group.regions) {
-        const label = `${group.label} ${region.name}`;
-        if (normalize(label).includes(normalizedQuery)) {
-          results.push({ id: region.id, label });
-        }
-      }
-    }
-    return results;
-  }, [groupedRegions, normalizedQuery]);
 
   return (
     <form action={formAction} className="mt-6 flex flex-col gap-4">
@@ -97,12 +115,13 @@ export function RegionSelectForm({
       </div>
       {locateError && <p className="text-xs text-red-600">{locateError}</p>}
 
-      {searchResults ? (
+      {normalizedQuery ? (
         <div className="flex flex-col gap-2">
-          {searchResults.length === 0 && (
+          {searching && <p className="text-sm text-neutral-400">검색 중...</p>}
+          {!searching && searchResults?.length === 0 && (
             <p className="text-sm text-neutral-400">검색 결과가 없어요.</p>
           )}
-          {searchResults.map((region) => (
+          {searchResults?.map((region) => (
             <label
               key={region.id}
               className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm has-checked:border-neutral-900"
@@ -119,11 +138,14 @@ export function RegionSelectForm({
           ))}
         </div>
       ) : (
-        groupedRegions.map((group) => (
-          <div key={group.label}>
-            <p className="mb-2 text-xs font-semibold text-neutral-400">{group.label}</p>
-            <div className="flex flex-col gap-2">
-              {group.regions.map((region) => (
+        <div className="flex flex-col gap-2">
+          {selectedName && (
+            <p className="text-xs text-neutral-400">현재 선택된 지역: {selectedName}</p>
+          )}
+          {legacyRegions.length > 0 && (
+            <>
+              <p className="mb-1 text-xs font-semibold text-neutral-400">기타</p>
+              {legacyRegions.map((region) => (
                 <label
                   key={region.id}
                   className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm has-checked:border-neutral-900"
@@ -138,9 +160,10 @@ export function RegionSelectForm({
                   {region.name}
                 </label>
               ))}
-            </div>
-          </div>
-        ))
+            </>
+          )}
+          <p className="text-sm text-neutral-400">동네 이름을 검색해서 찾아보세요.</p>
+        </div>
       )}
       {state?.error && <p className="text-xs text-red-600">{state.error}</p>}
       <SubmitButton

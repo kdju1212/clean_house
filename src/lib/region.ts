@@ -22,15 +22,6 @@ export async function getSelectedRegion() {
 }
 
 /**
- * Returns [regionId, its parentId, its grandparentId, ...] up to the root.
- * A company that services a *parent* region (e.g. picked "수원시 영통구"
- * as a whole) should still show up for a customer browsing any of its
- * child 동 — so search/reservation matching checks a customer's region
- * against this whole ancestor chain, not just the exact leaf id. Bounded
- * by the region tree's depth (currently 3 levels), so this is at most 2
- * extra single-row lookups, not a recursive/unbounded walk.
- */
-/**
  * Resolves a 시/도 -> 시/군/구 -> 읍/면/동 name path (as returned by Kakao's
  * coord2regioncode 법정동 lookup) to a seeded Region row. Kakao already
  * combines 시+구 into region_2depth_name the same way regions-nationwide.json
@@ -59,6 +50,53 @@ export async function findRegionByAddressPath(
   });
 }
 
+export type RegionSearchHit = { id: string; name: string; label: string };
+
+/**
+ * Region-name search for the region picker, done in the DB instead of
+ * shipping all ~5,000 읍/면/동 rows to the client and filtering there —
+ * that was the whole tree serialized into every /regions page load
+ * regardless of whether the visitor ever typed a search query, which is
+ * what actually made the page slow (not the DB query itself — Neon and the
+ * app run in the same region). Matches the dong's own name, its 시/군/구,
+ * or its 시/도 (Prisma relation filters), capped to `limit` results.
+ */
+export async function searchRegions(query: string, limit = 30): Promise<RegionSearchHit[]> {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+
+  const rows = await prisma.region.findMany({
+    where: {
+      level: "EUPMYEONDONG",
+      OR: [
+        { name: { contains: trimmed, mode: "insensitive" } },
+        { parent: { name: { contains: trimmed, mode: "insensitive" } } },
+        { parent: { parent: { name: { contains: trimmed, mode: "insensitive" } } } },
+      ],
+    },
+    include: { parent: { include: { parent: true } } },
+    orderBy: [{ parentId: "asc" }, { order: "asc" }],
+    take: limit,
+  });
+
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    label: row.parent
+      ? `${row.parent.parent?.name ?? ""} ${row.parent.name} ${row.name}`.trim()
+      : row.name,
+  }));
+}
+
+/**
+ * Returns [regionId, its parentId, its grandparentId, ...] up to the root.
+ * A company that services a *parent* region (e.g. picked "수원시 영통구"
+ * as a whole) should still show up for a customer browsing any of its
+ * child 동 — so search/reservation matching checks a customer's region
+ * against this whole ancestor chain, not just the exact leaf id. Bounded
+ * by the region tree's depth (currently 3 levels), so this is at most 2
+ * extra single-row lookups, not a recursive/unbounded walk.
+ */
 export async function getRegionAncestorIds(regionId: string): Promise<string[]> {
   const ids = [regionId];
   let currentId: string | null = regionId;
