@@ -130,14 +130,27 @@ export async function deleteService(formData: FormData) {
   revalidatePath("/company");
 }
 
-export async function setRegions(formData: FormData) {
-  const session = await requireSession();
-  const regionIds = formData.getAll("regionIds").filter(
-    (v): v is string => typeof v === "string"
-  );
-
-  await setRegionsForOwner(session.user.id, regionIds);
-  revalidatePath("/company");
+/**
+ * Called directly from a Client Component (not a <form action>) — the
+ * region picker's `selected` Map is the client-side source of truth, and
+ * routing the save through a plain <form action> caused the browser to
+ * reset the search-results checkboxes' visual checked state shortly after
+ * a successful submit (React's own state stayed correct — still visible
+ * via the "선택된 지역" chips — but the DOM checkbox fell out of sync with
+ * it). Calling the action directly with the id array sidesteps the
+ * native form submission/reset lifecycle entirely.
+ */
+export async function setCompanyRegionIds(
+  regionIds: string[]
+): Promise<{ error: string } | { ok: true }> {
+  try {
+    const session = await requireSession();
+    await setRegionsForOwner(session.user.id, regionIds);
+    revalidatePath("/company");
+    return { ok: true };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "알 수 없는 오류가 발생했어요." };
+  }
 }
 
 /**

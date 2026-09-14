@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { SubmitButton } from "@/components/submit-button";
-import { setRegions } from "./actions";
+import { setCompanyRegionIds } from "./actions";
 
 type LeafRegion = { id: string; name: string };
 type RegionGroupHit = { id: string; name: string; children: LeafRegion[] };
@@ -31,6 +30,8 @@ export function RegionSelectForm({
   const [query, setQuery] = useState("");
   const [groups, setGroups] = useState<RegionGroupHit[] | null>(null);
   const [searching, setSearching] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const normalizedQuery = query.trim();
 
@@ -79,8 +80,16 @@ export function RegionSelectForm({
     });
   }
 
+  async function handleSave() {
+    setSaving(true);
+    setError(null);
+    const result = await setCompanyRegionIds([...selected.keys()]);
+    setSaving(false);
+    if ("error" in result) setError(result.error);
+  }
+
   return (
-    <form action={setRegions} className="mt-3 flex flex-col gap-4">
+    <div className="mt-3 flex flex-col gap-4">
       {selected.size > 0 && (
         <div>
           <p className="mb-2 text-xs font-semibold text-neutral-400">
@@ -177,19 +186,16 @@ export function RegionSelectForm({
         )
       )}
 
-      {/* Checkboxes above only exist for whatever's currently searched/
-          visible — the actual submitted set is this Map, independent of
-          what's rendered, so a pick from an earlier search still submits. */}
-      {[...selected.keys()].map((id) => (
-        <input key={id} type="hidden" name="regionIds" value={id} />
-      ))}
+      {error && <p className="text-xs text-red-600">{error}</p>}
 
-      <SubmitButton
-        className="self-start rounded-lg border border-neutral-900 px-4 py-2 text-sm font-medium"
-        pendingText="저장 중..."
+      <button
+        type="button"
+        onClick={handleSave}
+        disabled={saving}
+        className="self-start rounded-lg border border-neutral-900 px-4 py-2 text-sm font-medium disabled:cursor-wait disabled:opacity-60"
       >
-        저장
-      </SubmitButton>
-    </form>
+        {saving ? "저장 중..." : "저장"}
+      </button>
+    </div>
   );
 }
