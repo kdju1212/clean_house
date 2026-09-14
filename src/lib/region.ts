@@ -58,21 +58,27 @@ export type RegionSearchHit = { id: string; name: string; label: string };
  * that was the whole tree serialized into every /regions page load
  * regardless of whether the visitor ever typed a search query, which is
  * what actually made the page slow (not the DB query itself — Neon and the
- * app run in the same region). Matches the dong's own name, its 시/군/구,
- * or its 시/도 (Prisma relation filters), capped to `limit` results.
+ * app run in the same region). Splits the query into words and requires
+ * each word to match *somewhere* in the row's own name, its 시/군/구, or
+ * its 시/도 (independently, not all in the same field) — a query like
+ * "광진구 화양동" has no single field containing that whole two-word
+ * string, so a single combined `contains` would never match it even
+ * though the row plainly is 광진구 화양동. Capped to `limit` results.
  */
 export async function searchRegions(query: string, limit = 30): Promise<RegionSearchHit[]> {
-  const trimmed = query.trim();
-  if (!trimmed) return [];
+  const words = query.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [];
 
   const rows = await prisma.region.findMany({
     where: {
       level: "EUPMYEONDONG",
-      OR: [
-        { name: { contains: trimmed, mode: "insensitive" } },
-        { parent: { name: { contains: trimmed, mode: "insensitive" } } },
-        { parent: { parent: { name: { contains: trimmed, mode: "insensitive" } } } },
-      ],
+      AND: words.map((word) => ({
+        OR: [
+          { name: { contains: word, mode: "insensitive" as const } },
+          { parent: { name: { contains: word, mode: "insensitive" as const } } },
+          { parent: { parent: { name: { contains: word, mode: "insensitive" as const } } } },
+        ],
+      })),
     },
     include: { parent: { include: { parent: true } } },
     orderBy: [{ parentId: "asc" }, { order: "asc" }],
