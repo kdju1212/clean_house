@@ -10,6 +10,15 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    // migrate/db seed run through the Prisma CLI's own schema engine, which
+    // needs a plain session (it takes a postgres advisory lock while
+    // migrating). Neon's pooled endpoint (DATABASE_URL, "-pooler" in the
+    // host) is PgBouncer-style transaction pooling and doesn't hold a
+    // session steady across statements, so that lock call just times out
+    // (P1002). DIRECT_DATABASE_URL — the same Neon connection string minus
+    // "-pooler" — bypasses the pooler for just this CLI usage. The app's
+    // actual runtime queries are unaffected: src/lib/prisma.ts builds its
+    // own PrismaClient straight from DATABASE_URL, never reads this file.
+    url: process.env["DIRECT_DATABASE_URL"] ?? process.env["DATABASE_URL"],
   },
 });
