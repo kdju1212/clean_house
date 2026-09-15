@@ -18,7 +18,18 @@ export async function getSelectedRegion() {
     if (region) return region;
   }
 
-  return prisma.region.findFirst({ orderBy: { order: "asc" } });
+  // Must be a leaf (읍/면/동) — a customer's "selected region" is always
+  // matched against CompanyRegion at this granularity elsewhere (see
+  // company-search.ts, createReservationForCustomer). Without the level
+  // filter this could return a 시/도 or 시/군/구 row instead: `order` is
+  // only unique *within* a parent (every 시/군/구's first 동 is order 0),
+  // so across the nationwide tree plain `orderBy: order` ties across
+  // thousands of rows and levels — it used to work only because the old
+  // hand-seeded region list was small enough to have no such collisions.
+  return prisma.region.findFirst({
+    where: { level: "EUPMYEONDONG" },
+    orderBy: { order: "asc" },
+  });
 }
 
 /**
