@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { TIME_SLOTS } from "@/lib/reservation";
 import { SubmitButton } from "@/components/submit-button";
 import { createReservation } from "../actions";
@@ -19,6 +19,41 @@ export function NewReservationForm({
   todayStr: string;
 }) {
   const [state, formAction] = useActionState(createReservation, undefined);
+  const [address, setAddress] = useState("");
+  const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState<string | null>(null);
+
+  function handleLocate() {
+    setLocateError(null);
+    if (!("geolocation" in navigator)) {
+      setLocateError("이 브라우저는 위치 정보를 지원하지 않아요.");
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const res = await fetch(
+            `/api/mobile/address/reverse-geocode?lat=${position.coords.latitude}&lng=${position.coords.longitude}`
+          );
+          const json = await res.json();
+          if (!res.ok) {
+            const detail = json?.detail ? ` (${json.detail})` : "";
+            throw new Error((json?.error ?? "위치로 주소를 찾지 못했어요.") + detail);
+          }
+          setAddress(json.address);
+        } catch (err) {
+          setLocateError(err instanceof Error ? err.message : "위치로 주소를 찾지 못했어요.");
+        } finally {
+          setLocating(false);
+        }
+      },
+      () => {
+        setLocateError("위치 권한을 허용해주세요.");
+        setLocating(false);
+      }
+    );
+  }
 
   return (
     <form action={formAction} className="mt-6 flex flex-col gap-4">
@@ -41,13 +76,26 @@ export function NewReservationForm({
 
       <label className="flex flex-col gap-1 text-sm font-medium">
         서비스 주소
-        <input
-          name="address"
-          required
-          placeholder="도로명 주소"
-          className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
-        />
+        <div className="flex gap-2">
+          <input
+            name="address"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            required
+            placeholder="도로명 주소"
+            className="flex-1 rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
+          />
+          <button
+            type="button"
+            onClick={handleLocate}
+            disabled={locating}
+            className="shrink-0 rounded-lg border border-neutral-200 px-3 py-2 text-sm font-medium disabled:opacity-50"
+          >
+            {locating ? "찾는 중..." : "내 위치로 찾기"}
+          </button>
+        </div>
       </label>
+      {locateError && <p className="text-xs text-red-600">{locateError}</p>}
       <label className="flex flex-col gap-1 text-sm font-medium">
         상세 주소 (선택)
         <input
