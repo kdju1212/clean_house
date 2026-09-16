@@ -98,6 +98,7 @@ export async function updateProfile(
     });
 
     revalidatePath("/company");
+    revalidatePath("/company/detail");
   } catch (err) {
     return toActionError(err);
   }

@@ -3,9 +3,8 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { confirmPhotoUpload, deletePhoto, requestPhotoUploadUrl } from "./actions";
+import { confirmPhotoUpload, deletePhoto, requestPhotoUploadUrl, updateProfile } from "./actions";
 import { PhotoStack, type PhotoItem } from "@/components/company-detail/photo-stack";
-import { InfoRows } from "@/components/company-detail/info-rows";
 import { RatingDistribution } from "@/components/company-detail/rating-distribution";
 import { ReviewCard, ReviewPhotoStrip, type ReviewItem } from "@/components/company-detail/review-list";
 
@@ -62,6 +61,38 @@ export function CompanyPagePreview({
     handleChange: handleMainChange,
   } = usePhotoUpload("MAIN");
 
+  const [name, setName] = useState(company.name);
+  const [phone, setPhone] = useState(company.phone ?? "");
+  const [introText, setIntroText] = useState(company.introText ?? "");
+  const [businessHours, setBusinessHours] = useState(company.businessHours ?? "");
+  const [isAvailable, setIsAvailable] = useState(company.isAvailable);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  async function handleSave() {
+    setSaving(true);
+    setSaveError(null);
+    setSaved(false);
+    try {
+      const formData = new FormData();
+      formData.set("name", name);
+      formData.set("phone", phone);
+      formData.set("introText", introText);
+      formData.set("businessHours", businessHours);
+      if (isAvailable) formData.set("isAvailable", "on");
+
+      const result = await updateProfile(undefined, formData);
+      if (result?.error) {
+        setSaveError(result.error);
+        return;
+      }
+      setSaved(true);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="overflow-hidden rounded-2xl border border-neutral-200">
       <button
@@ -95,7 +126,13 @@ export function CompanyPagePreview({
       {mainError && <p className="px-4 pt-1 text-xs text-red-600">{mainError}</p>}
 
       <div className="px-4 py-4">
-        <h1 className="text-xl font-bold">{company.name}</h1>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+          placeholder="업체명"
+          className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-xl font-bold"
+        />
         <p className="mt-1 text-sm text-neutral-500">
           {reviewCount > 0 ? (
             <>
@@ -106,7 +143,13 @@ export function CompanyPagePreview({
             "아직 리뷰가 없어요"
           )}
         </p>
-        {company.introText && <p className="mt-2 text-sm text-neutral-600">{company.introText}</p>}
+        <textarea
+          value={introText}
+          onChange={(e) => setIntroText(e.target.value)}
+          placeholder="업체 소개"
+          rows={3}
+          className="mt-2 w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-600"
+        />
 
         <section className="mt-5">
           <h2 className="text-sm font-semibold">서비스 · 가격</h2>
@@ -134,14 +177,39 @@ export function CompanyPagePreview({
         <EditablePhotoStack title="작업 사진" type="WORK" photos={workPhotos} />
         <EditablePhotoStack title="전/후 비교" type="BEFORE_AFTER" photos={beforeAfterPhotos} />
 
-        <InfoRows
-          rows={[
-            { label: "서비스 지역", value: regionNames.join(", ") || "-" },
-            { label: "영업시간", value: company.businessHours ?? "-" },
-            { label: "예약 가능 여부", value: company.isAvailable ? "예약 가능" : "예약 마감" },
-            ...(company.phone ? [{ label: "연락처", value: company.phone }] : []),
-          ]}
-        />
+        <section className="mt-5 overflow-hidden rounded-xl border border-neutral-200">
+          <div className="flex justify-between px-3 py-2.5 text-sm">
+            <span className="text-neutral-500">서비스 지역</span>
+            <span className="text-right font-medium">{regionNames.join(", ") || "-"}</span>
+          </div>
+          <div className="flex items-center justify-between border-t border-neutral-100 px-3 py-2 text-sm">
+            <span className="shrink-0 text-neutral-500">영업시간</span>
+            <input
+              value={businessHours}
+              onChange={(e) => setBusinessHours(e.target.value)}
+              placeholder="예: 09:00-18:00"
+              className="ml-2 w-32 rounded-lg border border-neutral-200 px-2 py-1 text-right text-sm"
+            />
+          </div>
+          <label className="flex items-center justify-between border-t border-neutral-100 px-3 py-2.5 text-sm">
+            <span className="text-neutral-500">예약 가능 여부</span>
+            <input
+              type="checkbox"
+              checked={isAvailable}
+              onChange={(e) => setIsAvailable(e.target.checked)}
+            />
+          </label>
+          <div className="flex items-center justify-between border-t border-neutral-100 px-3 py-2 text-sm">
+            <span className="shrink-0 text-neutral-500">연락처</span>
+            <input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              required
+              placeholder="010-0000-0000"
+              className="ml-2 w-32 rounded-lg border border-neutral-200 px-2 py-1 text-right text-sm"
+            />
+          </div>
+        </section>
 
         <section className="mt-5">
           <h2 className="text-sm font-semibold">
@@ -161,6 +229,17 @@ export function CompanyPagePreview({
             </ul>
           )}
         </section>
+
+        {saveError && <p className="mt-4 text-xs text-red-600">{saveError}</p>}
+        {saved && <p className="mt-4 text-xs text-emerald-600">저장됐어요.</p>}
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className="mt-2 w-full rounded-xl bg-neutral-900 py-3 text-sm font-semibold text-white disabled:opacity-50"
+        >
+          {saving ? "저장 중..." : "저장"}
+        </button>
       </div>
     </div>
   );
