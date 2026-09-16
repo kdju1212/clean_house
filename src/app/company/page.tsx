@@ -202,7 +202,20 @@ export default async function CompanyDashboardPage() {
 
       {/* 사진 */}
       <section className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4">
-        <h2 className="text-sm font-semibold">사진</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold">사진</h2>
+          {company.status === "ACTIVE" ? (
+            <Link
+              href={`/companies/${company.id}`}
+              target="_blank"
+              className="text-xs font-medium text-neutral-500 underline"
+            >
+              내 업체 페이지에서 보기 →
+            </Link>
+          ) : (
+            <span className="text-[11px] text-neutral-400">승인 후 페이지에서 볼 수 있어요</span>
+          )}
+        </div>
 
         {company.photos.length > 0 && (
           <div className="mt-3 grid grid-cols-3 gap-2">

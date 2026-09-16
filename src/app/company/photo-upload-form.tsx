@@ -5,22 +5,32 @@ import { useRouter } from "next/navigation";
 import { confirmPhotoUpload, requestPhotoUploadUrl } from "./actions";
 
 const TYPE_OPTIONS = [
-  { value: "WORK", label: "작업사진" },
-  { value: "MAIN", label: "대표사진" },
-  { value: "BEFORE_AFTER", label: "전/후 비교" },
+  {
+    value: "MAIN",
+    emoji: "⭐",
+    label: "대표사진",
+    hint: "목록 카드 + 상세페이지 맨 위",
+  },
+  {
+    value: "WORK",
+    emoji: "🧹",
+    label: "작업사진",
+    hint: "상세페이지 '작업 사진' 영역",
+  },
+  {
+    value: "BEFORE_AFTER",
+    emoji: "🔄",
+    label: "전/후 비교",
+    hint: "상세페이지 '전/후 비교' 영역",
+  },
 ];
-
-const TYPE_HINT: Record<string, string> = {
-  WORK: "고객이 보는 업체 상세페이지의 '작업 사진' 영역에 표시돼요.",
-  MAIN: "업체 상세페이지 맨 위 대표 이미지로 쓰이고, 목록 카드에도 노출돼요.",
-  BEFORE_AFTER: "업체 상세페이지의 '전/후 비교' 영역에 표시돼요.",
-};
 
 export function PhotoUploadForm() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [type, setType] = useState("WORK");
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [successLabel, setSuccessLabel] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -34,6 +44,7 @@ export function PhotoUploadForm() {
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     setError(null);
+    setSuccessLabel(null);
     const file = e.target.files?.[0];
     setPreviewUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev);
@@ -51,6 +62,7 @@ export function PhotoUploadForm() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setSuccessLabel(null);
 
     const file = fileInputRef.current?.files?.[0];
     if (!file) {
@@ -93,6 +105,10 @@ export function PhotoUploadForm() {
 
         if (fileInputRef.current) fileInputRef.current.value = "";
         resetPreview();
+        // The new thumbnail lands in the photo grid above this form, out of
+        // view if the customer scrolled down to upload — without this,
+        // "did it actually work?" is answered only by scrolling back up.
+        setSuccessLabel(TYPE_OPTIONS.find((o) => o.value === type)?.label ?? "사진");
         router.refresh();
       } catch {
         setError("업로드에 실패했어요.");
@@ -102,18 +118,36 @@ export function PhotoUploadForm() {
 
   return (
     <form onSubmit={handleSubmit} className="mt-3 flex flex-col gap-2">
-      <select
-        value={type}
-        onChange={(e) => setType(e.target.value)}
-        className="rounded-lg border border-neutral-200 px-3 py-2 text-sm"
-      >
+      <p className="text-xs font-medium text-neutral-600">
+        어디에 쓸 사진인가요? 아래에서 먼저 골라주세요.
+      </p>
+      <div className="grid grid-cols-3 gap-2">
         {TYPE_OPTIONS.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
+          <button
+            key={o.value}
+            type="button"
+            onClick={() => setType(o.value)}
+            aria-pressed={type === o.value}
+            className={`flex flex-col items-center gap-1 rounded-lg border px-2 py-2 text-center transition-colors ${
+              type === o.value
+                ? "border-neutral-900 bg-neutral-900 text-white"
+                : "border-neutral-200 bg-white text-neutral-700"
+            }`}
+          >
+            <span className="text-lg" aria-hidden>
+              {o.emoji}
+            </span>
+            <span className="text-xs font-semibold">{o.label}</span>
+            <span
+              className={`text-[10px] leading-tight ${
+                type === o.value ? "text-neutral-300" : "text-neutral-400"
+              }`}
+            >
+              {o.hint}
+            </span>
+          </button>
         ))}
-      </select>
-      <p className="text-[11px] text-neutral-400">{TYPE_HINT[type]}</p>
+      </div>
       <input
         ref={fileInputRef}
         type="file"
@@ -131,6 +165,11 @@ export function PhotoUploadForm() {
         />
       )}
       {error && <p className="text-xs text-red-600">{error}</p>}
+      {successLabel && (
+        <p className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
+          ✅ {successLabel}(으)로 등록됐어요 — 위 사진 목록에서 확인해보세요.
+        </p>
+      )}
       <button
         type="submit"
         disabled={isPending}
