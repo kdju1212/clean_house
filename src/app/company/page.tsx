@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SubmitButton } from "@/components/submit-button";
 import { deleteService } from "./actions";
-import { PhotoPreviewEditor } from "./photo-preview-editor";
+import { CompanyPagePreview } from "./company-page-preview";
 import { ProfileForm } from "./profile-form";
 import { AddServiceForm } from "./add-service-form";
 import { RegionSelectForm } from "./region-select-form";
@@ -193,25 +193,44 @@ export default async function CompanyDashboardPage() {
         />
       </section>
 
-      {/* 사진 */}
-      <section className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold">사진</h2>
-          {company.status === "ACTIVE" ? (
+      {/* 미리보기 — 실제 업체 페이지와 동일한 레이아웃, 사진은 탭해서 바로 등록/변경 */}
+      <section className="mt-4">
+        <div className="mb-2 flex items-center justify-between px-1">
+          <h2 className="text-sm font-semibold">미리보기</h2>
+          {company.status === "ACTIVE" && (
             <Link
               href={`/companies/${company.id}`}
               target="_blank"
               className="text-xs font-medium text-neutral-500 underline"
             >
-              내 업체 페이지에서 보기 →
+              실제 페이지에서 열기 ↗
             </Link>
-          ) : (
-            <span className="text-[11px] text-neutral-400">승인 후 페이지에서 볼 수 있어요</span>
           )}
         </div>
+        {company.status === "PENDING" && (
+          <p className="mb-2 px-1 text-[11px] text-neutral-400">
+            승인 전이라 고객에게는 아직 안 보여요. 아래는 승인 후 보일 모습이에요.
+          </p>
+        )}
 
-        <PhotoPreviewEditor
-          mainImageUrl={company.mainImageUrl}
+        <CompanyPagePreview
+          company={{
+            name: company.name,
+            introText: company.introText,
+            businessHours: company.businessHours,
+            isAvailable: company.isAvailable,
+            phone: company.phone,
+            mainImageUrl: company.mainImageUrl,
+          }}
+          services={company.services.map((s) => ({
+            id: s.id,
+            categoryName: s.category.name,
+            price: s.price,
+            description: s.description,
+          }))}
+          regionNames={company.regions.map((r) => r.region.name)}
+          averageRating={averageRating}
+          reviewCount={reviewCount}
           workPhotos={company.photos.filter((p) => p.type === "WORK")}
           beforeAfterPhotos={company.photos.filter((p) => p.type === "BEFORE_AFTER")}
         />
