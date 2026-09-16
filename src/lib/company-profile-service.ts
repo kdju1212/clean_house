@@ -219,13 +219,22 @@ export async function confirmPhotoUploadForOwner(
   } catch (err) {
     await deleteCloudinaryObject(finalPublicId).catch(() => {});
     // A known, user-actionable reason (too big even after re-encoding, bad
-    // format) is worth showing as-is; anything else (a transient sharp/
-    // network failure) falls back to the generic message.
+    // format) is worth showing as-is. Anything else (a transient sharp/
+    // network/Cloudinary failure) also gets shown, appending whatever detail
+    // the error carries, instead of a bare generic message that hides
+    // whether it was a size problem, a corrupt file, or something else —
+    // the underlying message is safe to show (it's this owner's own upload,
+    // seen only by them, never a customer).
+    console.error("Photo re-encode failed:", err);
     if (err instanceof InvalidImageError) {
       throw err;
     }
-    console.error("Photo re-encode failed:", err);
-    throw new Error("이미지 처리에 실패했어요. 다른 사진으로 다시 시도해주세요.");
+    const detail = err instanceof Error ? err.message : null;
+    throw new Error(
+      detail
+        ? `이미지 처리에 실패했어요: ${detail}`
+        : "이미지 처리에 실패했어요. 다른 사진으로 다시 시도해주세요."
+    );
   } finally {
     await deleteCloudinaryObject(input.publicId).catch(() => {});
   }
