@@ -13,7 +13,12 @@ import {
   getCloudinaryResource,
   uploadBufferToCloudinary,
 } from "@/lib/cloudinary";
-import { assertValidImageMeta, assertValidUploadedImage } from "@/lib/image";
+import {
+  assertValidImageMeta,
+  assertValidUploadedImage,
+  InvalidImageError,
+  MAX_PROCESSED_IMAGE_SIZE_BYTES,
+} from "@/lib/image";
 import { processImageToWebp } from "@/lib/image-process";
 
 const MAX_NAME_LENGTH = 60;
@@ -201,13 +206,25 @@ export async function confirmPhotoUploadForOwner(
     const webp = await processImageToWebp(buffer);
     await uploadBufferToCloudinary(finalPublicId, webp, "image/webp");
     const finalResource = await getCloudinaryResource(finalPublicId);
+    // The re-encoded WebP gets its own, more generous size ceiling than the
+    // raw upload check above — these photos are deliberately allowed to be
+    // very tall, so a legitimately large re-encode shouldn't be treated the
+    // same as a suspicious oversized input.
     assertValidUploadedImage(
       finalResource
         ? { contentLength: finalResource.bytes, contentType: finalResource.contentType }
-        : null
+        : null,
+      MAX_PROCESSED_IMAGE_SIZE_BYTES
     );
-  } catch {
+  } catch (err) {
     await deleteCloudinaryObject(finalPublicId).catch(() => {});
+    // A known, user-actionable reason (too big even after re-encoding, bad
+    // format) is worth showing as-is; anything else (a transient sharp/
+    // network failure) falls back to the generic message.
+    if (err instanceof InvalidImageError) {
+      throw err;
+    }
+    console.error("Photo re-encode failed:", err);
     throw new Error("이미지 처리에 실패했어요. 다른 사진으로 다시 시도해주세요.");
   } finally {
     await deleteCloudinaryObject(input.publicId).catch(() => {});
