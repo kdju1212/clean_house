@@ -23,11 +23,26 @@ export default async function CompanyDetailEditPage() {
     notFound();
   }
 
-  const ratingSummary = await prisma.review.aggregate({
-    where: { companyId: company.id },
-    _avg: { rating: true },
-    _count: true,
-  });
+  const [reviews, ratingSummary, ratingGroups] = await Promise.all([
+    prisma.review.findMany({
+      where: { companyId: company.id, hidden: false },
+      include: { customer: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.review.aggregate({
+      where: { companyId: company.id, hidden: false },
+      _avg: { rating: true },
+      _count: true,
+    }),
+    prisma.review.groupBy({
+      by: ["rating"],
+      where: { companyId: company.id, hidden: false },
+      _count: true,
+    }),
+  ]);
+  const ratingCounts = [5, 4, 3, 2, 1].map(
+    (star) => ratingGroups.find((g) => g.rating === star)?._count ?? 0
+  );
 
   return (
     <main className="mx-auto w-full max-w-md flex-1 px-4 py-6 pb-16">
@@ -72,8 +87,17 @@ export default async function CompanyDetailEditPage() {
           regionNames={company.regions.map((r) => r.region.name)}
           averageRating={ratingSummary._avg.rating ?? 0}
           reviewCount={ratingSummary._count}
+          ratingCounts={ratingCounts}
           workPhotos={company.photos.filter((p) => p.type === "WORK")}
           beforeAfterPhotos={company.photos.filter((p) => p.type === "BEFORE_AFTER")}
+          reviews={reviews.map((r) => ({
+            id: r.id,
+            rating: r.rating,
+            createdAt: r.createdAt,
+            customerName: r.customer.name ?? "익명",
+            content: r.content,
+            photoUrl: r.photoUrl,
+          }))}
         />
       </div>
     </main>

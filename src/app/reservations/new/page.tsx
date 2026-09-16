@@ -7,14 +7,14 @@ import { NewReservationForm } from "./new-reservation-form";
 export default async function NewReservationPage({
   searchParams,
 }: {
-  searchParams: Promise<{ companyId?: string }>;
+  searchParams: Promise<{ companyId?: string; categoryId?: string }>;
 }) {
   const session = await auth();
   if (!session?.user) {
     redirect("/login");
   }
 
-  const { companyId } = await searchParams;
+  const { companyId, categoryId } = await searchParams;
   if (!companyId) notFound();
 
   const [company, me] = await Promise.all([
@@ -43,6 +43,9 @@ export default async function NewReservationPage({
   }
 
   const todayStr = new Date().toISOString().slice(0, 10);
+  const defaultCategoryId = company.services.some((s) => s.categoryId === categoryId)
+    ? categoryId
+    : undefined;
 
   return (
     <main className="mx-auto w-full max-w-md flex-1 px-4 py-6">
@@ -56,6 +59,7 @@ export default async function NewReservationPage({
       <NewReservationForm
         companyId={company.id}
         services={company.services}
+        defaultCategoryId={defaultCategoryId}
         defaultName={me.name ?? ""}
         defaultPhone={me.phone ?? ""}
         todayStr={todayStr}

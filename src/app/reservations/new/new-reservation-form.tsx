@@ -8,12 +8,14 @@ import { createReservation } from "../actions";
 export function NewReservationForm({
   companyId,
   services,
+  defaultCategoryId,
   defaultName,
   defaultPhone,
   todayStr,
 }: {
   companyId: string;
   services: { categoryId: string; price: number; category: { name: string } }[];
+  defaultCategoryId?: string;
   defaultName: string;
   defaultPhone: string;
   todayStr: string;
@@ -64,6 +66,7 @@ export function NewReservationForm({
         <select
           name="categoryId"
           required
+          defaultValue={defaultCategoryId}
           className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
         >
           {services.map((s) => (

@@ -4,8 +4,12 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { confirmPhotoUpload, deletePhoto, requestPhotoUploadUrl } from "./actions";
+import { PhotoGrid, type PhotoItem } from "@/components/company-detail/photo-grid";
+import { InfoRows } from "@/components/company-detail/info-rows";
+import { RatingDistribution } from "@/components/company-detail/rating-distribution";
+import { ReviewCard, ReviewPhotoStrip, type ReviewItem } from "@/components/company-detail/review-list";
 
-type Photo = { id: string; url: string };
+type Photo = PhotoItem;
 
 type Service = {
   id: string;
@@ -28,8 +32,10 @@ export function CompanyPagePreview({
   regionNames,
   averageRating,
   reviewCount,
+  ratingCounts,
   workPhotos,
   beforeAfterPhotos,
+  reviews,
 }: {
   company: {
     name: string;
@@ -43,8 +49,10 @@ export function CompanyPagePreview({
   regionNames: string[];
   averageRating: number;
   reviewCount: number;
+  ratingCounts: number[];
   workPhotos: Photo[];
   beforeAfterPhotos: Photo[];
+  reviews: ReviewItem[];
 }) {
   const {
     inputRef: mainInputRef,
@@ -123,25 +131,37 @@ export function CompanyPagePreview({
           </ul>
         </section>
 
-        <PhotoGridSection title="작업 사진" type="WORK" photos={workPhotos} />
-        <PhotoGridSection title="전/후 비교" type="BEFORE_AFTER" photos={beforeAfterPhotos} />
+        <EditablePhotoGrid title="작업 사진" type="WORK" photos={workPhotos} />
+        <EditablePhotoGrid title="전/후 비교" type="BEFORE_AFTER" photos={beforeAfterPhotos} />
 
-        <section className="mt-5 flex flex-col gap-2 rounded-xl bg-neutral-50 p-3 text-sm">
-          <Row label="서비스 지역" value={regionNames.join(", ") || "-"} />
-          <Row label="영업시간" value={company.businessHours ?? "-"} />
-          <Row label="예약 가능 여부" value={company.isAvailable ? "예약 가능" : "예약 마감"} />
-          {company.phone && <Row label="연락처" value={company.phone} />}
+        <InfoRows
+          rows={[
+            { label: "서비스 지역", value: regionNames.join(", ") || "-" },
+            { label: "영업시간", value: company.businessHours ?? "-" },
+            { label: "예약 가능 여부", value: company.isAvailable ? "예약 가능" : "예약 마감" },
+            ...(company.phone ? [{ label: "연락처", value: company.phone }] : []),
+          ]}
+        />
+
+        <section className="mt-5">
+          <h2 className="text-sm font-semibold">
+            리뷰 {reviewCount > 0 ? `(${reviewCount})` : ""}
+          </h2>
+          <RatingDistribution
+            averageRating={averageRating}
+            reviewCount={reviewCount}
+            counts={ratingCounts}
+          />
+          <ReviewPhotoStrip reviews={reviews} />
+          {reviews.length > 0 && (
+            <ul className="mt-3 flex flex-col gap-3">
+              {reviews.map((review) => (
+                <ReviewCard key={review.id} review={review} />
+              ))}
+            </ul>
+          )}
         </section>
       </div>
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between">
-      <span className="text-neutral-500">{label}</span>
-      <span className="text-right">{value}</span>
     </div>
   );
 }
@@ -204,7 +224,7 @@ function usePhotoUpload(type: string) {
   return { inputRef, uploading, error, pick, handleChange };
 }
 
-function PhotoGridSection({
+function EditablePhotoGrid({
   title,
   type,
   photos,
@@ -216,36 +236,33 @@ function PhotoGridSection({
   const { inputRef, uploading, error, pick, handleChange } = usePhotoUpload(type);
 
   return (
-    <section className="mt-5">
-      <h2 className="text-sm font-semibold">{title}</h2>
-      <div className="mt-2 grid grid-cols-3 gap-2">
-        {photos.map((photo) => (
-          <div
-            key={photo.id}
-            className="relative aspect-square overflow-hidden rounded-lg bg-neutral-100"
+    <>
+      <PhotoGrid
+        title={title}
+        photos={photos}
+        photoOverlay={(photo) => (
+          <form action={deletePhoto} className="absolute right-1 top-1">
+            <input type="hidden" name="photoId" value={photo.id} />
+            <button
+              type="submit"
+              aria-label="사진 삭제"
+              className="flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-xs leading-none text-white"
+            >
+              ×
+            </button>
+          </form>
+        )}
+        extraTile={
+          <button
+            type="button"
+            onClick={pick}
+            disabled={uploading}
+            className="flex aspect-square items-center justify-center rounded-lg border border-dashed border-neutral-300 text-2xl text-neutral-400"
           >
-            <Image src={photo.url} alt={title} fill sizes="120px" className="object-cover" />
-            <form action={deletePhoto} className="absolute right-1 top-1">
-              <input type="hidden" name="photoId" value={photo.id} />
-              <button
-                type="submit"
-                aria-label="사진 삭제"
-                className="flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-xs leading-none text-white"
-              >
-                ×
-              </button>
-            </form>
-          </div>
-        ))}
-        <button
-          type="button"
-          onClick={pick}
-          disabled={uploading}
-          className="flex aspect-square items-center justify-center rounded-lg border border-dashed border-neutral-300 text-2xl text-neutral-400"
-        >
-          {uploading ? <span className="text-xs">업로드중</span> : "+"}
-        </button>
-      </div>
+            {uploading ? <span className="text-xs">업로드중</span> : "+"}
+          </button>
+        }
+      />
       <input
         ref={inputRef}
         type="file"
@@ -254,6 +271,6 @@ function PhotoGridSection({
         className="hidden"
       />
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
-    </section>
+    </>
   );
 }
