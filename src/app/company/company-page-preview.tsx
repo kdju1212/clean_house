@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { confirmPhotoUpload, deletePhoto, requestPhotoUploadUrl } from "./actions";
-import { PhotoGrid, type PhotoItem } from "@/components/company-detail/photo-grid";
+import { PhotoStack, type PhotoItem } from "@/components/company-detail/photo-stack";
 import { InfoRows } from "@/components/company-detail/info-rows";
 import { RatingDistribution } from "@/components/company-detail/rating-distribution";
 import { ReviewCard, ReviewPhotoStrip, type ReviewItem } from "@/components/company-detail/review-list";
@@ -21,7 +21,7 @@ type Service = {
 /**
  * A live clone of the real company detail page (src/app/companies/[id]/page.tsx)
  * embedded right in the dashboard — same layout, same classes — except the
- * gallery photo and the two photo grids are click-to-upload. This is
+ * gallery photo and the two photo stacks are click-to-upload. This is
  * "미리보기" in the literal sense: what the owner sees here is what a
  * customer sees, and tapping a photo spot uploads straight into it instead
  * of going through a separate form disconnected from the actual page.
@@ -131,8 +131,8 @@ export function CompanyPagePreview({
           </ul>
         </section>
 
-        <EditablePhotoGrid title="작업 사진" type="WORK" photos={workPhotos} />
-        <EditablePhotoGrid title="전/후 비교" type="BEFORE_AFTER" photos={beforeAfterPhotos} />
+        <EditablePhotoStack title="작업 사진" type="WORK" photos={workPhotos} />
+        <EditablePhotoStack title="전/후 비교" type="BEFORE_AFTER" photos={beforeAfterPhotos} />
 
         <InfoRows
           rows={[
@@ -224,7 +224,7 @@ function usePhotoUpload(type: string) {
   return { inputRef, uploading, error, pick, handleChange };
 }
 
-function EditablePhotoGrid({
+function EditablePhotoStack({
   title,
   type,
   photos,
@@ -237,16 +237,16 @@ function EditablePhotoGrid({
 
   return (
     <>
-      <PhotoGrid
+      <PhotoStack
         title={title}
         photos={photos}
         photoOverlay={(photo) => (
-          <form action={deletePhoto} className="absolute right-1 top-1">
+          <form action={deletePhoto} className="absolute right-2 top-2">
             <input type="hidden" name="photoId" value={photo.id} />
             <button
               type="submit"
               aria-label="사진 삭제"
-              className="flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-xs leading-none text-white"
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-sm leading-none text-white"
             >
               ×
             </button>
@@ -257,9 +257,9 @@ function EditablePhotoGrid({
             type="button"
             onClick={pick}
             disabled={uploading}
-            className="flex aspect-square items-center justify-center rounded-lg border border-dashed border-neutral-300 text-2xl text-neutral-400"
+            className="flex aspect-square w-full items-center justify-center rounded-lg border border-dashed border-neutral-300 text-3xl text-neutral-400"
           >
-            {uploading ? <span className="text-xs">업로드중</span> : "+"}
+            {uploading ? <span className="text-sm">업로드중</span> : "+"}
           </button>
         }
       />

@@ -4,11 +4,12 @@ import Image from "next/image";
 export type PhotoItem = { id: string; url: string };
 
 /**
- * Shared 3-col photo grid for 작업 사진 / 전/후 비교 — used read-only on the
- * public detail page (no extraTile, hides when empty) and interactively on
- * the owner's preview (extraTile is the "+" upload tile, so it always shows).
+ * Coupang-style detail images: full-width, stacked vertically, one after
+ * another — not a small thumbnail grid. Used read-only on the public detail
+ * page (no extraTile, hides when empty) and interactively on the owner's
+ * preview (extraTile is the "+" upload tile, so it always shows).
  */
-export function PhotoGrid({
+export function PhotoStack({
   title,
   photos,
   extraTile,
@@ -24,13 +25,13 @@ export function PhotoGrid({
   return (
     <section className="mt-5">
       <h2 className="text-sm font-semibold">{title}</h2>
-      <div className="mt-2 grid grid-cols-3 gap-2">
+      <div className="mt-2 flex flex-col gap-3">
         {photos.map((photo) => (
           <div
             key={photo.id}
-            className="relative aspect-square overflow-hidden rounded-lg bg-neutral-100"
+            className="relative aspect-square w-full overflow-hidden rounded-lg bg-neutral-100"
           >
-            <Image src={photo.url} alt={title} fill sizes="120px" className="object-cover" />
+            <Image src={photo.url} alt={title} fill sizes="480px" className="object-cover" />
             {photoOverlay?.(photo)}
           </div>
         ))}

@@ -5,7 +5,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { toggleFavorite } from "./actions";
 import { Gallery } from "./gallery";
 import { ServiceBar } from "./service-bar";
-import { PhotoGrid } from "@/components/company-detail/photo-grid";
+import { PhotoStack } from "@/components/company-detail/photo-stack";
 import { InfoRows } from "@/components/company-detail/info-rows";
 import { RatingDistribution } from "@/components/company-detail/rating-distribution";
 import { ReviewCard, ReviewPhotoStrip } from "@/components/company-detail/review-list";
@@ -129,8 +129,8 @@ export default async function CompanyDetailPage({
 
         <ServiceBar companyId={company.id} services={services} />
 
-        <PhotoGrid title="작업 사진" photos={workPhotos} />
-        <PhotoGrid title="전/후 비교" photos={beforeAfterPhotos} />
+        <PhotoStack title="작업 사진" photos={workPhotos} />
+        <PhotoStack title="전/후 비교" photos={beforeAfterPhotos} />
 
         <InfoRows
           rows={[
