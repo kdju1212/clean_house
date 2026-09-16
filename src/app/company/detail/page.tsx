@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { CompanyPagePreview } from "../company-page-preview";
+import { ScrollToTopButton } from "@/components/scroll-to-top-button";
 
 export default async function CompanyDetailEditPage() {
   const session = await auth();
@@ -100,6 +101,8 @@ export default async function CompanyDetailEditPage() {
           }))}
         />
       </div>
+
+      <ScrollToTopButton />
     </main>
   );
 }

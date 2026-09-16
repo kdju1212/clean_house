@@ -9,6 +9,7 @@ import { PhotoStack } from "@/components/company-detail/photo-stack";
 import { InfoRows } from "@/components/company-detail/info-rows";
 import { RatingDistribution } from "@/components/company-detail/rating-distribution";
 import { ReviewCard, ReviewPhotoStrip } from "@/components/company-detail/review-list";
+import { ScrollToTopButton } from "@/components/scroll-to-top-button";
 import Link from "next/link";
 
 export default async function CompanyDetailPage({
@@ -160,6 +161,8 @@ export default async function CompanyDetailPage({
           )}
         </section>
       </div>
+
+      <ScrollToTopButton />
     </main>
   );
 }
