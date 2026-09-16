@@ -257,9 +257,9 @@ function EditablePhotoStack({
             type="button"
             onClick={pick}
             disabled={uploading}
-            className="flex aspect-square w-full items-center justify-center rounded-lg border border-dashed border-neutral-300 text-3xl text-neutral-400"
+            className="mt-2 flex h-16 w-full items-center justify-center rounded-lg border border-dashed border-neutral-300 text-2xl text-neutral-400"
           >
-            {uploading ? <span className="text-sm">업로드중</span> : "+"}
+            {uploading ? <span className="text-sm">업로드중</span> : "+ 사진 추가"}
           </button>
         }
       />
