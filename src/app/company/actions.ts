@@ -180,7 +180,11 @@ export async function confirmPhotoUpload(input: {
   try {
     const session = await requireSession();
     await confirmPhotoUploadForOwner(session.user.id, input);
+    // Uploaded from /company/detail's live preview — /company itself no
+    // longer shows photos, but keep revalidating it too in case anything
+    // there ever reads mainImageUrl again.
     revalidatePath("/company");
+    revalidatePath("/company/detail");
     return { ok: true };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "알 수 없는 오류가 발생했어요." };
@@ -194,4 +198,5 @@ export async function deletePhoto(formData: FormData) {
 
   await deletePhotoForOwner(session.user.id, photoId);
   revalidatePath("/company");
+  revalidatePath("/company/detail");
 }

@@ -4,7 +4,6 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SubmitButton } from "@/components/submit-button";
 import { deleteService } from "./actions";
-import { CompanyPagePreview } from "./company-page-preview";
 import { ProfileForm } from "./profile-form";
 import { AddServiceForm } from "./add-service-form";
 import { RegionSelectForm } from "./region-select-form";
@@ -25,7 +24,6 @@ export default async function CompanyDashboardPage() {
     where: { ownerUserId: session.user.id },
     include: {
       services: { include: { category: true }, orderBy: { createdAt: "asc" } },
-      photos: { orderBy: { createdAt: "desc" } },
       // parent included so the region-select form can show "구 동" labels
       // for the company's existing picks without a second query.
       regions: { include: { region: { include: { parent: true } } } },
@@ -136,6 +134,16 @@ export default async function CompanyDashboardPage() {
         </span>
       </Link>
 
+      <Link
+        href="/company/detail"
+        className="mt-3 flex items-center justify-between rounded-2xl border border-neutral-200 bg-white p-4 text-sm font-semibold"
+      >
+        상세페이지 수정
+        <span aria-hidden className="text-neutral-400">
+          →
+        </span>
+      </Link>
+
       {/* 프로필 */}
       <section className="mt-6 rounded-2xl border border-neutral-200 bg-white p-4">
         <h2 className="text-sm font-semibold">기본 정보</h2>
@@ -190,49 +198,6 @@ export default async function CompanyDashboardPage() {
         <RegionSelectForm
           legacyRegions={legacyRegions}
           initialSelectedRegions={initialSelectedRegions}
-        />
-      </section>
-
-      {/* 미리보기 — 실제 업체 페이지와 동일한 레이아웃, 사진은 탭해서 바로 등록/변경 */}
-      <section className="mt-4">
-        <div className="mb-2 flex items-center justify-between px-1">
-          <h2 className="text-sm font-semibold">미리보기</h2>
-          {company.status === "ACTIVE" && (
-            <Link
-              href={`/companies/${company.id}`}
-              target="_blank"
-              className="text-xs font-medium text-neutral-500 underline"
-            >
-              실제 페이지에서 열기 ↗
-            </Link>
-          )}
-        </div>
-        {company.status === "PENDING" && (
-          <p className="mb-2 px-1 text-[11px] text-neutral-400">
-            승인 전이라 고객에게는 아직 안 보여요. 아래는 승인 후 보일 모습이에요.
-          </p>
-        )}
-
-        <CompanyPagePreview
-          company={{
-            name: company.name,
-            introText: company.introText,
-            businessHours: company.businessHours,
-            isAvailable: company.isAvailable,
-            phone: company.phone,
-            mainImageUrl: company.mainImageUrl,
-          }}
-          services={company.services.map((s) => ({
-            id: s.id,
-            categoryName: s.category.name,
-            price: s.price,
-            description: s.description,
-          }))}
-          regionNames={company.regions.map((r) => r.region.name)}
-          averageRating={averageRating}
-          reviewCount={reviewCount}
-          workPhotos={company.photos.filter((p) => p.type === "WORK")}
-          beforeAfterPhotos={company.photos.filter((p) => p.type === "BEFORE_AFTER")}
         />
       </section>
 
