@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export type PhotoItem = { id: string; url: string };
 
@@ -18,15 +18,20 @@ const COLLAPSED_HEIGHT = 560;
  * dimensions before it's uploaded, so there's no size to pass next/image's
  * required width/height (or a fill container with a matching aspect-ratio).
  *
- * Collapses behind a "더 보기" button when there's more than one photo (a
- * single photo is never worth folding), matching Coupang's own long detail
- * page — a fade-to-white gradient hints there's more below. extraTile (the
- * owner's "+" upload button) always stays outside the fold so adding a
- * photo never requires expanding first.
+ * Collapses behind a "더 보기" button whenever the actual rendered content
+ * is taller than the fold — which is just as often *one* very tall
+ * infographic-style photo as it is several stacked ones, so this can't be
+ * decided from photos.length alone; it has to measure real layout height
+ * (a ResizeObserver on the content, since <img> intrinsic height isn't
+ * known until each one finishes loading and the container grows). Starts
+ * assuming it's tall (folds by default, like Coupang) rather than flashing
+ * the full stack open first and snapping shut once measured.
  *
- * Used read-only on the public detail page (no extraTile, hides when
- * empty) and interactively on the owner's preview (extraTile is the "+"
- * upload tile, so it always shows).
+ * extraTile (the owner's "+" upload button) always stays outside the fold
+ * so adding a photo never requires expanding first. Used read-only on the
+ * public detail page (no extraTile, hides when empty) and interactively on
+ * the owner's preview (extraTile is the "+" upload tile, so it always
+ * shows).
  */
 export function PhotoStack({
   title,
@@ -39,17 +44,32 @@ export function PhotoStack({
   extraTile?: ReactNode;
   photoOverlay?: (photo: PhotoItem) => ReactNode;
 }) {
+  const contentRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
+  const [overflowing, setOverflowing] = useState(photos.length > 0);
+
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+
+    const check = () => setOverflowing(el.scrollHeight > COLLAPSED_HEIGHT);
+    check();
+
+    const observer = new ResizeObserver(check);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [photos]);
 
   if (photos.length === 0 && !extraTile) return null;
 
-  const collapsible = photos.length > 1 && !expanded;
+  const collapsible = overflowing && !expanded;
 
   return (
     <section className="mt-5">
       <h2 className="text-sm font-semibold">{title}</h2>
       <div className="relative mt-2">
         <div
+          ref={contentRef}
           className="flex flex-col overflow-hidden rounded-lg"
           style={collapsible ? { maxHeight: COLLAPSED_HEIGHT } : undefined}
         >
