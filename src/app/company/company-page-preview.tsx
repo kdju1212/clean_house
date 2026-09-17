@@ -61,7 +61,7 @@ export function CompanyPagePreview({
     error: mainError,
     pick: pickMain,
     handleChange: handleMainChange,
-  } = usePhotoUpload("MAIN");
+  } = usePhotoUpload("MAIN", { requireSquare: true });
 
   const [name, setName] = useState(company.name);
   const [phone, setPhone] = useState(company.phone ?? "");
@@ -247,7 +247,25 @@ export function CompanyPagePreview({
   );
 }
 
-function usePhotoUpload(type: string) {
+/** Reads a file's pixel dimensions without uploading it — used to gate the
+ * 1:1-only main photo slot before spending a signed upload URL on it. */
+function readImageDimensions(file: File): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new window.Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("이미지를 불러올 수 없어요."));
+    };
+    img.src = url;
+  });
+}
+
+function usePhotoUpload(type: string, options?: { requireSquare?: boolean }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -264,6 +282,20 @@ function usePhotoUpload(type: string) {
     if (!file) return;
 
     setError(null);
+
+    if (options?.requireSquare) {
+      try {
+        const { width, height } = await readImageDimensions(file);
+        if (width !== height) {
+          setError("대표사진은 1:1(정사각형) 비율의 이미지만 등록할 수 있어요.");
+          return;
+        }
+      } catch {
+        setError("이미지를 불러올 수 없어요. 다른 사진으로 다시 시도해주세요.");
+        return;
+      }
+    }
+
     setUploading(true);
     try {
       const signed = await requestPhotoUploadUrl({ contentType: file.type, size: file.size });
