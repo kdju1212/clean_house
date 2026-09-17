@@ -1,8 +1,10 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { SubmitButton } from "@/components/submit-button";
 import { updateProfile } from "./actions";
+import { BusinessHoursPicker } from "./business-hours-picker";
+import { formatPhoneNumber } from "./phone-format";
 
 export function ProfileForm({
   name,
@@ -18,6 +20,8 @@ export function ProfileForm({
   isAvailable: boolean;
 }) {
   const [state, formAction] = useActionState(updateProfile, undefined);
+  const [phoneValue, setPhoneValue] = useState(phone);
+  const [businessHoursValue, setBusinessHoursValue] = useState(businessHours);
 
   return (
     <form action={formAction} className="mt-3 flex flex-col gap-3">
@@ -34,8 +38,12 @@ export function ProfileForm({
         연락처
         <input
           name="phone"
-          defaultValue={phone}
+          value={phoneValue}
+          onChange={(e) => setPhoneValue(formatPhoneNumber(e.target.value))}
           required
+          inputMode="numeric"
+          maxLength={13}
+          placeholder="010-0000-0000"
           className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
         />
       </label>
@@ -48,15 +56,11 @@ export function ProfileForm({
           className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
         />
       </label>
-      <label className="flex flex-col gap-1 text-sm font-medium">
+      <div className="flex flex-col gap-1.5 text-sm font-medium">
         영업시간
-        <input
-          name="businessHours"
-          defaultValue={businessHours}
-          placeholder="예: 09:00 - 18:00"
-          className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
-        />
-      </label>
+        <BusinessHoursPicker value={businessHoursValue} onChange={setBusinessHoursValue} />
+        <input type="hidden" name="businessHours" value={businessHoursValue} />
+      </div>
       <label className="flex items-center gap-2 text-sm font-medium">
         <input type="checkbox" name="isAvailable" defaultChecked={isAvailable} />
         현재 예약 가능

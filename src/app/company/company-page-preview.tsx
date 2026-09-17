@@ -4,6 +4,8 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { confirmPhotoUpload, deletePhoto, requestPhotoUploadUrl, updateProfile } from "./actions";
+import { BusinessHoursPicker } from "./business-hours-picker";
+import { formatPhoneNumber } from "./phone-format";
 import { PhotoStack, type PhotoItem } from "@/components/company-detail/photo-stack";
 import { RatingDistribution } from "@/components/company-detail/rating-distribution";
 import { ReviewCard, ReviewPhotoStrip, type ReviewItem } from "@/components/company-detail/review-list";
@@ -177,19 +179,17 @@ export function CompanyPagePreview({
         <EditablePhotoStack title="작업 사진" type="WORK" photos={workPhotos} />
         <EditablePhotoStack title="전/후 비교" type="BEFORE_AFTER" photos={beforeAfterPhotos} />
 
-        <section className="mt-5 overflow-hidden rounded-xl border border-neutral-200">
+        <div className="mt-5">
+          <p className="text-sm font-medium">영업시간</p>
+          <div className="mt-1.5">
+            <BusinessHoursPicker value={businessHours} onChange={setBusinessHours} />
+          </div>
+        </div>
+
+        <section className="mt-3 overflow-hidden rounded-xl border border-neutral-200">
           <div className="flex justify-between px-3 py-2.5 text-sm">
             <span className="text-neutral-500">서비스 지역</span>
             <span className="text-right font-medium">{regionNames.join(", ") || "-"}</span>
-          </div>
-          <div className="flex items-center justify-between border-t border-neutral-100 px-3 py-2 text-sm">
-            <span className="shrink-0 text-neutral-500">영업시간</span>
-            <input
-              value={businessHours}
-              onChange={(e) => setBusinessHours(e.target.value)}
-              placeholder="예: 09:00-18:00"
-              className="ml-2 w-32 rounded-lg border border-neutral-200 px-2 py-1 text-right text-sm"
-            />
           </div>
           <label className="flex items-center justify-between border-t border-neutral-100 px-3 py-2.5 text-sm">
             <span className="text-neutral-500">예약 가능 여부</span>
@@ -203,8 +203,10 @@ export function CompanyPagePreview({
             <span className="shrink-0 text-neutral-500">연락처</span>
             <input
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => setPhone(formatPhoneNumber(e.target.value))}
               required
+              inputMode="numeric"
+              maxLength={13}
               placeholder="010-0000-0000"
               className="ml-2 w-32 rounded-lg border border-neutral-200 px-2 py-1 text-right text-sm"
             />
