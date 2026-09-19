@@ -22,7 +22,7 @@ export function CompanyListCard({
   isAvailable: boolean;
   introText: string | null;
   price: number;
-  /** PER_UNIT services show "price원/평~" instead of a flat "price원~". */
+  /** PER_UNIT services show "평당 price원~" instead of a flat "price원~". */
   pricingUnit?: "FLAT" | "PER_UNIT";
   /** price * the customer's saved quantity (see CategoryProfile) — shown
    * instead of the raw per-unit rate when available. */
@@ -89,12 +89,12 @@ export function CompanyListCard({
           <p className="mt-1 text-sm font-semibold">
             예상 {estimatedPrice.toLocaleString()}원{" "}
             <span className="text-xs font-normal text-neutral-400">
-              ({price.toLocaleString()}원/{unitLabel} 기준)
+              ({unitLabel}당 {price.toLocaleString()}원 기준)
             </span>
           </p>
         ) : pricingUnit === "PER_UNIT" ? (
           <p className="mt-1 text-sm font-semibold">
-            {price.toLocaleString()}원/{unitLabel}~
+            {unitLabel}당 {price.toLocaleString()}원~
           </p>
         ) : (
           <p className="mt-1 text-sm font-semibold">{price.toLocaleString()}원~</p>

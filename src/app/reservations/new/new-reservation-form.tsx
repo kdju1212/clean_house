@@ -2,7 +2,11 @@
 
 import { useActionState, useState } from "react";
 import { TIME_SLOTS } from "@/lib/reservation";
-import { getReservationQuestions } from "@/lib/reservation-questions";
+import {
+  getPricingQuantityKey,
+  getReservationQuestions,
+  PRICING_UNIT_LABEL,
+} from "@/lib/reservation-questions";
 import { SubmitButton } from "@/components/submit-button";
 import { createReservation } from "../actions";
 
@@ -16,7 +20,12 @@ export function NewReservationForm({
   categoryProfiles,
 }: {
   companyId: string;
-  services: { categoryId: string; price: number; category: { name: string; slug: string } }[];
+  services: {
+    categoryId: string;
+    price: number;
+    pricingUnit: "FLAT" | "PER_UNIT";
+    category: { name: string; slug: string };
+  }[];
   defaultCategoryId?: string;
   defaultName: string;
   defaultPhone: string;
@@ -82,11 +91,19 @@ export function NewReservationForm({
           onChange={(e) => setCategoryId(e.target.value)}
           className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
         >
-          {services.map((s) => (
-            <option key={s.categoryId} value={s.categoryId}>
-              {s.category.name} ({s.price.toLocaleString()}원~)
-            </option>
-          ))}
+          {services.map((s) => {
+            const unitLabel =
+              s.pricingUnit === "PER_UNIT"
+                ? PRICING_UNIT_LABEL[getPricingQuantityKey(s.category.slug) ?? ""]
+                : null;
+            return (
+              <option key={s.categoryId} value={s.categoryId}>
+                {s.category.name} (
+                {unitLabel ? `${unitLabel}당 ` : ""}
+                {s.price.toLocaleString()}원~)
+              </option>
+            );
+          })}
         </select>
       </label>
 

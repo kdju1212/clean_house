@@ -8,8 +8,16 @@ type Service = {
   categoryId: string;
   categoryName: string;
   price: number;
+  pricingUnit: "FLAT" | "PER_UNIT";
+  unitLabel: string | null;
   description: string | null;
 };
+
+function formatPrice(service: Service): string {
+  return service.pricingUnit === "PER_UNIT" && service.unitLabel
+    ? `${service.unitLabel}당 ${service.price.toLocaleString()}원`
+    : `${service.price.toLocaleString()}원`;
+}
 
 /**
  * Coupang-style option list + sticky bottom purchase bar: tap a service to
@@ -28,7 +36,7 @@ export function ServiceBar({ companyId, services }: { companyId: string; service
   );
 
   const selected = services.find((s) => s.categoryId === selectedId) ?? null;
-  const barPrice = selected?.price ?? cheapest?.price ?? null;
+  const barService = selected ?? cheapest;
 
   const reserveHref = selected
     ? `/reservations/new?companyId=${companyId}&categoryId=${selected.categoryId}`
@@ -57,7 +65,7 @@ export function ServiceBar({ companyId, services }: { companyId: string; service
                       <p className="text-xs text-neutral-500">{service.description}</p>
                     )}
                   </div>
-                  <p className="font-semibold">{service.price.toLocaleString()}원</p>
+                  <p className="font-semibold">{formatPrice(service)}</p>
                 </button>
               </li>
             );
@@ -73,7 +81,8 @@ export function ServiceBar({ companyId, services }: { companyId: string; service
           <div className="flex-1">
             <p className="text-[11px] text-neutral-400">{selected ? "선택한 서비스" : "시작가"}</p>
             <p className="text-base font-bold">
-              {barPrice?.toLocaleString()}원{!selected && "~"}
+              {barService ? formatPrice(barService) : null}
+              {!selected && "~"}
             </p>
           </div>
           <Link

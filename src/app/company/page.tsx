@@ -167,10 +167,10 @@ export default async function CompanyDashboardPage() {
                 <div>
                   <p className="font-medium">{service.category.name}</p>
                   <p className="text-neutral-500">
-                    {service.price.toLocaleString()}원
                     {service.pricingUnit === "PER_UNIT"
-                      ? `/${PRICING_UNIT_LABEL[getPricingQuantityKey(service.category.slug) ?? ""] ?? ""}`
+                      ? `${PRICING_UNIT_LABEL[getPricingQuantityKey(service.category.slug) ?? ""] ?? ""}당 `
                       : ""}
+                    {service.price.toLocaleString()}원
                     {service.description ? ` · ${service.description}` : ""}
                   </p>
                 </div>

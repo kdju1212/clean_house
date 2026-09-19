@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getPricingQuantityKey, PRICING_UNIT_LABEL } from "@/lib/reservation-questions";
 import { SubmitButton } from "@/components/submit-button";
 import { toggleFavorite } from "./actions";
 import { Gallery } from "./gallery";
@@ -76,6 +77,8 @@ export default async function CompanyDetailPage({
     categoryId: s.categoryId,
     categoryName: s.category.name,
     price: s.price,
+    pricingUnit: s.pricingUnit,
+    unitLabel: PRICING_UNIT_LABEL[getPricingQuantityKey(s.category.slug) ?? ""] ?? null,
     description: s.description,
   }));
   const reviewItems = reviews.map((r) => ({

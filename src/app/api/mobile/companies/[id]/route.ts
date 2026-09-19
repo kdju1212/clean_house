@@ -64,6 +64,7 @@ export async function GET(
       categorySlug: s.category.slug,
       categoryName: s.category.name,
       price: s.price,
+      pricingUnit: s.pricingUnit,
       description: s.description,
     })),
     photos: company.photos.map((p) => ({ id: p.id, url: p.url, type: p.type })),
