@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { TIME_SLOTS } from "@/lib/reservation";
+import { getReservationQuestions } from "@/lib/reservation-questions";
 import { SubmitButton } from "@/components/submit-button";
 import { createReservation } from "../actions";
 
@@ -14,7 +15,7 @@ export function NewReservationForm({
   todayStr,
 }: {
   companyId: string;
-  services: { categoryId: string; price: number; category: { name: string } }[];
+  services: { categoryId: string; price: number; category: { name: string; slug: string } }[];
   defaultCategoryId?: string;
   defaultName: string;
   defaultPhone: string;
@@ -24,6 +25,10 @@ export function NewReservationForm({
   const [address, setAddress] = useState("");
   const [locating, setLocating] = useState(false);
   const [locateError, setLocateError] = useState<string | null>(null);
+  const [categoryId, setCategoryId] = useState(defaultCategoryId ?? services[0]?.categoryId);
+
+  const selectedService = services.find((s) => s.categoryId === categoryId);
+  const questions = selectedService ? getReservationQuestions(selectedService.category.slug) : [];
 
   function handleLocate() {
     setLocateError(null);
@@ -66,7 +71,8 @@ export function NewReservationForm({
         <select
           name="categoryId"
           required
-          defaultValue={defaultCategoryId}
+          value={categoryId}
+          onChange={(e) => setCategoryId(e.target.value)}
           className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
         >
           {services.map((s) => (
@@ -76,6 +82,47 @@ export function NewReservationForm({
           ))}
         </select>
       </label>
+
+      {questions.length > 0 && (
+        <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-3">
+          <p className="text-xs text-neutral-500">
+            업체가 정확한 견적을 낼 수 있도록 아래 정보를 알려주세요.
+          </p>
+          {questions.map((q) =>
+            q.type === "select" ? (
+              <label key={q.key} className="flex flex-col gap-1 text-sm font-medium">
+                {q.label}
+                <select
+                  name={`answer_${q.key}`}
+                  required={q.required}
+                  defaultValue=""
+                  className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
+                >
+                  <option value="" disabled>
+                    선택해주세요
+                  </option>
+                  {q.options?.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <label key={q.key} className="flex flex-col gap-1 text-sm font-medium">
+                {q.label}
+                <input
+                  name={`answer_${q.key}`}
+                  type={q.type === "number" ? "number" : "text"}
+                  required={q.required}
+                  placeholder={q.placeholder}
+                  className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
+                />
+              </label>
+            )
+          )}
+        </div>
+      )}
 
       <label className="flex flex-col gap-1 text-sm font-medium">
         서비스 주소

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { TIME_SLOTS } from "@/lib/reservation";
 import { getRegionAncestorIds } from "@/lib/region";
 import { createNotification } from "@/lib/notification";
+import { parseCategoryAnswers } from "@/lib/reservation-questions";
 
 function startOfToday() {
   const now = new Date();
@@ -25,6 +26,10 @@ export type CreateReservationInput = {
   desiredDateRaw: unknown;
   desiredTime: unknown;
   requestNote: unknown;
+  // Category-specific quote details (e.g. 에어컨청소's 형태/대수) — a plain
+  // {key: value}-shaped object from the client, re-validated below against
+  // that category's actual question set before being stored.
+  categoryAnswers: unknown;
 };
 
 /**
@@ -50,6 +55,7 @@ export async function createReservationForCustomer(
     desiredDateRaw,
     desiredTime,
     requestNote,
+    categoryAnswers,
   } = input;
 
   if (typeof companyId !== "string" || companyId.length === 0) {
@@ -94,6 +100,13 @@ export async function createReservationForCustomer(
     throw new Error("해당 업체가 제공하지 않는 서비스입니다.");
   }
 
+  const parsedCategoryAnswers = parseCategoryAnswers(
+    company.services[0].category.slug,
+    typeof categoryAnswers === "object" && categoryAnswers !== null
+      ? (categoryAnswers as Record<string, unknown>)
+      : {}
+  );
+
   // Re-verify region eligibility server-side too — the UI only shows
   // companies that service the customer's selected region, but a direct API
   // call could name any companyId, so redo that check independently here.
@@ -123,6 +136,7 @@ export async function createReservationForCustomer(
         typeof requestNote === "string" && requestNote.trim().length > 0
           ? requestNote.trim().slice(0, 1000)
           : null,
+      categoryAnswers: parsedCategoryAnswers ?? undefined,
       // Snapshot the price at booking time — the company's price can change
       // later, but this reservation should keep showing what was agreed.
       price: company.services[0].price,

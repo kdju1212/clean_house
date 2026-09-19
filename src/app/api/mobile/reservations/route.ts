@@ -85,6 +85,7 @@ export async function POST(request: Request) {
       desiredDateRaw: (body as Record<string, unknown>).desiredDate,
       desiredTime: (body as Record<string, unknown>).desiredTime,
       requestNote: (body as Record<string, unknown>).requestNote,
+      categoryAnswers: (body as Record<string, unknown>).categoryAnswers,
     });
     return NextResponse.json({ reservationId });
   } catch (err) {

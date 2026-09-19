@@ -42,6 +42,8 @@ export async function GET(
       address: reservation.address,
       addressDetail: reservation.addressDetail,
       requestNote: reservation.requestNote,
+      categorySlug: reservation.category.slug,
+      categoryAnswers: reservation.categoryAnswers,
     },
   });
 }

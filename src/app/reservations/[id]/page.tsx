@@ -6,6 +6,7 @@ import {
   RESERVATION_STATUS_BADGE_CLASS,
   RESERVATION_STATUS_LABEL,
 } from "@/lib/reservation";
+import { getReservationQuestions } from "@/lib/reservation-questions";
 import { CancelReservationButton } from "../cancel-reservation-button";
 
 export default async function ReservationDetailPage({
@@ -28,6 +29,12 @@ export default async function ReservationDetailPage({
   if (!reservation || reservation.customerId !== session.user.id) {
     notFound();
   }
+
+  const answers =
+    reservation.categoryAnswers && typeof reservation.categoryAnswers === "object"
+      ? (reservation.categoryAnswers as Record<string, string>)
+      : null;
+  const questions = getReservationQuestions(reservation.category.slug);
 
   return (
     <main className="mx-auto w-full max-w-md flex-1 px-4 py-6">
@@ -72,6 +79,19 @@ export default async function ReservationDetailPage({
             {reservation.addressDetail ? ` ${reservation.addressDetail}` : ""}
           </span>
         </div>
+        {answers && (
+          <div className="flex flex-col gap-1.5 border-t border-neutral-100 pt-3">
+            <span className="text-neutral-500">견적 정보</span>
+            {questions
+              .filter((q) => answers[q.key])
+              .map((q) => (
+                <div key={q.key} className="flex justify-between gap-3">
+                  <span className="text-neutral-500">{q.label}</span>
+                  <span className="text-right font-medium">{answers[q.key]}</span>
+                </div>
+              ))}
+          </div>
+        )}
         {reservation.requestNote && (
           <div className="flex flex-col gap-1 border-t border-neutral-100 pt-3">
             <span className="text-neutral-500">요청사항</span>

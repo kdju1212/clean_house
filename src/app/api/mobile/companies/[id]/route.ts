@@ -61,6 +61,7 @@ export async function GET(
     services: company.services.map((s) => ({
       id: s.id,
       categoryId: s.categoryId,
+      categorySlug: s.category.slug,
       categoryName: s.category.name,
       price: s.price,
       description: s.description,

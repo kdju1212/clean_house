@@ -29,6 +29,16 @@ export async function createReservation(
       throw new Error("지역을 먼저 선택해주세요.");
     }
 
+    // The dynamic per-category question fields are named "answer_<key>" in
+    // the form (see new-reservation-form.tsx) since FormData has no native
+    // nested-object field — reassembled into a plain object here.
+    const categoryAnswers: Record<string, unknown> = {};
+    for (const [key, value] of formData.entries()) {
+      if (key.startsWith("answer_")) {
+        categoryAnswers[key.slice("answer_".length)] = value;
+      }
+    }
+
     reservationId = await createReservationForCustomer({
       customerId: session.user.id,
       customerRegionId: customerRegion.id,
@@ -41,6 +51,7 @@ export async function createReservation(
       desiredDateRaw: formData.get("desiredDate"),
       desiredTime: formData.get("desiredTime"),
       requestNote: formData.get("requestNote"),
+      categoryAnswers,
     });
   } catch (err) {
     return toActionError(err);

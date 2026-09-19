@@ -192,6 +192,11 @@ model Reservation {
   desiredDate   DateTime          @db.Date
   desiredTime   String
   requestNote   String?
+  // Category-specific quote details (e.g. 에어컨청소's 형태/대수, 이사청소's
+  // 평수) — see src/lib/reservation-questions.ts for what's asked per
+  // category. A plain {key: value} object, or null for a category with no
+  // extra questions defined.
+  categoryAnswers Json?
   price         Int?
   status        ReservationStatus @default(REQUESTED)
   createdAt     DateTime          @default(now())
