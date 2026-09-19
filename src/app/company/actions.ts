@@ -110,11 +110,24 @@ export async function addService(
 ): Promise<ActionState> {
   try {
     const session = await requireSession();
+
+    // Each select-type question's supported options come in as several
+    // "supported_<key>" checkboxes (one per checked option) — same
+    // grouping the reservation form's own multi-select fields use, see
+    // reservations/actions.ts.
+    const supportedOptions: Record<string, string[]> = {};
+    for (const [key, value] of formData.entries()) {
+      if (!key.startsWith("supported_") || typeof value !== "string") continue;
+      const questionKey = key.slice("supported_".length);
+      (supportedOptions[questionKey] ??= []).push(value);
+    }
+
     await addServiceForOwner(session.user.id, {
       categoryId: formData.get("categoryId"),
       price: formData.get("price"),
       description: formData.get("description"),
       pricingUnit: formData.get("pricingUnit"),
+      supportedOptions,
     });
 
     revalidatePath("/company");

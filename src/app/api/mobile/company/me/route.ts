@@ -65,6 +65,7 @@ export async function GET(request: Request) {
       price: s.price,
       pricingUnit: s.pricingUnit,
       description: s.description,
+      supportedOptions: s.supportedOptions as Record<string, string[]> | null,
     })),
     regionIds: company.regions.map((r) => r.regionId),
     selectedRegions: company.regions.map((r) => ({

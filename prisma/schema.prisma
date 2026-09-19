@@ -187,6 +187,13 @@ model CompanyService {
   pricingUnit PricingUnit @default(FLAT)
   description String?
   createdAt   DateTime    @default(now())
+  // Which options this company handles for each select-type reservation
+  // question of this category (see src/lib/reservation-questions.ts),
+  // keyed by question key — e.g. {"type": ["벽걸이형", "스탠드형"]}. A
+  // missing key (including every existing row before this field existed)
+  // means "no restriction" for that question, so a company never
+  // disappears from search just because it hasn't set this.
+  supportedOptions Json?
 
   company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   category Category @relation(fields: [categoryId], references: [id])

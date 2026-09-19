@@ -2,7 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { getRegionAncestorIds } from "@/lib/region";
 import { startOfToday } from "@/lib/ad";
-import { getPricingQuantityKey } from "@/lib/reservation-questions";
+import { getPricingQuantityKey, getReservationQuestions } from "@/lib/reservation-questions";
 
 export type CompanySearchSort =
   | "latest"
@@ -148,6 +148,44 @@ export async function searchCompaniesForRegion({
 }
 
 /**
+ * A company can only fully handle a booking if it supports every
+ * select-question value the customer already told us about (e.g. they
+ * saved "형태: 벽걸이형,스탠드형" because they have one of each to clean —
+ * a company that only does 벽걸이형 can't finish that job, so it's not a
+ * match, not just a partial one). A question the customer left blank, or
+ * one the company never restricted (missing key = "handles everything"),
+ * never excludes a company.
+ */
+function matchesSelectFilters(
+  service: { supportedOptions: unknown } | undefined,
+  categorySlug: string,
+  categoryProfile: Record<string, string> | null | undefined
+): boolean {
+  if (!categoryProfile) return true;
+  const selectQuestions = getReservationQuestions(categorySlug).filter(
+    (q) => q.type === "select" && q.options
+  );
+  if (selectQuestions.length === 0) return true;
+
+  const supportedOptions = (service?.supportedOptions ?? null) as Record<
+    string,
+    string[]
+  > | null;
+
+  return selectQuestions.every((q) => {
+    const rawAnswer = categoryProfile[q.key];
+    if (!rawAnswer) return true;
+    const customerValues = rawAnswer.split(",").filter(Boolean);
+    if (customerValues.length === 0) return true;
+
+    const restricted = supportedOptions?.[q.key];
+    if (!restricted) return true; // company handles every option
+
+    return customerValues.every((v) => restricted.includes(v));
+  });
+}
+
+/**
  * Shared by the web category page and the mobile companies API route — same
  * region-ancestor expansion (a company covering a parent 시/군/구 still
  * matches a customer in any of its child 동), same "ads skip the price
@@ -228,11 +266,21 @@ export async function searchCompaniesInCategory({
     }),
   ]);
 
-  const adCompanyIds = new Set(ads.map((ad) => ad.companyId));
-  const organicCompanies = companies.filter((c) => !adCompanyIds.has(c.id));
+  // Filter out companies/ads that can't actually handle what the customer
+  // already told us they need (see matchesSelectFilters) — an ad slot the
+  // customer can't book is just as wasted as showing it organically.
+  const matchingCompanies = companies.filter((c) =>
+    matchesSelectFilters(c.services[0], slug, categoryProfile)
+  );
+  const matchingAds = ads.filter((ad) =>
+    matchesSelectFilters(ad.company.services[0], slug, categoryProfile)
+  );
+
+  const adCompanyIds = new Set(matchingAds.map((ad) => ad.companyId));
+  const organicCompanies = matchingCompanies.filter((c) => !adCompanyIds.has(c.id));
   const allCompanyIds = new Set([
-    ...companies.map((c) => c.id),
-    ...ads.map((ad) => ad.companyId),
+    ...matchingCompanies.map((c) => c.id),
+    ...matchingAds.map((ad) => ad.companyId),
   ]);
 
   const ratingByCompanyId =
@@ -276,7 +324,7 @@ export async function searchCompaniesInCategory({
     };
   }
 
-  const adRows = ads.map((ad) => toRow(ad.company, ad.company.services[0]));
+  const adRows = matchingAds.map((ad) => toRow(ad.company, ad.company.services[0]));
 
   const rows = organicCompanies
     .map((c) => ({

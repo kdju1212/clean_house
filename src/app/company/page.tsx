@@ -73,6 +73,17 @@ export default async function CompanyDashboardPage() {
   const reviewCount = ratingSummary._count;
 
   const usedCategoryIds = new Set(company.services.map((s) => s.categoryId));
+  const existingServices = Object.fromEntries(
+    company.services.map((s) => [
+      s.categoryId,
+      {
+        price: s.price,
+        description: s.description,
+        pricingUnit: s.pricingUnit,
+        supportedOptions: s.supportedOptions as Record<string, string[]> | null,
+      },
+    ])
+  );
   const initialSelectedRegions = company.regions.map((r) => ({
     id: r.region.id,
     label: r.region.parent ? `${r.region.parent.name} ${r.region.name}` : r.region.name,
@@ -174,7 +185,11 @@ export default async function CompanyDashboardPage() {
           </ul>
         )}
 
-        <AddServiceForm categories={allCategories} usedCategoryIds={usedCategoryIds} />
+        <AddServiceForm
+          categories={allCategories}
+          usedCategoryIds={usedCategoryIds}
+          existingServices={existingServices}
+        />
       </section>
 
       {/* 서비스 지역 */}

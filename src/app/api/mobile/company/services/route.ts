@@ -19,6 +19,7 @@ export async function POST(request: Request) {
       price: body?.price,
       description: body?.description,
       pricingUnit: body?.pricingUnit,
+      supportedOptions: body?.supportedOptions,
     });
     return NextResponse.json({ ok: true });
   } catch (err) {

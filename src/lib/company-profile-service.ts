@@ -1,8 +1,9 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOwnedCompany } from "@/lib/company-auth";
-import { supportsPerUnitPricing } from "@/lib/reservation-questions";
+import { getReservationQuestions, supportsPerUnitPricing } from "@/lib/reservation-questions";
 import { deleteLocalCompanyImage } from "@/lib/storage";
 import {
   cloudinaryDeliveryUrl,
@@ -88,7 +89,16 @@ export async function updateCompanyProfileForOwner(
 
 export async function addServiceForOwner(
   ownerUserId: string,
-  input: { categoryId: unknown; price: unknown; description: unknown; pricingUnit?: unknown }
+  input: {
+    categoryId: unknown;
+    price: unknown;
+    description: unknown;
+    pricingUnit?: unknown;
+    // Raw selections per select-type question key, straight off the form
+    // (e.g. {"type": ["벽걸이형", "스탠드형"]}) — validated against that
+    // category's actual question/option set below.
+    supportedOptions?: Record<string, string[]>;
+  }
 ): Promise<void> {
   const company = await requireOwnedCompany(ownerUserId);
 
@@ -121,12 +131,38 @@ export async function addServiceForOwner(
   const pricingUnit: "FLAT" | "PER_UNIT" =
     pricingUnitRaw === "PER_UNIT" && supportsPerUnitPricing(category.slug) ? "PER_UNIT" : "FLAT";
 
+  // Which options this company handles per select-type question (형태,
+  // 타입, ...) — only relevant for categories that have one. Selecting
+  // every option means "no restriction", stored as a missing key instead
+  // of the full list, so a company that already picked "all" isn't
+  // silently narrowed if the category's option list grows later.
+  const selectQuestions = getReservationQuestions(category.slug).filter(
+    (q) => q.type === "select" && q.options
+  );
+  let supportedOptions: Record<string, string[]> | null = null;
+  if (selectQuestions.length > 0) {
+    supportedOptions = {};
+    for (const q of selectQuestions) {
+      const selected = (input.supportedOptions?.[q.key] ?? []).filter((v) =>
+        q.options!.includes(v)
+      );
+      if (selected.length === 0) {
+        throw new Error(`${q.label}을(를) 최소 1개는 선택해주세요.`);
+      }
+      if (selected.length < q.options!.length) {
+        supportedOptions[q.key] = selected;
+      }
+    }
+    if (Object.keys(supportedOptions).length === 0) supportedOptions = null;
+  }
+
   await prisma.companyService.upsert({
     where: { companyId_categoryId: { companyId: company.id, categoryId } },
     update: {
       price,
       pricingUnit,
       description: typeof description === "string" ? description.trim() : null,
+      supportedOptions: supportedOptions ?? Prisma.DbNull,
     },
     create: {
       companyId: company.id,
@@ -134,6 +170,7 @@ export async function addServiceForOwner(
       price,
       pricingUnit,
       description: typeof description === "string" ? description.trim() : null,
+      supportedOptions: supportedOptions ?? undefined,
     },
   });
 }
