@@ -38,7 +38,7 @@ export function CategoryNavBar({
   }, [activeSlug]);
 
   return (
-    <nav className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+    <nav className="sticky top-[45px] z-10 -mx-4 flex gap-2 overflow-x-auto bg-white px-4 py-2 shadow-[0_1px_0_0_#f5f5f5]">
       <Link
         ref={activeSlug === null ? activeRef : undefined}
         href="/"
