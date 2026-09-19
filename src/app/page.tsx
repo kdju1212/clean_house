@@ -21,10 +21,11 @@ const MAX_PRICE_OPTIONS = [
 
 type SortValue = (typeof SORT_OPTIONS)[number]["value"];
 
-function buildQuery(sort: string, maxPrice: string) {
+function buildQuery(sort: string, maxPrice: string, q: string) {
   const params = new URLSearchParams();
   if (sort && sort !== "latest") params.set("sort", sort);
   if (maxPrice) params.set("maxPrice", maxPrice);
+  if (q) params.set("q", q);
   const qs = params.toString();
   return qs ? `?${qs}` : "";
 }
@@ -32,9 +33,9 @@ function buildQuery(sort: string, maxPrice: string) {
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ sort?: string; maxPrice?: string }>;
+  searchParams: Promise<{ sort?: string; maxPrice?: string; q?: string }>;
 }) {
-  const { sort: rawSort, maxPrice: rawMaxPrice } = await searchParams;
+  const { sort: rawSort, maxPrice: rawMaxPrice, q: rawQuery } = await searchParams;
   const sort: SortValue = SORT_OPTIONS.some((o) => o.value === rawSort)
     ? (rawSort as SortValue)
     : "latest";
@@ -64,7 +65,13 @@ export default async function Home({
           </Link>
         </p>
       ) : (
-        <HomeResults region={region} sort={sort} rawMaxPrice={rawMaxPrice} maxPrice={maxPrice} />
+        <HomeResults
+          region={region}
+          sort={sort}
+          rawMaxPrice={rawMaxPrice}
+          maxPrice={maxPrice}
+          rawQuery={rawQuery}
+        />
       )}
     </main>
   );
@@ -75,13 +82,16 @@ async function HomeResults({
   sort,
   rawMaxPrice,
   maxPrice,
+  rawQuery,
 }: {
   region: { id: string; name: string };
   sort: SortValue;
   rawMaxPrice?: string;
   maxPrice?: number;
+  rawQuery?: string;
 }) {
-  const result = await searchCompaniesForRegion({ regionId: region.id, maxPrice, sort });
+  const query = rawQuery?.trim() || undefined;
+  const result = await searchCompaniesForRegion({ regionId: region.id, maxPrice, sort, query });
   if (result.status === "region_not_found") {
     return (
       <p className="mt-10 text-center text-sm text-neutral-500">
@@ -97,12 +107,24 @@ async function HomeResults({
 
   return (
     <>
-      <div className="mt-4 flex items-center justify-between gap-2">
+      <form method="get" className="mt-3">
+        {sort !== "latest" && <input type="hidden" name="sort" value={sort} />}
+        {rawMaxPrice && <input type="hidden" name="maxPrice" value={rawMaxPrice} />}
+        <input
+          type="text"
+          name="q"
+          defaultValue={rawQuery ?? ""}
+          placeholder="업체 이름으로 검색"
+          className="w-full rounded-full border border-neutral-200 px-3 py-1.5 text-xs"
+        />
+      </form>
+
+      <div className="mt-3 flex items-center justify-between gap-2">
         <div className="flex gap-1 overflow-x-auto">
           {SORT_OPTIONS.map((o) => (
             <Link
               key={o.value}
-              href={`/${buildQuery(o.value, rawMaxPrice ?? "")}`}
+              href={`/${buildQuery(o.value, rawMaxPrice ?? "", rawQuery ?? "")}`}
               className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium ${
                 sort === o.value
                   ? "border-neutral-900 bg-neutral-900 text-white"
@@ -115,6 +137,7 @@ async function HomeResults({
         </div>
 
         <form method="get" className="shrink-0">
+          {rawQuery && <input type="hidden" name="q" value={rawQuery} />}
           <input type="hidden" name="sort" value={sort === "latest" ? "" : sort} />
           <select
             name="maxPrice"
@@ -143,6 +166,7 @@ async function HomeResults({
                 name={company.name}
                 mainImageUrl={company.mainImageUrl}
                 isAvailable={company.isAvailable}
+                isVerified={company.isVerified}
                 introText={company.introText}
                 price={company.price}
                 rating={company.rating}

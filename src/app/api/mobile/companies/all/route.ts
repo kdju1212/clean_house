@@ -16,6 +16,7 @@ export async function GET(request: Request) {
   const regionId = url.searchParams.get("regionId");
   const maxPriceRaw = url.searchParams.get("maxPrice");
   const sortRaw = url.searchParams.get("sort");
+  const query = url.searchParams.get("q") ?? undefined;
 
   if (!regionId) {
     return NextResponse.json({ error: "regionId가 필요합니다." }, { status: 400 });
@@ -26,7 +27,7 @@ export async function GET(request: Request) {
     : "latest";
   const maxPrice = maxPriceRaw ? Number(maxPriceRaw) : undefined;
 
-  const result = await searchCompaniesForRegion({ regionId, maxPrice, sort });
+  const result = await searchCompaniesForRegion({ regionId, maxPrice, sort, query });
 
   if (result.status === "region_not_found") {
     return NextResponse.json({ error: "존재하지 않는 지역입니다." }, { status: 404 });

@@ -16,6 +16,7 @@ export const RESERVATION_STATUS_LABEL: Record<string, string> = {
   REJECTED: "거절됨",
   CANCELLED: "취소됨",
   COMPLETED: "완료",
+  NO_SHOW: "노쇼",
 };
 
 export const RESERVATION_STATUS_BADGE_CLASS: Record<string, string> = {
@@ -24,4 +25,5 @@ export const RESERVATION_STATUS_BADGE_CLASS: Record<string, string> = {
   REJECTED: "bg-neutral-200 text-neutral-600",
   CANCELLED: "bg-neutral-200 text-neutral-600",
   COMPLETED: "bg-blue-100 text-blue-700",
+  NO_SHOW: "bg-red-100 text-red-700",
 };

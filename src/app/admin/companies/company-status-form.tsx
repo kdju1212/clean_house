@@ -2,25 +2,37 @@
 
 import { useActionState } from "react";
 import { SubmitButton } from "@/components/submit-button";
-import { approveCompany, reactivateCompany, suspendCompany } from "./actions";
+import {
+  approveCompany,
+  reactivateCompany,
+  suspendCompany,
+  unverifyCompany,
+  verifyCompany,
+} from "./actions";
 import type { ActionState } from "@/lib/action-state";
 
 const ACTIONS = {
   approve: approveCompany,
   suspend: suspendCompany,
   reactivate: reactivateCompany,
+  verify: verifyCompany,
+  unverify: unverifyCompany,
 } as const;
 
 const STYLE: Record<keyof typeof ACTIONS, string> = {
   approve: "rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white",
   suspend: "rounded-lg border border-red-300 px-3 py-1.5 text-xs font-medium text-red-600",
   reactivate: "rounded-lg border border-neutral-900 px-3 py-1.5 text-xs font-medium",
+  verify: "rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white",
+  unverify: "rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-600",
 };
 
 const LABEL: Record<keyof typeof ACTIONS, string> = {
   approve: "승인",
   suspend: "비활성화",
   reactivate: "재활성화",
+  verify: "인증하기",
+  unverify: "인증 해제",
 };
 
 export function CompanyStatusForm({

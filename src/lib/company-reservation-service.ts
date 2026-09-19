@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireOwnedCompany } from "@/lib/company-auth";
 import { createNotification } from "@/lib/notification";
 
-type ReservationStatus = "REQUESTED" | "ACCEPTED" | "REJECTED" | "COMPLETED";
+type ReservationStatus = "REQUESTED" | "ACCEPTED" | "REJECTED" | "COMPLETED" | "NO_SHOW";
 
 /**
  * Shared by the web company/reservations Server Actions and the mobile
@@ -70,6 +70,14 @@ async function notifyCustomer(
       type: "RESERVATION_REJECTED",
       title: "예약이 거절됐어요",
       body: `${companyName}에서 ${reservation.category.name} 예약을 거절했어요.`,
+      link: detailLink,
+    });
+  } else if (to === "NO_SHOW") {
+    await createNotification({
+      userId: reservation.customerId,
+      type: "RESERVATION_NO_SHOW",
+      title: "노쇼로 처리됐어요",
+      body: `${companyName}에서 예약 시간에 방문이 확인되지 않아 ${reservation.category.name} 예약을 노쇼로 처리했어요. 착오가 있다면 업체에 문의해주세요.`,
       link: detailLink,
     });
   } else if (to === "COMPLETED") {

@@ -101,7 +101,14 @@ export default async function CompanyDetailPage({
 
       <div className="px-4 py-4">
         <div className="flex items-start justify-between gap-2">
-          <h1 className="text-xl font-bold">{company.name}</h1>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <h1 className="min-w-0 truncate text-xl font-bold">{company.name}</h1>
+            {company.isVerified && (
+              <span className="shrink-0 rounded bg-blue-100 px-1.5 py-0.5 text-[11px] font-semibold text-blue-700">
+                인증
+              </span>
+            )}
+          </div>
           {session?.user ? (
             <form action={toggleFavorite}>
               <input type="hidden" name="companyId" value={company.id} />

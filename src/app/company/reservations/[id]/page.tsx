@@ -8,7 +8,12 @@ import {
 } from "@/lib/reservation";
 import { getReservationQuestions } from "@/lib/reservation-questions";
 import { SubmitButton } from "@/components/submit-button";
-import { acceptReservation, completeReservation, rejectReservation } from "../actions";
+import {
+  acceptReservation,
+  completeReservation,
+  markNoShowReservation,
+  rejectReservation,
+} from "../actions";
 
 export default async function CompanyReservationDetailPage({
   params,
@@ -159,15 +164,26 @@ export default async function CompanyReservationDetailPage({
           </>
         )}
         {reservation.status === "ACCEPTED" && (
-          <form action={completeReservation}>
-            <input type="hidden" name="reservationId" value={reservation.id} />
-            <SubmitButton
-              className="rounded-lg border border-neutral-900 px-4 py-2 text-sm font-medium"
-              pendingText="처리 중..."
-            >
-              청소 완료 처리
-            </SubmitButton>
-          </form>
+          <>
+            <form action={completeReservation}>
+              <input type="hidden" name="reservationId" value={reservation.id} />
+              <SubmitButton
+                className="rounded-lg border border-neutral-900 px-4 py-2 text-sm font-medium"
+                pendingText="처리 중..."
+              >
+                청소 완료 처리
+              </SubmitButton>
+            </form>
+            <form action={markNoShowReservation}>
+              <input type="hidden" name="reservationId" value={reservation.id} />
+              <SubmitButton
+                className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-600"
+                pendingText="처리 중..."
+              >
+                노쇼 처리
+              </SubmitButton>
+            </form>
+          </>
         )}
       </div>
     </main>

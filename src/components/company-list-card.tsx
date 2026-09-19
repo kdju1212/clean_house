@@ -7,6 +7,7 @@ export function CompanyListCard({
   name,
   mainImageUrl,
   isAvailable,
+  isVerified = false,
   introText,
   price,
   pricingUnit = "FLAT",
@@ -26,6 +27,8 @@ export function CompanyListCard({
   name: string;
   mainImageUrl: string | null;
   isAvailable: boolean;
+  /** Admin-verified business, shown as a small trust badge next to the name. */
+  isVerified?: boolean;
   introText: string | null;
   price: number;
   /** PER_UNIT services show "평당 price원~" instead of a flat "price원~". */
@@ -71,6 +74,11 @@ export function CompanyListCard({
               </span>
             )}
             <p className="truncate font-medium">{name}</p>
+            {isVerified && (
+              <span className="shrink-0 rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">
+                인증
+              </span>
+            )}
           </div>
           {!isAvailable && (
             <span className="shrink-0 rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-500">

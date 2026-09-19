@@ -26,10 +26,11 @@ const MAX_PRICE_OPTIONS = [
 
 type SortValue = (typeof SORT_OPTIONS)[number]["value"];
 
-function buildQuery(sort: string, maxPrice: string) {
+function buildQuery(sort: string, maxPrice: string, q: string) {
   const params = new URLSearchParams();
   if (sort && sort !== "latest") params.set("sort", sort);
   if (maxPrice) params.set("maxPrice", maxPrice);
+  if (q) params.set("q", q);
   const qs = params.toString();
   return qs ? `?${qs}` : "";
 }
@@ -39,15 +40,16 @@ export default async function CategoryCompaniesPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ sort?: string; maxPrice?: string }>;
+  searchParams: Promise<{ sort?: string; maxPrice?: string; q?: string }>;
 }) {
   const { slug } = await params;
-  const { sort: rawSort, maxPrice: rawMaxPrice } = await searchParams;
+  const { sort: rawSort, maxPrice: rawMaxPrice, q: rawQuery } = await searchParams;
 
   const sort: SortValue = SORT_OPTIONS.some((o) => o.value === rawSort)
     ? (rawSort as SortValue)
     : "latest";
   const maxPrice = rawMaxPrice ? Number(rawMaxPrice) : undefined;
+  const query = rawQuery?.trim() || undefined;
 
   const region = await getSelectedRegion();
   if (!region) {
@@ -68,7 +70,7 @@ export default async function CategoryCompaniesPage({
   ]);
 
   const [result, categories] = await Promise.all([
-    searchCompaniesInCategory({ slug, regionId: region.id, maxPrice, sort, categoryProfile }),
+    searchCompaniesInCategory({ slug, regionId: region.id, maxPrice, sort, categoryProfile, query }),
     prisma.category.findMany({ orderBy: { order: "asc" } }),
   ]);
 
@@ -103,12 +105,24 @@ export default async function CategoryCompaniesPage({
         <CategoryNavBar categories={categories} activeSlug={slug} />
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-2">
+      <form method="get" className="mt-3">
+        {sort !== "latest" && <input type="hidden" name="sort" value={sort} />}
+        {rawMaxPrice && <input type="hidden" name="maxPrice" value={rawMaxPrice} />}
+        <input
+          type="text"
+          name="q"
+          defaultValue={rawQuery ?? ""}
+          placeholder="업체 이름으로 검색"
+          className="w-full rounded-full border border-neutral-200 px-3 py-1.5 text-xs"
+        />
+      </form>
+
+      <div className="mt-3 flex items-center justify-between gap-2">
         <div className="flex gap-1 overflow-x-auto">
           {SORT_OPTIONS.map((o) => (
             <Link
               key={o.value}
-              href={`/categories/${slug}${buildQuery(o.value, rawMaxPrice ?? "")}`}
+              href={`/categories/${slug}${buildQuery(o.value, rawMaxPrice ?? "", rawQuery ?? "")}`}
               className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium ${
                 sort === o.value
                   ? "border-neutral-900 bg-neutral-900 text-white"
@@ -121,6 +135,7 @@ export default async function CategoryCompaniesPage({
         </div>
 
         <form method="get" className="shrink-0">
+          {rawQuery && <input type="hidden" name="q" value={rawQuery} />}
           <input type="hidden" name="sort" value={sort === "latest" ? "" : sort} />
           <select
             name="maxPrice"
@@ -146,6 +161,7 @@ export default async function CategoryCompaniesPage({
                 name={company.name}
                 mainImageUrl={company.mainImageUrl}
                 isAvailable={company.isAvailable}
+                isVerified={company.isVerified}
                 introText={company.introText}
                 price={company.price}
                 pricingUnit={company.pricingUnit}
@@ -175,6 +191,7 @@ export default async function CategoryCompaniesPage({
                 name={company.name}
                 mainImageUrl={company.mainImageUrl}
                 isAvailable={company.isAvailable}
+                isVerified={company.isVerified}
                 introText={company.introText}
                 price={company.price}
                 pricingUnit={company.pricingUnit}

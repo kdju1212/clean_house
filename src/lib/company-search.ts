@@ -15,6 +15,7 @@ export type CompanySearchRow = {
   name: string;
   mainImageUrl: string | null;
   isAvailable: boolean;
+  isVerified: boolean;
   introText: string | null;
   price: number;
   pricingUnit: "FLAT" | "PER_UNIT";
@@ -46,6 +47,7 @@ type CompanyWithRegions = {
   name: string;
   mainImageUrl: string | null;
   isAvailable: boolean;
+  isVerified: boolean;
   introText: string | null;
   regions: { region: { name: string } }[];
 };
@@ -71,21 +73,27 @@ export async function searchCompaniesForRegion({
   regionId,
   maxPrice,
   sort,
+  query,
 }: {
   regionId: string;
   maxPrice?: number;
   sort: CompanySearchSort;
+  // Free-text company name search (case-insensitive substring match) —
+  // optional, same as the price filter.
+  query?: string;
 }): Promise<CompanySearchAllResult> {
   const region = await prisma.region.findUnique({ where: { id: regionId } });
   if (!region) return { status: "region_not_found" };
 
   const ancestorRegionIds = await getRegionAncestorIds(region.id);
+  const trimmedQuery = query?.trim();
 
   const companies = await prisma.company.findMany({
     where: {
       status: "ACTIVE",
       regions: { some: { regionId: { in: ancestorRegionIds } } },
       ...(maxPrice ? { services: { some: { price: { lte: maxPrice } } } } : {}),
+      ...(trimmedQuery ? { name: { contains: trimmedQuery, mode: "insensitive" } } : {}),
     },
     include: {
       services: true,
@@ -121,6 +129,7 @@ export async function searchCompaniesForRegion({
           name: c.name,
           mainImageUrl: c.mainImageUrl,
           isAvailable: c.isAvailable,
+          isVerified: c.isVerified,
           introText: c.introText,
           price,
           // "전체" mixes every category a company offers into one "시작가"
@@ -199,6 +208,7 @@ export async function searchCompaniesInCategory({
   maxPrice,
   sort,
   categoryProfile,
+  query,
 }: {
   slug: string;
   regionId: string;
@@ -207,6 +217,10 @@ export async function searchCompaniesInCategory({
   // The browsing customer's saved CategoryProfile for this category, if
   // any — used only to compute estimatedPrice for PER_UNIT services.
   categoryProfile?: Record<string, string> | null;
+  // Free-text company name search (case-insensitive substring match) —
+  // optional, same as the price filter. Ads skip it too, same reasoning
+  // as skipping maxPrice: a paid placement stays visible regardless.
+  query?: string;
 }): Promise<CompanySearchResult> {
   const [category, region] = await Promise.all([
     prisma.category.findUnique({ where: { slug } }),
@@ -221,6 +235,7 @@ export async function searchCompaniesInCategory({
     quantityKey && categoryProfile?.[quantityKey] ? Number(categoryProfile[quantityKey]) : null;
 
   const ancestorRegionIds = await getRegionAncestorIds(region.id);
+  const trimmedQuery = query?.trim();
 
   const [companies, ads] = await Promise.all([
     prisma.company.findMany({
@@ -233,6 +248,7 @@ export async function searchCompaniesInCategory({
             ...(maxPrice ? { price: { lte: maxPrice } } : {}),
           },
         },
+        ...(trimmedQuery ? { name: { contains: trimmedQuery, mode: "insensitive" } } : {}),
       },
       include: {
         services: { where: { categoryId: category.id } },
@@ -314,6 +330,7 @@ export async function searchCompaniesInCategory({
       name: company.name,
       mainImageUrl: company.mainImageUrl,
       isAvailable: company.isAvailable,
+      isVerified: company.isVerified,
       introText: company.introText,
       price,
       pricingUnit,

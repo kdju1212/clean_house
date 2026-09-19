@@ -26,6 +26,7 @@ export async function GET(
   const regionId = url.searchParams.get("regionId");
   const maxPriceRaw = url.searchParams.get("maxPrice");
   const sortRaw = url.searchParams.get("sort");
+  const query = url.searchParams.get("q") ?? undefined;
 
   if (!regionId) {
     return NextResponse.json({ error: "regionId가 필요합니다." }, { status: 400 });
@@ -41,7 +42,14 @@ export async function GET(
   const userId = await getMobileUserId(request);
   const categoryProfile = userId ? await getCategoryProfile(userId, slug) : null;
 
-  const result = await searchCompaniesInCategory({ slug, regionId, maxPrice, sort, categoryProfile });
+  const result = await searchCompaniesInCategory({
+    slug,
+    regionId,
+    maxPrice,
+    sort,
+    categoryProfile,
+    query,
+  });
 
   if (result.status === "category_not_found") {
     return NextResponse.json({ error: "존재하지 않는 카테고리입니다." }, { status: 404 });

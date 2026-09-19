@@ -9,6 +9,7 @@ const VALID_STATUSES: ReservationStatus[] = [
   "REJECTED",
   "CANCELLED",
   "COMPLETED",
+  "NO_SHOW",
 ];
 
 /** Mobile equivalent of /company/reservations — same "needs-action first"
@@ -40,6 +41,7 @@ export async function GET(request: Request) {
     REQUESTED: 0,
     ACCEPTED: 1,
     COMPLETED: 2,
+    NO_SHOW: 2,
     REJECTED: 3,
     CANCELLED: 3,
   };

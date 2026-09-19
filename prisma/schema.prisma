@@ -31,6 +31,9 @@ enum ReservationStatus {
   REJECTED
   CANCELLED
   COMPLETED
+  // Company marks this after the scheduled date/time when the customer
+  // never showed up — only reachable from ACCEPTED, same as COMPLETED.
+  NO_SHOW
 }
 
 enum ReportTargetType {
@@ -54,6 +57,7 @@ enum NotificationType {
   RESERVATION_REJECTED
   RESERVATION_CANCELLED
   RESERVATION_COMPLETED
+  RESERVATION_NO_SHOW
   CHAT_MESSAGE
   REVIEW_REQUEST
 }
@@ -167,6 +171,11 @@ model Company {
   businessHours String?
   isAvailable   Boolean       @default(true)
   status        CompanyStatus @default(PENDING)
+  // Set by an admin after checking the business registration off-platform
+  // — never self-service, see admin/companies/actions.ts. Shown as a badge
+  // wherever the company is listed, purely a trust signal (no automated
+  // check backs it).
+  isVerified    Boolean       @default(false)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/company-auth";
 import { transitionReservationForOwner } from "@/lib/company-reservation-service";
 
-type ReservationStatus = "REQUESTED" | "ACCEPTED" | "REJECTED" | "COMPLETED";
+type ReservationStatus = "REQUESTED" | "ACCEPTED" | "REJECTED" | "COMPLETED" | "NO_SHOW";
 
 async function transitionStatus(
   formData: FormData,
@@ -35,4 +35,8 @@ export async function rejectReservation(formData: FormData) {
 
 export async function completeReservation(formData: FormData) {
   await transitionStatus(formData, "ACCEPTED", "COMPLETED");
+}
+
+export async function markNoShowReservation(formData: FormData) {
+  await transitionStatus(formData, "ACCEPTED", "NO_SHOW");
 }

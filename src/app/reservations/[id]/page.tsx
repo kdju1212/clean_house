@@ -102,6 +102,18 @@ export default async function ReservationDetailPage({
         )}
       </section>
 
+      {(reservation.status === "REQUESTED" || reservation.status === "ACCEPTED") && (
+        <p className="mt-3 text-xs text-neutral-400">
+          취소하시려면 업체에 미리 연락해주세요. 예약 시간에 연락 없이 방문하지 않으면
+          노쇼로 처리될 수 있어요.
+        </p>
+      )}
+      {reservation.status === "NO_SHOW" && (
+        <p className="mt-3 text-xs text-red-600">
+          업체가 이 예약을 노쇼로 처리했어요. 착오가 있다면 채팅으로 업체에 문의해주세요.
+        </p>
+      )}
+
       <div className="mt-4 flex items-center gap-3">
         <Link
           href={`/reservations/${reservation.id}/chat`}

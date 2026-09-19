@@ -7,13 +7,14 @@ import {
   RESERVATION_STATUS_LABEL,
 } from "@/lib/reservation";
 import { SubmitButton } from "@/components/submit-button";
-import { completeReservation, rejectReservation } from "./actions";
+import { completeReservation, markNoShowReservation, rejectReservation } from "./actions";
 
 // Needs-action items first, then soonest by desired date.
 const STATUS_ORDER: Record<string, number> = {
   REQUESTED: 0,
   ACCEPTED: 1,
   COMPLETED: 2,
+  NO_SHOW: 2,
   REJECTED: 3,
   CANCELLED: 3,
 };
@@ -25,6 +26,7 @@ const STATUS_FILTERS = [
   { value: "COMPLETED", label: "완료" },
   { value: "REJECTED", label: "거절됨" },
   { value: "CANCELLED", label: "취소됨" },
+  { value: "NO_SHOW", label: "노쇼" },
 ] as const;
 
 type ReservationStatusValue = (typeof STATUS_FILTERS)[number]["value"];
@@ -172,15 +174,26 @@ export default async function CompanyReservationsPage({
                 </div>
               )}
               {r.status === "ACCEPTED" && (
-                <form action={completeReservation} className="mt-3">
-                  <input type="hidden" name="reservationId" value={r.id} />
-                  <SubmitButton
-                    className="rounded-lg border border-neutral-900 px-3 py-1.5 text-xs font-medium"
-                    pendingText="처리 중..."
-                  >
-                    청소 완료 처리
-                  </SubmitButton>
-                </form>
+                <div className="mt-3 flex gap-2">
+                  <form action={completeReservation}>
+                    <input type="hidden" name="reservationId" value={r.id} />
+                    <SubmitButton
+                      className="rounded-lg border border-neutral-900 px-3 py-1.5 text-xs font-medium"
+                      pendingText="처리 중..."
+                    >
+                      청소 완료 처리
+                    </SubmitButton>
+                  </form>
+                  <form action={markNoShowReservation}>
+                    <input type="hidden" name="reservationId" value={r.id} />
+                    <SubmitButton
+                      className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-medium text-red-600"
+                      pendingText="처리 중..."
+                    >
+                      노쇼 처리
+                    </SubmitButton>
+                  </form>
+                </div>
               )}
             </li>
           ))}

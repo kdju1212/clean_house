@@ -51,11 +51,18 @@ export default async function AdminCompanyDetailPage({
     <div className="px-4 py-6">
       <div className="flex items-center justify-between gap-2">
         <h1 className="min-w-0 truncate text-lg font-bold">{company.name}</h1>
-        <span
-          className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${COMPANY_STATUS_BADGE_CLASS[company.status]}`}
-        >
-          {COMPANY_STATUS_LABEL[company.status]}
-        </span>
+        <div className="flex shrink-0 gap-1.5">
+          {company.isVerified && (
+            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+              인증업체
+            </span>
+          )}
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-medium ${COMPANY_STATUS_BADGE_CLASS[company.status]}`}
+          >
+            {COMPANY_STATUS_LABEL[company.status]}
+          </span>
+        </div>
       </div>
 
       <section className="mt-4 flex flex-col gap-2 rounded-2xl border border-neutral-200 bg-white p-4 text-sm">
@@ -120,6 +127,10 @@ export default async function AdminCompanyDetailPage({
               {(countByStatus.get("REJECTED") ?? 0) + (countByStatus.get("CANCELLED") ?? 0)}
             </span>
           </div>
+          <div className="flex justify-between rounded-lg bg-neutral-50 px-3 py-2">
+            <span className="text-neutral-500">노쇼</span>
+            <span className="font-medium">{countByStatus.get("NO_SHOW") ?? 0}</span>
+          </div>
         </dl>
       </section>
 
@@ -165,7 +176,7 @@ export default async function AdminCompanyDetailPage({
         </section>
       )}
 
-      <div className="mt-4 flex gap-2">
+      <div className="mt-4 flex flex-wrap gap-2">
         {company.status === "PENDING" && (
           <CompanyStatusForm companyId={company.id} action="approve" size="md" />
         )}
@@ -174,6 +185,11 @@ export default async function AdminCompanyDetailPage({
         )}
         {company.status === "SUSPENDED" && (
           <CompanyStatusForm companyId={company.id} action="reactivate" size="md" />
+        )}
+        {company.isVerified ? (
+          <CompanyStatusForm companyId={company.id} action="unverify" size="md" />
+        ) : (
+          <CompanyStatusForm companyId={company.id} action="verify" size="md" />
         )}
       </div>
     </div>

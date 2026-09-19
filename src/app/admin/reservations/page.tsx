@@ -13,6 +13,7 @@ const STATUS_FILTERS = [
   { value: "COMPLETED", label: "완료" },
   { value: "REJECTED", label: "거절" },
   { value: "CANCELLED", label: "취소" },
+  { value: "NO_SHOW", label: "노쇼" },
 ] as const;
 
 type StatusFilterValue = (typeof STATUS_FILTERS)[number]["value"];

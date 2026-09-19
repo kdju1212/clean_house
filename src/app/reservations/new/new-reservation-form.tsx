@@ -264,6 +264,11 @@ export function NewReservationForm({
         />
       </label>
 
+      <p className="text-xs text-neutral-400">
+        예약 시간에 연락 없이 방문하지 않으면 노쇼로 처리될 수 있어요. 취소하실 경우
+        업체에 미리 연락해주세요.
+      </p>
+
       {state?.error && <p className="text-xs text-red-600">{state.error}</p>}
 
       <SubmitButton

@@ -80,11 +80,18 @@ export default async function AdminCompaniesPage({
               <Link href={`/admin/companies/${company.id}`} className="block">
                 <div className="flex items-center justify-between gap-2">
                   <p className="min-w-0 truncate font-semibold">{company.name}</p>
-                  <span
-                    className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${COMPANY_STATUS_BADGE_CLASS[company.status]}`}
-                  >
-                    {COMPANY_STATUS_LABEL[company.status]}
-                  </span>
+                  <div className="flex shrink-0 gap-1">
+                    {company.isVerified && (
+                      <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                        인증업체
+                      </span>
+                    )}
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${COMPANY_STATUS_BADGE_CLASS[company.status]}`}
+                    >
+                      {COMPANY_STATUS_LABEL[company.status]}
+                    </span>
+                  </div>
                 </div>
 
                 <dl className="mt-2 flex flex-col gap-0.5 text-xs text-neutral-500">
@@ -117,6 +124,11 @@ export default async function AdminCompaniesPage({
                 )}
                 {company.status === "SUSPENDED" && (
                   <CompanyStatusForm companyId={company.id} action="reactivate" />
+                )}
+                {company.isVerified ? (
+                  <CompanyStatusForm companyId={company.id} action="unverify" />
+                ) : (
+                  <CompanyStatusForm companyId={company.id} action="verify" />
                 )}
               </div>
             </li>

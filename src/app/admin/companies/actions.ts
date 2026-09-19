@@ -60,3 +60,39 @@ export async function reactivateCompany(
 ): Promise<ActionState> {
   return transitionStatus(formData, "SUSPENDED", "ACTIVE");
 }
+
+async function setVerified(formData: FormData, isVerified: boolean): Promise<ActionState> {
+  try {
+    await requireAdmin();
+
+    const companyId = formData.get("companyId");
+    if (typeof companyId !== "string" || companyId.length === 0) {
+      throw new Error("잘못된 요청이에요.");
+    }
+
+    await prisma.company.update({
+      where: { id: companyId },
+      data: { isVerified },
+    });
+
+    revalidatePath("/admin/companies");
+    revalidatePath(`/admin/companies/${companyId}`);
+    revalidatePath(`/companies/${companyId}`);
+  } catch (err) {
+    return toActionError(err);
+  }
+}
+
+export async function verifyCompany(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  return setVerified(formData, true);
+}
+
+export async function unverifyCompany(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  return setVerified(formData, false);
+}

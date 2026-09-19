@@ -6,6 +6,7 @@ const ACTIONS = {
   accept: { from: "REQUESTED", to: "ACCEPTED" },
   reject: { from: "REQUESTED", to: "REJECTED" },
   complete: { from: "ACCEPTED", to: "COMPLETED" },
+  no_show: { from: "ACCEPTED", to: "NO_SHOW" },
 } as const;
 
 /** Mobile equivalent of the web accept/reject/completeReservation Server
