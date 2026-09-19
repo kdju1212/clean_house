@@ -31,13 +31,19 @@ export async function createReservation(
 
     // The dynamic per-category question fields are named "answer_<key>" in
     // the form (see new-reservation-form.tsx) since FormData has no native
-    // nested-object field — reassembled into a plain object here.
-    const categoryAnswers: Record<string, unknown> = {};
+    // nested-object field — reassembled into a plain object here. A
+    // multi-select question (에어컨 형태) submits several entries under the
+    // same key (one per checked checkbox), so every value is collected
+    // before joining, not just the last one.
+    const grouped: Record<string, string[]> = {};
     for (const [key, value] of formData.entries()) {
-      if (key.startsWith("answer_")) {
-        categoryAnswers[key.slice("answer_".length)] = value;
-      }
+      if (!key.startsWith("answer_") || typeof value !== "string") continue;
+      const answerKey = key.slice("answer_".length);
+      (grouped[answerKey] ??= []).push(value);
     }
+    const categoryAnswers: Record<string, unknown> = Object.fromEntries(
+      Object.entries(grouped).map(([key, values]) => [key, values.join(",")])
+    );
 
     reservationId = await createReservationForCustomer({
       customerId: session.user.id,

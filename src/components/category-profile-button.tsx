@@ -50,6 +50,16 @@ export function CategoryProfileButton({
         !!c.profile && Object.keys(c.profile).some((key) => questionKeys.has(key))
     );
 
+  function toggleMultiOption(key: string, option: string) {
+    setValues((prev) => {
+      const selected = (prev[key] ?? "").split(",").filter(Boolean);
+      const next = selected.includes(option)
+        ? selected.filter((v) => v !== option)
+        : [...selected, option];
+      return { ...prev, [key]: next.join(",") };
+    });
+  }
+
   function importFrom(profile: Record<string, string>) {
     setValues((prev) => {
       const next = { ...prev };
@@ -163,7 +173,30 @@ export function CategoryProfileButton({
 
             <div className="mt-3 flex flex-col gap-3">
               {questions.map((q) =>
-                q.type === "select" ? (
+                q.type === "select" && q.multiple ? (
+                  <div key={q.key} className="flex flex-col gap-1 text-sm font-medium">
+                    {q.label} (복수 선택 가능)
+                    <div className="flex flex-wrap gap-2">
+                      {q.options?.map((option) => {
+                        const active = (values[q.key] ?? "").split(",").includes(option);
+                        return (
+                          <button
+                            key={option}
+                            type="button"
+                            onClick={() => toggleMultiOption(q.key, option)}
+                            className={
+                              active
+                                ? "rounded-full border border-neutral-900 bg-neutral-900 px-3 py-1.5 text-sm font-normal text-white"
+                                : "rounded-full border border-neutral-200 px-3 py-1.5 text-sm font-normal text-neutral-700"
+                            }
+                          >
+                            {option}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : q.type === "select" ? (
                   <label key={q.key} className="flex flex-col gap-1 text-sm font-medium">
                     {q.label}
                     <select

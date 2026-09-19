@@ -87,7 +87,9 @@ export default async function ReservationDetailPage({
               .map((q) => (
                 <div key={q.key} className="flex justify-between gap-3">
                   <span className="text-neutral-500">{q.label}</span>
-                  <span className="text-right font-medium">{answers[q.key]}</span>
+                  <span className="text-right font-medium">
+                    {answers[q.key].split(",").join(", ")}
+                  </span>
                 </div>
               ))}
           </div>

@@ -96,7 +96,27 @@ export function NewReservationForm({
             업체가 정확한 견적을 낼 수 있도록 아래 정보를 알려주세요.
           </p>
           {questions.map((q) =>
-            q.type === "select" ? (
+            q.type === "select" && q.multiple ? (
+              <div key={`${selectedSlug}-${q.key}`} className="flex flex-col gap-1 text-sm font-medium">
+                {q.label} (복수 선택 가능)
+                <div className="flex flex-wrap gap-2">
+                  {q.options?.map((option) => (
+                    <label
+                      key={option}
+                      className="flex items-center gap-1.5 rounded-full border border-neutral-200 px-3 py-1.5 text-sm font-normal"
+                    >
+                      <input
+                        type="checkbox"
+                        name={`answer_${q.key}`}
+                        value={option}
+                        defaultChecked={(savedAnswers?.[q.key] ?? "").split(",").includes(option)}
+                      />
+                      {option}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ) : q.type === "select" ? (
               <label
                 key={`${selectedSlug}-${q.key}`}
                 className="flex flex-col gap-1 text-sm font-medium"
