@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
+import { sendPushNotification } from "@/lib/push";
 
 type NotificationType =
   | "RESERVATION_REQUESTED"
@@ -36,6 +37,15 @@ export async function createNotification(input: {
       link: input.link ?? null,
     },
   });
+
+  // Every in-app notification also fires a push if the recipient has the
+  // mobile app installed with a registered device token — see
+  // src/lib/push.ts for why this never throws back into the caller.
+  await sendPushNotification(input.userId, {
+    title: input.title,
+    body: input.body,
+    link: input.link,
+  });
 }
 
 /**
@@ -61,6 +71,14 @@ export async function notifyNewChatMessage(input: {
     await prisma.notification.update({
       where: { id: existing.id },
       data: { body: input.preview, createdAt: new Date() },
+    });
+    // Still push for every message even though the in-app row was bumped
+    // rather than recreated — a silent chat notification would defeat the
+    // point of a "new message" alert.
+    await sendPushNotification(input.userId, {
+      title: "새 메시지가 도착했어요",
+      body: input.preview,
+      link: input.link,
     });
     return;
   }

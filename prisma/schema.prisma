@@ -66,6 +66,11 @@ model User {
   image         String?
   role          Role      @default(CUSTOMER)
   phone         String?
+  // The mobile app's Expo push token — single value is enough for the MVP
+  // (same simplicity tradeoff as the mobile auth token: one device at a
+  // time, overwritten on the next login/app start rather than tracked
+  // per-device). Null for anyone who has only ever used the web app.
+  pushToken     String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
