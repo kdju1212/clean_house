@@ -7,7 +7,7 @@ import {
   RESERVATION_STATUS_LABEL,
 } from "@/lib/reservation";
 import { SubmitButton } from "@/components/submit-button";
-import { acceptReservation, completeReservation, rejectReservation } from "./actions";
+import { completeReservation, rejectReservation } from "./actions";
 
 // Needs-action items first, then soonest by desired date.
 const STATUS_ORDER: Record<string, number> = {
@@ -154,15 +154,12 @@ export default async function CompanyReservationsPage({
 
               {r.status === "REQUESTED" && (
                 <div className="mt-3 flex gap-2">
-                  <form action={acceptReservation}>
-                    <input type="hidden" name="reservationId" value={r.id} />
-                    <SubmitButton
-                      className="rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white"
-                      pendingText="처리 중..."
-                    >
-                      승인
-                    </SubmitButton>
-                  </form>
+                  <Link
+                    href={`/company/reservations/${r.id}`}
+                    className="rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white"
+                  >
+                    견적 확인 후 승인
+                  </Link>
                   <form action={rejectReservation}>
                     <input type="hidden" name="reservationId" value={r.id} />
                     <SubmitButton

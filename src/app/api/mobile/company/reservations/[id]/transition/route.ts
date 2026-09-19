@@ -28,9 +28,11 @@ export async function POST(
 
   const { id } = await params;
   const { from, to } = ACTIONS[action as keyof typeof ACTIONS];
+  const priceRaw = body?.price;
+  const price = typeof priceRaw === "number" ? priceRaw : undefined;
 
   try {
-    const result = await transitionReservationForOwner(userId, id, from, to);
+    const result = await transitionReservationForOwner(userId, id, from, to, price);
     if (!result.updated) {
       return NextResponse.json(
         { error: "처리할 수 없는 예약 상태예요." },

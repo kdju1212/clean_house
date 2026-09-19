@@ -17,13 +17,21 @@ export async function transitionReservationForOwner(
   ownerUserId: string,
   reservationId: string,
   from: ReservationStatus,
-  to: ReservationStatus
+  to: ReservationStatus,
+  // Only meaningful on REQUESTED -> ACCEPTED: the reservation's price was
+  // just a snapshot of the service's listed price at booking time, which
+  // is often wrong once the owner has actually seen the 견적 정보 (a
+  // listed "에어컨청소 50,000원~" doesn't know it's 3 units, not 1) — this
+  // lets them correct it to the real quote at the moment they accept.
+  price?: number
 ): Promise<{ updated: boolean }> {
   const company = await requireOwnedCompany(ownerUserId);
 
+  const validPrice = typeof price === "number" && Number.isFinite(price) && price >= 0;
+
   const result = await prisma.reservation.updateMany({
     where: { id: reservationId, companyId: company.id, status: from },
-    data: { status: to },
+    data: { status: to, ...(validPrice ? { price } : {}) },
   });
 
   if (result.count > 0) {
@@ -47,11 +55,13 @@ async function notifyCustomer(
   const detailLink = `/reservations/${reservation.id}`;
 
   if (to === "ACCEPTED") {
+    const priceText =
+      reservation.price != null ? ` (${reservation.price.toLocaleString()}원)` : "";
     await createNotification({
       userId: reservation.customerId,
       type: "RESERVATION_ACCEPTED",
       title: "예약이 승인됐어요",
-      body: `${companyName}에서 ${reservation.category.name} 예약을 승인했어요.`,
+      body: `${companyName}에서 ${reservation.category.name} 예약을 승인했어요.${priceText}`,
       link: detailLink,
     });
   } else if (to === "REJECTED") {

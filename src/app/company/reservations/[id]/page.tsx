@@ -111,7 +111,13 @@ export default async function CompanyReservationDetailPage({
         )}
       </section>
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
+      {reservation.status === "REQUESTED" && (
+        <p className="mt-4 text-xs text-neutral-500">
+          견적 정보를 확인하고 실제 가격에 맞게 조정한 다음 승인해주세요.
+        </p>
+      )}
+
+      <div className="mt-2 flex flex-wrap items-center gap-2">
         <Link
           href={`/reservations/${reservation.id}/chat`}
           className="rounded-lg border border-neutral-900 px-4 py-2 text-sm font-medium"
@@ -121,8 +127,17 @@ export default async function CompanyReservationDetailPage({
 
         {reservation.status === "REQUESTED" && (
           <>
-            <form action={acceptReservation}>
+            <form action={acceptReservation} className="flex items-center gap-2">
               <input type="hidden" name="reservationId" value={reservation.id} />
+              <input
+                type="number"
+                name="price"
+                min={0}
+                step={1000}
+                defaultValue={reservation.price ?? undefined}
+                placeholder="가격"
+                className="w-28 rounded-lg border border-neutral-300 px-2 py-2 text-sm"
+              />
               <SubmitButton
                 className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white"
                 pendingText="처리 중..."

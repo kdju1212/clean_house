@@ -9,21 +9,24 @@ type ReservationStatus = "REQUESTED" | "ACCEPTED" | "REJECTED" | "COMPLETED";
 async function transitionStatus(
   formData: FormData,
   from: ReservationStatus,
-  to: ReservationStatus
+  to: ReservationStatus,
+  price?: number
 ) {
   const session = await requireSession();
 
   const reservationId = formData.get("reservationId");
   if (typeof reservationId !== "string") return;
 
-  await transitionReservationForOwner(session.user.id, reservationId, from, to);
+  await transitionReservationForOwner(session.user.id, reservationId, from, to, price);
 
   revalidatePath("/company/reservations");
   revalidatePath(`/company/reservations/${reservationId}`);
 }
 
 export async function acceptReservation(formData: FormData) {
-  await transitionStatus(formData, "REQUESTED", "ACCEPTED");
+  const priceRaw = formData.get("price");
+  const price = typeof priceRaw === "string" && priceRaw.trim() !== "" ? Number(priceRaw) : undefined;
+  await transitionStatus(formData, "REQUESTED", "ACCEPTED", price);
 }
 
 export async function rejectReservation(formData: FormData) {
