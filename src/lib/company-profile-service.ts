@@ -230,12 +230,29 @@ export async function requestPhotoUploadUrlForOwner(
  */
 export async function confirmPhotoUploadForOwner(
   ownerUserId: string,
-  input: { publicId: string; type?: string }
+  // categoryId tags a WORK/BEFORE_AFTER photo to one of the company's own
+  // registered categories (e.g. 에어컨청소 vs 입주청소) so the public detail
+  // page can show different photos depending on which service the customer
+  // is looking at — omitted/null means "shown for every category", which
+  // is also what every photo uploaded before this feature existed already
+  // means, so nothing already-uploaded needs to change.
+  input: { publicId: string; type?: string; categoryId?: string | null }
 ): Promise<void> {
   const company = await requireOwnedCompany(ownerUserId);
 
   if (!input.publicId.startsWith(`companies/${company.id}/`)) {
     throw new Error("잘못된 업로드 정보입니다.");
+  }
+
+  let categoryId: string | null = null;
+  if (input.categoryId) {
+    const service = await prisma.companyService.findUnique({
+      where: { companyId_categoryId: { companyId: company.id, categoryId: input.categoryId } },
+    });
+    if (!service) {
+      throw new Error("등록되지 않은 청소 종류입니다.");
+    }
+    categoryId = input.categoryId;
   }
 
   let original: { secureUrl: string };
@@ -293,7 +310,7 @@ export async function confirmPhotoUploadForOwner(
   const photoType = normalizePhotoType(input.type);
 
   await prisma.companyPhoto.create({
-    data: { companyId: company.id, url, type: photoType },
+    data: { companyId: company.id, url, type: photoType, categoryId },
   });
 
   if (photoType === "MAIN") {

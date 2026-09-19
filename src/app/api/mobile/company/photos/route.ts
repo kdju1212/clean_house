@@ -14,9 +14,10 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const publicId = typeof body?.publicId === "string" ? body.publicId : "";
   const type = typeof body?.type === "string" ? body.type : undefined;
+  const categoryId = typeof body?.categoryId === "string" ? body.categoryId : undefined;
 
   try {
-    await confirmPhotoUploadForOwner(userId, { publicId, type });
+    await confirmPhotoUploadForOwner(userId, { publicId, type, categoryId });
     return NextResponse.json({ ok: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : "알 수 없는 오류가 발생했어요.";

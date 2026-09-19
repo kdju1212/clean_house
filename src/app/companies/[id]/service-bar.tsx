@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 
 type Service = {
@@ -25,14 +24,25 @@ function formatPrice(service: Service): string {
  * to show its price, and 예약하기 carries the pick straight into the
  * reservation form via ?categoryId= instead of making the customer choose
  * again from a plain dropdown there.
+ *
+ * Selection is controlled by the parent (CompanyDetailDynamic) rather than
+ * owned here, since the intro text and photo galleries above/below this
+ * section also need to know which category is currently picked.
  */
-export function ServiceBar({ companyId, services }: { companyId: string; services: Service[] }) {
+export function ServiceBar({
+  companyId,
+  services,
+  selectedId,
+  onSelect,
+}: {
+  companyId: string;
+  services: Service[];
+  selectedId: string | null;
+  onSelect: (categoryId: string) => void;
+}) {
   const cheapest = services.reduce<Service | null>(
     (min, s) => (!min || s.price < min.price ? s : min),
     null
-  );
-  const [selectedId, setSelectedId] = useState<string | null>(
-    services.length === 1 ? services[0].categoryId : null
   );
 
   const selected = services.find((s) => s.categoryId === selectedId) ?? null;
@@ -53,7 +63,7 @@ export function ServiceBar({ companyId, services }: { companyId: string; service
               <li key={service.id}>
                 <button
                   type="button"
-                  onClick={() => setSelectedId(service.categoryId)}
+                  onClick={() => onSelect(service.categoryId)}
                   aria-pressed={isSelected}
                   className={`flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left text-sm transition-colors ${
                     isSelected ? "border-neutral-900 bg-neutral-50" : "border-neutral-200"

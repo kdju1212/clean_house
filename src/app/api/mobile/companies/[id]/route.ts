@@ -67,7 +67,7 @@ export async function GET(
       pricingUnit: s.pricingUnit,
       description: s.description,
     })),
-    photos: company.photos.map((p) => ({ id: p.id, url: p.url, type: p.type })),
+    photos: company.photos.map((p) => ({ id: p.id, url: p.url, type: p.type, categoryId: p.categoryId })),
     regionNames: company.regions.map((r) => r.region.name),
     averageRating: ratingSummary._avg.rating ?? 0,
     reviewCount: ratingSummary._count,

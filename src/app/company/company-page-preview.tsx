@@ -10,10 +10,11 @@ import { PhotoStack, type PhotoItem } from "@/components/company-detail/photo-st
 import { RatingDistribution } from "@/components/company-detail/rating-distribution";
 import { ReviewCard, ReviewPhotoStrip, type ReviewItem } from "@/components/company-detail/review-list";
 
-type Photo = PhotoItem;
+type Photo = PhotoItem & { categoryId: string | null };
 
 type Service = {
   id: string;
+  categoryId: string;
   categoryName: string;
   price: number;
   description: string | null;
@@ -61,7 +62,12 @@ export function CompanyPagePreview({
     error: mainError,
     pick: pickMain,
     handleChange: handleMainChange,
-  } = usePhotoUpload("MAIN", { requireSquare: true });
+  } = usePhotoUpload("MAIN", null, { requireSquare: true });
+
+  // One CompanyService per category (unique constraint), so this is
+  // already a plain list of {categoryId, categoryName} — offered as the
+  // "이 사진, 어떤 카테고리 사진인가요?" tag choices below.
+  const categories = services.map((s) => ({ id: s.categoryId, name: s.categoryName }));
 
   const [name, setName] = useState(company.name);
   const [phone, setPhone] = useState(company.phone ?? "");
@@ -176,8 +182,13 @@ export function CompanyPagePreview({
           </ul>
         </section>
 
-        <EditablePhotoStack title="작업 사진" type="WORK" photos={workPhotos} />
-        <EditablePhotoStack title="전/후 비교" type="BEFORE_AFTER" photos={beforeAfterPhotos} />
+        <EditablePhotoStack title="작업 사진" type="WORK" photos={workPhotos} categories={categories} />
+        <EditablePhotoStack
+          title="전/후 비교"
+          type="BEFORE_AFTER"
+          photos={beforeAfterPhotos}
+          categories={categories}
+        />
 
         <div className="mt-5">
           <p className="text-sm font-medium">영업시간</p>
@@ -265,7 +276,11 @@ function readImageDimensions(file: File): Promise<{ width: number; height: numbe
   });
 }
 
-function usePhotoUpload(type: string, options?: { requireSquare?: boolean }) {
+function usePhotoUpload(
+  type: string,
+  categoryId: string | null,
+  options?: { requireSquare?: boolean }
+) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -320,7 +335,7 @@ function usePhotoUpload(type: string, options?: { requireSquare?: boolean }) {
         return;
       }
 
-      const confirmResult = await confirmPhotoUpload({ publicId: signed.publicId, type });
+      const confirmResult = await confirmPhotoUpload({ publicId: signed.publicId, type, categoryId });
       if ("error" in confirmResult) {
         setError(confirmResult.error);
         return;
@@ -341,29 +356,64 @@ function EditablePhotoStack({
   title,
   type,
   photos,
+  categories,
 }: {
   title: string;
   type: "WORK" | "BEFORE_AFTER";
   photos: Photo[];
+  // Offered as "이 사진, 어떤 카테고리 사진인가요?" tag choices — empty when
+  // the company hasn't registered any service yet, in which case there's
+  // nothing to tag against and every photo just stays "전체 공통".
+  categories: { id: string; name: string }[];
 }) {
-  const { inputRef, uploading, error, pick, handleChange } = usePhotoUpload(type);
+  const [uploadCategoryId, setUploadCategoryId] = useState<string | null>(null);
+  const { inputRef, uploading, error, pick, handleChange } = usePhotoUpload(
+    type,
+    uploadCategoryId
+  );
+  const categoryName = (id: string | null) =>
+    id ? categories.find((c) => c.id === id)?.name ?? "" : "전체 공통";
 
   return (
     <>
+      {categories.length > 1 && (
+        <label className="mt-2 flex items-center gap-1.5 text-xs text-neutral-500">
+          새 사진 태그
+          <select
+            value={uploadCategoryId ?? ""}
+            onChange={(e) => setUploadCategoryId(e.target.value || null)}
+            className="rounded-md border border-neutral-200 px-1.5 py-1 text-xs"
+          >
+            <option value="">전체 공통</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <PhotoStack
         title={title}
         photos={photos}
         photoOverlay={(photo) => (
-          <form action={deletePhoto} className="absolute right-2 top-2">
-            <input type="hidden" name="photoId" value={photo.id} />
-            <button
-              type="submit"
-              aria-label="사진 삭제"
-              className="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-sm leading-none text-white"
-            >
-              ×
-            </button>
-          </form>
+          <>
+            {categories.length > 1 && (
+              <span className="absolute bottom-2 left-2 rounded-full bg-black/55 px-2 py-0.5 text-[10px] text-white">
+                {categoryName((photo as Photo).categoryId)}
+              </span>
+            )}
+            <form action={deletePhoto} className="absolute right-2 top-2">
+              <input type="hidden" name="photoId" value={photo.id} />
+              <button
+                type="submit"
+                aria-label="사진 삭제"
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-sm leading-none text-white"
+              >
+                ×
+              </button>
+            </form>
+          </>
         )}
         extraTile={
           <button

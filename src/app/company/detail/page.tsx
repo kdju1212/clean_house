@@ -81,6 +81,7 @@ export default async function CompanyDetailEditPage() {
           }}
           services={company.services.map((s) => ({
             id: s.id,
+            categoryId: s.categoryId,
             categoryName: s.category.name,
             price: s.price,
             description: s.description,

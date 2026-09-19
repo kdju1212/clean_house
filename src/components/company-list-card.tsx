@@ -3,6 +3,7 @@ import Link from "next/link";
 
 export function CompanyListCard({
   id,
+  categoryId,
   name,
   mainImageUrl,
   isAvailable,
@@ -17,6 +18,11 @@ export function CompanyListCard({
   isAd = false,
 }: {
   id: string;
+  /** Which category this row was listed under — carried into the detail
+   * page link so it opens already showing that category's own 소개/사진
+   * instead of the company's general ones (see CompanyDetailDynamic).
+   * Omitted on the region-wide "전체" tab, which has no single category. */
+  categoryId?: string;
   name: string;
   mainImageUrl: string | null;
   isAvailable: boolean;
@@ -36,7 +42,7 @@ export function CompanyListCard({
 }) {
   return (
     <Link
-      href={`/companies/${id}`}
+      href={categoryId ? `/companies/${id}?categoryId=${categoryId}` : `/companies/${id}`}
       className={`flex gap-3 rounded-2xl border bg-white p-3 ${
         isAd ? "border-amber-200" : "border-neutral-200"
       }`}

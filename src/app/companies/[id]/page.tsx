@@ -5,8 +5,7 @@ import { getPricingQuantityKey, PRICING_UNIT_LABEL } from "@/lib/reservation-que
 import { SubmitButton } from "@/components/submit-button";
 import { toggleFavorite } from "./actions";
 import { Gallery } from "./gallery";
-import { ServiceBar } from "./service-bar";
-import { PhotoStack } from "@/components/company-detail/photo-stack";
+import { CompanyDetailDynamic } from "./company-detail-dynamic";
 import { InfoRows } from "@/components/company-detail/info-rows";
 import { RatingDistribution } from "@/components/company-detail/rating-distribution";
 import { ReviewCard, ReviewPhotoStrip } from "@/components/company-detail/review-list";
@@ -15,10 +14,16 @@ import Link from "next/link";
 
 export default async function CompanyDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  // Set by the category listing's link so arriving from a specific
+  // category (e.g. 에어컨청소) pre-selects that service instead of showing
+  // the company's general intro/photos — see CompanyDetailDynamic.
+  searchParams: Promise<{ categoryId?: string }>;
 }) {
   const { id } = await params;
+  const { categoryId: initialCategoryId } = await searchParams;
 
   const [session, company, reviews, ratingSummary, ratingGroups] = await Promise.all([
     auth(),
@@ -127,14 +132,14 @@ export default async function CompanyDetailPage({
             "아직 리뷰가 없어요"
           )}
         </p>
-        {company.introText && (
-          <p className="mt-2 text-sm text-neutral-600">{company.introText}</p>
-        )}
-
-        <ServiceBar companyId={company.id} services={services} />
-
-        <PhotoStack title="작업 사진" photos={workPhotos} />
-        <PhotoStack title="전/후 비교" photos={beforeAfterPhotos} />
+        <CompanyDetailDynamic
+          companyId={company.id}
+          services={services}
+          companyIntroText={company.introText}
+          workPhotos={workPhotos}
+          beforeAfterPhotos={beforeAfterPhotos}
+          initialCategoryId={initialCategoryId ?? null}
+        />
 
         <InfoRows
           rows={[

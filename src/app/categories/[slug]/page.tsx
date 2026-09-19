@@ -142,6 +142,7 @@ export default async function CategoryCompaniesPage({
             <li key={`ad-${company.id}`}>
               <CompanyListCard
                 id={company.id}
+                categoryId={category.id}
                 name={company.name}
                 mainImageUrl={company.mainImageUrl}
                 isAvailable={company.isAvailable}
@@ -170,6 +171,7 @@ export default async function CategoryCompaniesPage({
             <li key={company.id}>
               <CompanyListCard
                 id={company.id}
+                categoryId={category.id}
                 name={company.name}
                 mainImageUrl={company.mainImageUrl}
                 isAvailable={company.isAvailable}

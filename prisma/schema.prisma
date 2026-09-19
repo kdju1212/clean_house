@@ -108,6 +108,7 @@ model Category {
   reservations   Reservation[]
   advertisements Advertisement[]
   categoryProfiles CategoryProfile[]
+  photos         CompanyPhoto[]
 }
 
 /// A customer's saved answers for one category's reservation questions
@@ -208,8 +209,14 @@ model CompanyPhoto {
   type      PhotoType @default(WORK)
   order     Int       @default(0)
   createdAt DateTime  @default(now())
+  // Which of the company's categories this photo belongs to (WORK/
+  // BEFORE_AFTER only — MAIN stays company-wide) — null means "shown for
+  // every category", so a company that never bothers tagging anything
+  // (or just wants one shared photo) keeps working exactly as before.
+  categoryId String?
 
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company  Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 }
 
 model CompanyRegion {

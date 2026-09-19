@@ -191,6 +191,7 @@ export async function requestPhotoUploadUrl(input: {
 export async function confirmPhotoUpload(input: {
   publicId: string;
   type?: string;
+  categoryId?: string | null;
 }): Promise<{ error: string } | { ok: true }> {
   try {
     const session = await requireSession();
