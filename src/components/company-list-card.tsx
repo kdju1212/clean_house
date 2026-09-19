@@ -8,6 +8,9 @@ export function CompanyListCard({
   isAvailable,
   introText,
   price,
+  pricingUnit = "FLAT",
+  estimatedPrice = null,
+  unitLabel,
   rating,
   reviewCount,
   regionNames,
@@ -19,6 +22,13 @@ export function CompanyListCard({
   isAvailable: boolean;
   introText: string | null;
   price: number;
+  /** PER_UNIT services show "price원/평~" instead of a flat "price원~". */
+  pricingUnit?: "FLAT" | "PER_UNIT";
+  /** price * the customer's saved quantity (see CategoryProfile) — shown
+   * instead of the raw per-unit rate when available. */
+  estimatedPrice?: number | null;
+  /** "평" / "대" — required whenever pricingUnit is "PER_UNIT". */
+  unitLabel?: string;
   rating: number;
   reviewCount: number;
   regionNames: string[];
@@ -75,7 +85,20 @@ export function CompanyListCard({
             {introText}
           </p>
         )}
-        <p className="mt-1 text-sm font-semibold">{price.toLocaleString()}원~</p>
+        {estimatedPrice != null ? (
+          <p className="mt-1 text-sm font-semibold">
+            예상 {estimatedPrice.toLocaleString()}원{" "}
+            <span className="text-xs font-normal text-neutral-400">
+              ({price.toLocaleString()}원/{unitLabel} 기준)
+            </span>
+          </p>
+        ) : pricingUnit === "PER_UNIT" ? (
+          <p className="mt-1 text-sm font-semibold">
+            {price.toLocaleString()}원/{unitLabel}~
+          </p>
+        ) : (
+          <p className="mt-1 text-sm font-semibold">{price.toLocaleString()}원~</p>
+        )}
         <p className="mt-auto truncate text-[11px] text-neutral-400">
           {regionNames.join(", ")}
         </p>

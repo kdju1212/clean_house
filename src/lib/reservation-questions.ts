@@ -53,6 +53,35 @@ export function getReservationQuestions(categorySlug: string): ReservationQuesti
   return CATEGORY_QUESTIONS[categorySlug] ?? [];
 }
 
+/**
+ * Which question key represents the "how many units" quantity a company
+ * can price PER_UNIT against — 평수 for space categories, 대수 for
+ * 에어컨청소. A category with no entry here (세탁기청소, 기타청소, ...) has
+ * no natural per-unit multiplier, so it can only be priced FLAT.
+ */
+export const PRICING_QUANTITY_KEY: Record<string, string> = {
+  "move-in": "area",
+  moving: "area",
+  residential: "area",
+  office: "area",
+  restaurant: "area",
+  store: "area",
+  aircon: "count",
+};
+
+export const PRICING_UNIT_LABEL: Record<string, string> = {
+  area: "평",
+  count: "대",
+};
+
+export function getPricingQuantityKey(categorySlug: string): string | undefined {
+  return PRICING_QUANTITY_KEY[categorySlug];
+}
+
+export function supportsPerUnitPricing(categorySlug: string): boolean {
+  return categorySlug in PRICING_QUANTITY_KEY;
+}
+
 /** 은/는 조사 선택 — 마지막 글자에 받침이 있으면 "은", 없으면 "는". */
 function withEunNeun(word: string): string {
   const code = word.charCodeAt(word.length - 1) - 0xac00;

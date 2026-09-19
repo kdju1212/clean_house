@@ -18,6 +18,7 @@ export async function POST(request: Request) {
       categoryId: body?.categoryId,
       price: body?.price,
       description: body?.description,
+      pricingUnit: body?.pricingUnit,
     });
     return NextResponse.json({ ok: true });
   } catch (err) {

@@ -1,23 +1,31 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { SubmitButton } from "@/components/submit-button";
+import { getPricingQuantityKey, PRICING_UNIT_LABEL } from "@/lib/reservation-questions";
 import { addService } from "./actions";
 
 export function AddServiceForm({
   categories,
   usedCategoryIds,
 }: {
-  categories: { id: string; name: string }[];
+  categories: { id: string; slug: string; name: string }[];
   usedCategoryIds: Set<string>;
 }) {
   const [state, formAction] = useActionState(addService, undefined);
+  const [categoryId, setCategoryId] = useState("");
+
+  const selectedSlug = categories.find((c) => c.id === categoryId)?.slug;
+  const quantityKey = selectedSlug ? getPricingQuantityKey(selectedSlug) : undefined;
+  const unitLabel = quantityKey ? PRICING_UNIT_LABEL[quantityKey] : null;
 
   return (
     <form action={formAction} className="mt-3 flex flex-col gap-2">
       <select
         name="categoryId"
         required
+        value={categoryId}
+        onChange={(e) => setCategoryId(e.target.value)}
         className="rounded-lg border border-neutral-200 px-3 py-2 text-sm"
       >
         <option value="">청소 종류 선택</option>
@@ -28,13 +36,27 @@ export function AddServiceForm({
           </option>
         ))}
       </select>
+
+      {unitLabel && (
+        <div className="flex gap-4 text-sm">
+          <label className="flex items-center gap-1.5">
+            <input type="radio" name="pricingUnit" value="FLAT" defaultChecked />
+            고정가
+          </label>
+          <label className="flex items-center gap-1.5">
+            <input type="radio" name="pricingUnit" value="PER_UNIT" />
+            {unitLabel}당 단가
+          </label>
+        </div>
+      )}
+
       <input
         name="price"
         type="number"
         min={0}
         step={1000}
         required
-        placeholder="가격 (원)"
+        placeholder={unitLabel ? `가격 (원) — 고정가 또는 ${unitLabel}당 단가` : "가격 (원)"}
         className="rounded-lg border border-neutral-200 px-3 py-2 text-sm"
       />
       <input

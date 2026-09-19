@@ -58,6 +58,18 @@ enum NotificationType {
   REVIEW_REQUEST
 }
 
+/// FLAT: `price` is the whole job's price, same for everyone.
+/// PER_UNIT: `price` is a per-unit rate (평당/대당) multiplied by whatever
+/// the category's quantity question comes out to (see
+/// src/lib/reservation-questions.ts's pricingQuantityKey) to estimate a
+/// customer-specific price on the listing page — only offered for
+/// categories that actually have such a question (에어컨청소's 대수,
+/// 입주청소 등의 평수); categories without one (세탁기청소) stay FLAT-only.
+enum PricingUnit {
+  FLAT
+  PER_UNIT
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -83,6 +95,7 @@ model User {
   reports       Report[]
   notifications Notification[]
   favorites     Favorite[]
+  categoryProfiles CategoryProfile[]
 }
 
 model Category {
@@ -94,6 +107,27 @@ model Category {
   services       CompanyService[]
   reservations   Reservation[]
   advertisements Advertisement[]
+  categoryProfiles CategoryProfile[]
+}
+
+/// A customer's saved answers for one category's reservation questions
+/// (see reservation-questions.ts) — reused across every company's listing
+/// in that category (to estimate a PER_UNIT price) and to pre-fill the
+/// reservation form, instead of asking again every time. Separate from
+/// Reservation.categoryAnswers, which is an immutable snapshot of what was
+/// answered for one specific booking.
+model CategoryProfile {
+  id         String   @id @default(cuid())
+  customerId String
+  categoryId String
+  answers    Json
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  customer User     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, categoryId])
 }
 
 /// Self-referencing so the same table covers 시/도 -> 시/군/구 -> 읍/면/동
@@ -146,12 +180,13 @@ model Company {
 }
 
 model CompanyService {
-  id          String   @id @default(cuid())
+  id          String      @id @default(cuid())
   companyId   String
   categoryId  String
   price       Int
+  pricingUnit PricingUnit @default(FLAT)
   description String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime    @default(now())
 
   company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   category Category @relation(fields: [categoryId], references: [id])

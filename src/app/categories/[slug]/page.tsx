@@ -1,10 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getSelectedRegion } from "@/lib/region";
 import { searchCompaniesInCategory } from "@/lib/company-search";
+import { getCategoryProfile } from "@/lib/category-profile-service";
+import { getPricingQuantityKey, PRICING_UNIT_LABEL } from "@/lib/reservation-questions";
 import { CategoryNavBar } from "@/components/category-nav-bar";
 import { CompanyListCard } from "@/components/company-list-card";
+import { CategoryProfileButton } from "@/components/category-profile-button";
 
 const SORT_OPTIONS = [
   { value: "latest", label: "최신순" },
@@ -57,8 +61,13 @@ export default async function CategoryCompaniesPage({
     );
   }
 
+  const session = await auth();
+  const categoryProfile = session?.user
+    ? await getCategoryProfile(session.user.id, slug)
+    : null;
+
   const [result, categories] = await Promise.all([
-    searchCompaniesInCategory({ slug, regionId: region.id, maxPrice, sort }),
+    searchCompaniesInCategory({ slug, regionId: region.id, maxPrice, sort, categoryProfile }),
     prisma.category.findMany({ orderBy: { order: "asc" } }),
   ]);
 
@@ -67,13 +76,22 @@ export default async function CategoryCompaniesPage({
   }
 
   const { category, adRows, rows } = result;
+  const quantityKey = getPricingQuantityKey(slug);
+  const unitLabel = quantityKey ? PRICING_UNIT_LABEL[quantityKey] : undefined;
 
   return (
     <main className="mx-auto w-full max-w-md flex-1 px-4 py-6">
-      <p className="text-xs text-neutral-400">
-        {region.name} &gt; {category.name}
-      </p>
-      <h1 className="mt-1 text-lg font-bold">{category.name} 업체</h1>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-xs text-neutral-400">
+            {region.name} &gt; {category.name}
+          </p>
+          <h1 className="mt-1 text-lg font-bold">{category.name} 업체</h1>
+        </div>
+        {session?.user && (
+          <CategoryProfileButton categorySlug={slug} initialAnswers={categoryProfile} />
+        )}
+      </div>
 
       <div className="mt-3">
         <CategoryNavBar categories={categories} activeSlug={slug} />
@@ -123,6 +141,9 @@ export default async function CategoryCompaniesPage({
                 isAvailable={company.isAvailable}
                 introText={company.introText}
                 price={company.price}
+                pricingUnit={company.pricingUnit}
+                estimatedPrice={company.estimatedPrice}
+                unitLabel={unitLabel}
                 rating={company.rating}
                 reviewCount={company.reviewCount}
                 regionNames={company.regionNames}
@@ -148,6 +169,9 @@ export default async function CategoryCompaniesPage({
                 isAvailable={company.isAvailable}
                 introText={company.introText}
                 price={company.price}
+                pricingUnit={company.pricingUnit}
+                estimatedPrice={company.estimatedPrice}
+                unitLabel={unitLabel}
                 rating={company.rating}
                 reviewCount={company.reviewCount}
                 regionNames={company.regionNames}

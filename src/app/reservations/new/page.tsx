@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getAllCategoryProfiles } from "@/lib/category-profile-service";
 import { NewReservationForm } from "./new-reservation-form";
 
 export default async function NewReservationPage({
@@ -17,12 +18,13 @@ export default async function NewReservationPage({
   const { companyId, categoryId } = await searchParams;
   if (!companyId) notFound();
 
-  const [company, me] = await Promise.all([
+  const [company, me, categoryProfiles] = await Promise.all([
     prisma.company.findUnique({
       where: { id: companyId },
       include: { services: { include: { category: true } } },
     }),
     prisma.user.findUniqueOrThrow({ where: { id: session.user.id } }),
+    getAllCategoryProfiles(session.user.id),
   ]);
 
   if (!company || company.status !== "ACTIVE") notFound();
@@ -63,6 +65,7 @@ export default async function NewReservationPage({
         defaultName={me.name ?? ""}
         defaultPhone={me.phone ?? ""}
         todayStr={todayStr}
+        categoryProfiles={categoryProfiles}
       />
     </main>
   );

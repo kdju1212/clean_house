@@ -114,6 +114,7 @@ export async function addService(
       categoryId: formData.get("categoryId"),
       price: formData.get("price"),
       description: formData.get("description"),
+      pricingUnit: formData.get("pricingUnit"),
     });
 
     revalidatePath("/company");

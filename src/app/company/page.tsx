@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SubmitButton } from "@/components/submit-button";
+import { getPricingQuantityKey, PRICING_UNIT_LABEL } from "@/lib/reservation-questions";
 import { deleteService } from "./actions";
 import { ProfileForm } from "./profile-form";
 import { AddServiceForm } from "./add-service-form";
@@ -156,6 +157,9 @@ export default async function CompanyDashboardPage() {
                   <p className="font-medium">{service.category.name}</p>
                   <p className="text-neutral-500">
                     {service.price.toLocaleString()}원
+                    {service.pricingUnit === "PER_UNIT"
+                      ? `/${PRICING_UNIT_LABEL[getPricingQuantityKey(service.category.slug) ?? ""] ?? ""}`
+                      : ""}
                     {service.description ? ` · ${service.description}` : ""}
                   </p>
                 </div>

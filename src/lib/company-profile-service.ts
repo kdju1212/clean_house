@@ -2,6 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { requireOwnedCompany } from "@/lib/company-auth";
+import { supportsPerUnitPricing } from "@/lib/reservation-questions";
 import { deleteLocalCompanyImage } from "@/lib/storage";
 import {
   cloudinaryDeliveryUrl,
@@ -87,11 +88,11 @@ export async function updateCompanyProfileForOwner(
 
 export async function addServiceForOwner(
   ownerUserId: string,
-  input: { categoryId: unknown; price: unknown; description: unknown }
+  input: { categoryId: unknown; price: unknown; description: unknown; pricingUnit?: unknown }
 ): Promise<void> {
   const company = await requireOwnedCompany(ownerUserId);
 
-  const { categoryId, price: priceRaw, description } = input;
+  const { categoryId, price: priceRaw, description, pricingUnit: pricingUnitRaw } = input;
 
   if (typeof categoryId !== "string" || categoryId.length === 0) {
     throw new Error("청소 종류를 선택해주세요.");
@@ -110,16 +111,28 @@ export async function addServiceForOwner(
     throw new Error(`설명은 ${MAX_SERVICE_DESCRIPTION_LENGTH}자 이하로 입력해주세요.`);
   }
 
+  // Never trust the client's pricingUnit choice at face value — only
+  // categories with a pricing quantity question (평수, 대수, ...) can be
+  // priced PER_UNIT; anything else silently falls back to FLAT.
+  const category = await prisma.category.findUnique({ where: { id: categoryId } });
+  if (!category) {
+    throw new Error("존재하지 않는 청소 종류입니다.");
+  }
+  const pricingUnit: "FLAT" | "PER_UNIT" =
+    pricingUnitRaw === "PER_UNIT" && supportsPerUnitPricing(category.slug) ? "PER_UNIT" : "FLAT";
+
   await prisma.companyService.upsert({
     where: { companyId_categoryId: { companyId: company.id, categoryId } },
     update: {
       price,
+      pricingUnit,
       description: typeof description === "string" ? description.trim() : null,
     },
     create: {
       companyId: company.id,
       categoryId,
       price,
+      pricingUnit,
       description: typeof description === "string" ? description.trim() : null,
     },
   });

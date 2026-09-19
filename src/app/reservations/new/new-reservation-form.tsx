@@ -13,6 +13,7 @@ export function NewReservationForm({
   defaultName,
   defaultPhone,
   todayStr,
+  categoryProfiles,
 }: {
   companyId: string;
   services: { categoryId: string; price: number; category: { name: string; slug: string } }[];
@@ -20,6 +21,10 @@ export function NewReservationForm({
   defaultName: string;
   defaultPhone: string;
   todayStr: string;
+  // Previously-saved answers per category slug (see CategoryProfileButton)
+  // — pre-fills these fields so a repeat customer doesn't retype 평수 or
+  // 브랜드/형태/대수 every time they book.
+  categoryProfiles: Record<string, Record<string, string>>;
 }) {
   const [state, formAction] = useActionState(createReservation, undefined);
   const [address, setAddress] = useState("");
@@ -28,7 +33,9 @@ export function NewReservationForm({
   const [categoryId, setCategoryId] = useState(defaultCategoryId ?? services[0]?.categoryId);
 
   const selectedService = services.find((s) => s.categoryId === categoryId);
-  const questions = selectedService ? getReservationQuestions(selectedService.category.slug) : [];
+  const selectedSlug = selectedService?.category.slug;
+  const questions = selectedSlug ? getReservationQuestions(selectedSlug) : [];
+  const savedAnswers = selectedSlug ? categoryProfiles[selectedSlug] : undefined;
 
   function handleLocate() {
     setLocateError(null);
@@ -90,12 +97,15 @@ export function NewReservationForm({
           </p>
           {questions.map((q) =>
             q.type === "select" ? (
-              <label key={q.key} className="flex flex-col gap-1 text-sm font-medium">
+              <label
+                key={`${selectedSlug}-${q.key}`}
+                className="flex flex-col gap-1 text-sm font-medium"
+              >
                 {q.label}
                 <select
                   name={`answer_${q.key}`}
                   required={q.required}
-                  defaultValue=""
+                  defaultValue={savedAnswers?.[q.key] ?? ""}
                   className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
                 >
                   <option value="" disabled>
@@ -109,12 +119,16 @@ export function NewReservationForm({
                 </select>
               </label>
             ) : (
-              <label key={q.key} className="flex flex-col gap-1 text-sm font-medium">
+              <label
+                key={`${selectedSlug}-${q.key}`}
+                className="flex flex-col gap-1 text-sm font-medium"
+              >
                 {q.label}
                 <input
                   name={`answer_${q.key}`}
                   type={q.type === "number" ? "number" : "text"}
                   required={q.required}
+                  defaultValue={savedAnswers?.[q.key] ?? ""}
                   placeholder={q.placeholder}
                   className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
                 />

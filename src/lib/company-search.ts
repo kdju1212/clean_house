@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { getRegionAncestorIds } from "@/lib/region";
 import { startOfToday } from "@/lib/ad";
+import { getPricingQuantityKey } from "@/lib/reservation-questions";
 
 export type CompanySearchSort =
   | "latest"
@@ -16,6 +17,14 @@ export type CompanySearchRow = {
   isAvailable: boolean;
   introText: string | null;
   price: number;
+  pricingUnit: "FLAT" | "PER_UNIT";
+  // Non-null only when pricingUnit is PER_UNIT and the caller passed a
+  // categoryProfile with a value for this category's quantity question
+  // (see getPricingQuantityKey) — price * that quantity, e.g. 32평 x
+  // 10,000원/평. Never affects sorting/maxPrice filtering, which stay
+  // based on the listed `price` so every company is compared on the same
+  // basis regardless of who's browsing.
+  estimatedPrice: number | null;
   rating: number;
   reviewCount: number;
   regionNames: string[];
@@ -114,6 +123,12 @@ export async function searchCompaniesForRegion({
           isAvailable: c.isAvailable,
           introText: c.introText,
           price,
+          // "전체" mixes every category a company offers into one "시작가"
+          // — there's no single category context to estimate against, so
+          // this tab never shows a PER_UNIT estimate (that's
+          // searchCompaniesInCategory's job).
+          pricingUnit: "FLAT",
+          estimatedPrice: null,
           rating: ratingMap.get(c.id)?.average ?? 0,
           reviewCount: ratingMap.get(c.id)?.count ?? 0,
           regionNames: c.regions.map((r) => r.region.name),
@@ -145,11 +160,15 @@ export async function searchCompaniesInCategory({
   regionId,
   maxPrice,
   sort,
+  categoryProfile,
 }: {
   slug: string;
   regionId: string;
   maxPrice?: number;
   sort: CompanySearchSort;
+  // The browsing customer's saved CategoryProfile for this category, if
+  // any — used only to compute estimatedPrice for PER_UNIT services.
+  categoryProfile?: Record<string, string> | null;
 }): Promise<CompanySearchResult> {
   const [category, region] = await Promise.all([
     prisma.category.findUnique({ where: { slug } }),
@@ -158,6 +177,10 @@ export async function searchCompaniesInCategory({
 
   if (!category) return { status: "category_not_found" };
   if (!region) return { status: "region_not_found" };
+
+  const quantityKey = getPricingQuantityKey(slug);
+  const quantityValue =
+    quantityKey && categoryProfile?.[quantityKey] ? Number(categoryProfile[quantityKey]) : null;
 
   const ancestorRegionIds = await getRegionAncestorIds(region.id);
 
@@ -228,7 +251,16 @@ export async function searchCompaniesInCategory({
     ])
   );
 
-  function toRow(company: CompanyWithRegions, price: number): CompanySearchRow {
+  function toRow(
+    company: CompanyWithRegions,
+    service: { price: number; pricingUnit: "FLAT" | "PER_UNIT" } | undefined
+  ): CompanySearchRow {
+    const price = service?.price ?? 0;
+    const pricingUnit = service?.pricingUnit ?? "FLAT";
+    const estimatedPrice =
+      pricingUnit === "PER_UNIT" && quantityValue != null && Number.isFinite(quantityValue) && quantityValue > 0
+        ? price * quantityValue
+        : null;
     return {
       id: company.id,
       name: company.name,
@@ -236,19 +268,19 @@ export async function searchCompaniesInCategory({
       isAvailable: company.isAvailable,
       introText: company.introText,
       price,
+      pricingUnit,
+      estimatedPrice,
       rating: ratingMap.get(company.id)?.average ?? 0,
       reviewCount: ratingMap.get(company.id)?.count ?? 0,
       regionNames: company.regions.map((r) => r.region.name),
     };
   }
 
-  const adRows = ads.map((ad) =>
-    toRow(ad.company, ad.company.services[0]?.price ?? 0)
-  );
+  const adRows = ads.map((ad) => toRow(ad.company, ad.company.services[0]));
 
   const rows = organicCompanies
     .map((c) => ({
-      row: toRow(c, c.services[0]?.price ?? 0),
+      row: toRow(c, c.services[0]),
       createdAt: c.createdAt,
     }))
     .sort((a, b) => {
