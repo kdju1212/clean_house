@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { searchCompaniesInCategory, type CompanySearchSort } from "@/lib/company-search";
+import { getCategoryProfile } from "@/lib/category-profile-service";
+import { getMobileUserId } from "@/lib/mobile-auth";
 
 const SORT_VALUES: CompanySearchSort[] = [
   "latest",
@@ -34,7 +36,12 @@ export async function GET(
     : "latest";
   const maxPrice = maxPriceRaw ? Number(maxPriceRaw) : undefined;
 
-  const result = await searchCompaniesInCategory({ slug, regionId, maxPrice, sort });
+  // Browsing works signed-out too, so a missing/invalid token isn't an
+  // error here — it just means no PER_UNIT estimate can be computed.
+  const userId = await getMobileUserId(request);
+  const categoryProfile = userId ? await getCategoryProfile(userId, slug) : null;
+
+  const result = await searchCompaniesInCategory({ slug, regionId, maxPrice, sort, categoryProfile });
 
   if (result.status === "category_not_found") {
     return NextResponse.json({ error: "존재하지 않는 카테고리입니다." }, { status: 404 });
