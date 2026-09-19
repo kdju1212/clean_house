@@ -19,9 +19,19 @@ const TIP_SEEN_KEY = "categoryProfileTipSeen";
 export function CategoryProfileButton({
   categorySlug,
   initialAnswers,
+  otherProfiles = {},
+  categories = [],
 }: {
   categorySlug: string;
   initialAnswers: Record<string, string> | null;
+  // Every other category the customer has already saved a profile for,
+  // keyed by slug — offered as a "불러오기" shortcut when it shares at
+  // least one question with this category (평수 is common to every
+  // space-based category, so 입주청소's saved values can fill in most of
+  // 이사청소's form without retyping), even though the two are still
+  // saved completely separately (see CategoryProfile's unique constraint).
+  otherProfiles?: Record<string, Record<string, string>>;
+  categories?: { slug: string; name: string }[];
 }) {
   const router = useRouter();
   const questions = getReservationQuestions(categorySlug);
@@ -30,6 +40,25 @@ export function CategoryProfileButton({
   const [values, setValues] = useState<Record<string, string>>(initialAnswers ?? {});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const questionKeys = new Set(questions.map((q) => q.key));
+  const importCandidates = categories
+    .filter((c) => c.slug !== categorySlug)
+    .map((c) => ({ category: c, profile: otherProfiles[c.slug] }))
+    .filter(
+      (c): c is { category: { slug: string; name: string }; profile: Record<string, string> } =>
+        !!c.profile && Object.keys(c.profile).some((key) => questionKeys.has(key))
+    );
+
+  function importFrom(profile: Record<string, string>) {
+    setValues((prev) => {
+      const next = { ...prev };
+      for (const key of Object.keys(profile)) {
+        if (questionKeys.has(key)) next[key] = profile[key];
+      }
+      return next;
+    });
+  }
 
   useEffect(() => {
     if (questions.length === 0) return;
@@ -115,6 +144,22 @@ export function CategoryProfileButton({
             <p className="mt-1 text-xs text-neutral-500">
               업체 목록에서 이 정보를 기준으로 예상 가격을 보여드려요.
             </p>
+
+            {importCandidates.length > 0 && (
+              <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                <span className="text-xs text-neutral-400">불러오기:</span>
+                {importCandidates.map(({ category, profile }) => (
+                  <button
+                    key={category.slug}
+                    type="button"
+                    onClick={() => importFrom(profile)}
+                    className="rounded-full border border-neutral-200 px-2.5 py-1 text-xs font-medium text-neutral-600"
+                  >
+                    {category.name}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <div className="mt-3 flex flex-col gap-3">
               {questions.map((q) =>

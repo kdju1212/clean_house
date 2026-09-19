@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getSelectedRegion } from "@/lib/region";
 import { searchCompaniesInCategory } from "@/lib/company-search";
-import { getCategoryProfile } from "@/lib/category-profile-service";
+import { getCategoryProfile, getAllCategoryProfiles } from "@/lib/category-profile-service";
 import { getPricingQuantityKey, PRICING_UNIT_LABEL } from "@/lib/reservation-questions";
 import { CategoryNavBar } from "@/components/category-nav-bar";
 import { CompanyListCard } from "@/components/company-list-card";
@@ -62,9 +62,10 @@ export default async function CategoryCompaniesPage({
   }
 
   const session = await auth();
-  const categoryProfile = session?.user
-    ? await getCategoryProfile(session.user.id, slug)
-    : null;
+  const [categoryProfile, allProfiles] = await Promise.all([
+    session?.user ? getCategoryProfile(session.user.id, slug) : Promise.resolve(null),
+    session?.user ? getAllCategoryProfiles(session.user.id) : Promise.resolve({}),
+  ]);
 
   const [result, categories] = await Promise.all([
     searchCompaniesInCategory({ slug, regionId: region.id, maxPrice, sort, categoryProfile }),
@@ -89,7 +90,12 @@ export default async function CategoryCompaniesPage({
           <h1 className="mt-1 text-lg font-bold">{category.name} 업체</h1>
         </div>
         {session?.user && (
-          <CategoryProfileButton categorySlug={slug} initialAnswers={categoryProfile} />
+          <CategoryProfileButton
+            categorySlug={slug}
+            initialAnswers={categoryProfile}
+            otherProfiles={allProfiles}
+            categories={categories}
+          />
         )}
       </div>
 
