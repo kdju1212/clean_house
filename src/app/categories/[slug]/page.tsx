@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 import { getSelectedRegion } from "@/lib/region";
 import { searchCompaniesInCategory } from "@/lib/company-search";
+import { CategoryNavBar } from "@/components/category-nav-bar";
 import { CompanyListCard } from "@/components/company-list-card";
 
 const SORT_OPTIONS = [
@@ -55,12 +57,10 @@ export default async function CategoryCompaniesPage({
     );
   }
 
-  const result = await searchCompaniesInCategory({
-    slug,
-    regionId: region.id,
-    maxPrice,
-    sort,
-  });
+  const [result, categories] = await Promise.all([
+    searchCompaniesInCategory({ slug, regionId: region.id, maxPrice, sort }),
+    prisma.category.findMany({ orderBy: { order: "asc" } }),
+  ]);
 
   if (result.status === "category_not_found" || result.status === "region_not_found") {
     notFound();
@@ -74,6 +74,10 @@ export default async function CategoryCompaniesPage({
         {region.name} &gt; {category.name}
       </p>
       <h1 className="mt-1 text-lg font-bold">{category.name} 업체</h1>
+
+      <div className="mt-3">
+        <CategoryNavBar categories={categories} activeSlug={slug} />
+      </div>
 
       <div className="mt-4 flex items-center justify-between gap-2">
         <div className="flex gap-1 overflow-x-auto">
