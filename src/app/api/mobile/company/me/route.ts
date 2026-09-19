@@ -60,8 +60,10 @@ export async function GET(request: Request) {
     services: company.services.map((s) => ({
       id: s.id,
       categoryId: s.categoryId,
+      categorySlug: s.category.slug,
       categoryName: s.category.name,
       price: s.price,
+      pricingUnit: s.pricingUnit,
       description: s.description,
     })),
     regionIds: company.regions.map((r) => r.regionId),
