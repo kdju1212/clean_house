@@ -7,6 +7,7 @@ import { toggleFavorite } from "./actions";
 import { Gallery } from "./gallery";
 import { CompanyDetailDynamic } from "./company-detail-dynamic";
 import { InfoRows } from "@/components/company-detail/info-rows";
+import { DetailTabs } from "@/components/company-detail/detail-tabs";
 import { RatingDistribution } from "@/components/company-detail/rating-distribution";
 import { ReviewCard, ReviewPhotoStrip } from "@/components/company-detail/review-list";
 import { ScrollToTopButton } from "@/components/scroll-to-top-button";
@@ -146,26 +147,33 @@ export default async function CompanyDetailPage({
             "아직 리뷰가 없어요"
           )}
         </p>
-        <CompanyDetailDynamic
-          companyId={company.id}
-          services={services}
-          companyIntroText={company.introText}
-          workPhotos={workPhotos}
-          beforeAfterPhotos={beforeAfterPhotos}
-          initialCategoryId={initialCategoryId ?? null}
-          websiteUrl={company.websiteUrl}
-        />
+      </div>
 
-        <InfoRows
-          rows={[
-            { label: "서비스 지역", value: company.regions.map((r) => r.region.name).join(", ") || "-" },
-            { label: "영업시간", value: company.businessHours ?? "-" },
-            { label: "예약 가능 여부", value: company.isAvailable ? "예약 가능" : "예약 마감" },
-            ...(company.phone ? [{ label: "연락처", value: company.phone }] : []),
-          ]}
-        />
+      <DetailTabs reviewCount={reviewCount} />
 
-        <section className="mt-5">
+      <div className="px-4">
+        <div id="info-section" className="py-4">
+          <CompanyDetailDynamic
+            companyId={company.id}
+            services={services}
+            companyIntroText={company.introText}
+            workPhotos={workPhotos}
+            beforeAfterPhotos={beforeAfterPhotos}
+            initialCategoryId={initialCategoryId ?? null}
+            websiteUrl={company.websiteUrl}
+          />
+
+          <InfoRows
+            rows={[
+              { label: "서비스 지역", value: company.regions.map((r) => r.region.name).join(", ") || "-" },
+              { label: "영업시간", value: company.businessHours ?? "-" },
+              { label: "예약 가능 여부", value: company.isAvailable ? "예약 가능" : "예약 마감" },
+              ...(company.phone ? [{ label: "연락처", value: company.phone }] : []),
+            ]}
+          />
+        </div>
+
+        <section id="review-section" className="border-t border-neutral-100 py-4">
           <h2 className="text-sm font-semibold">
             리뷰 {reviewCount > 0 ? `(${reviewCount})` : ""}
           </h2>
