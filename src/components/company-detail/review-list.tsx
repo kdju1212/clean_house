@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { ImageZoom } from "@/components/image-zoom";
 
 export type ReviewItem = {
   id: string;
@@ -15,7 +16,7 @@ export type ReviewItem = {
 
 /** Horizontal strip of review photos, Coupang-style, above the review cards
  * — one tile per photo, not per review, so a multi-photo review shows all
- * of them here too. */
+ * of them here too. Tapping a tile opens that photo full-screen. */
 export function ReviewPhotoStrip({ reviews }: { reviews: ReviewItem[] }) {
   const photos = reviews.flatMap((r) =>
     r.photoUrls.map((url) => ({ key: `${r.id}-${url}`, url }))
@@ -25,12 +26,14 @@ export function ReviewPhotoStrip({ reviews }: { reviews: ReviewItem[] }) {
   return (
     <div className="mt-3 flex gap-2 overflow-x-auto">
       {photos.map((photo) => (
-        <div
+        <ImageZoom
           key={photo.key}
+          src={photo.url}
+          alt="리뷰 사진"
           className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-neutral-100"
         >
           <Image src={photo.url} alt="리뷰 사진" fill sizes="80px" className="object-cover" />
-        </div>
+        </ImageZoom>
       ))}
     </div>
   );
@@ -53,12 +56,14 @@ export function ReviewCard({ review, reportHref }: { review: ReviewItem; reportH
       {review.photoUrls.length > 0 && (
         <div className="mt-2 flex gap-2 overflow-x-auto">
           {review.photoUrls.map((url) => (
-            <div
+            <ImageZoom
               key={url}
+              src={url}
+              alt="리뷰 사진"
               className="relative aspect-square w-24 shrink-0 overflow-hidden rounded-lg bg-neutral-100"
             >
               <Image src={url} alt="리뷰 사진" fill sizes="96px" className="object-cover" />
-            </div>
+            </ImageZoom>
           ))}
         </div>
       )}
