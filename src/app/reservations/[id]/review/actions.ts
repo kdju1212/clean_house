@@ -32,7 +32,7 @@ export async function createReview(input: {
   reservationId: string;
   rating: number;
   content: string;
-  publicId?: string | null;
+  publicIds?: (string | null | undefined)[];
 }): Promise<{ error: string } | { companyId: string }> {
   try {
     const session = await requireSession();

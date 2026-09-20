@@ -18,14 +18,14 @@ export async function POST(
   const body = await request.json().catch(() => null);
   const rating = typeof body?.rating === "number" ? body.rating : NaN;
   const content = typeof body?.content === "string" ? body.content : "";
-  const publicId = typeof body?.publicId === "string" ? body.publicId : null;
+  const publicIds = Array.isArray(body?.publicIds) ? body.publicIds : [];
 
   try {
     const result = await createReviewForUser(userId, {
       reservationId: id,
       rating,
       content,
-      publicId,
+      publicIds,
     });
     return NextResponse.json(result);
   } catch (err) {

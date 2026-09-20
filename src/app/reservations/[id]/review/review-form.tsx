@@ -4,6 +4,8 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createReview, requestReviewPhotoUploadUrl } from "./actions";
 
+const MAX_PHOTOS = 5;
+
 export function ReviewForm({ reservationId }: { reservationId: string }) {
   const [rating, setRating] = useState(5);
   const [content, setContent] = useState("");
@@ -23,9 +25,10 @@ export function ReviewForm({ reservationId }: { reservationId: string }) {
 
     startTransition(async () => {
       try {
-        let publicId: string | null = null;
-        const file = fileInputRef.current?.files?.[0];
-        if (file) {
+        const files = [...(fileInputRef.current?.files ?? [])].slice(0, MAX_PHOTOS);
+        const publicIds: string[] = [];
+
+        for (const file of files) {
           const signed = await requestReviewPhotoUploadUrl({
             reservationId,
             contentType: file.type,
@@ -51,14 +54,14 @@ export function ReviewForm({ reservationId }: { reservationId: string }) {
             setError("사진 업로드에 실패했어요.");
             return;
           }
-          publicId = signed.publicId;
+          publicIds.push(signed.publicId);
         }
 
         const result = await createReview({
           reservationId,
           rating,
           content,
-          publicId,
+          publicIds,
         });
         if ("error" in result) {
           setError(result.error);
@@ -96,11 +99,12 @@ export function ReviewForm({ reservationId }: { reservationId: string }) {
       />
 
       <label className="flex flex-col gap-1 text-sm font-medium">
-        사진 (선택)
+        사진 (선택, 최대 {MAX_PHOTOS}장)
         <input
           ref={fileInputRef}
           type="file"
           accept="image/jpeg,image/png,image/webp"
+          multiple
           className="text-sm font-normal"
         />
       </label>

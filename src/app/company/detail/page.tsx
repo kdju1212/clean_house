@@ -27,7 +27,7 @@ export default async function CompanyDetailEditPage() {
   const [reviews, ratingSummary, ratingGroups] = await Promise.all([
     prisma.review.findMany({
       where: { companyId: company.id, hidden: false },
-      include: { customer: true },
+      include: { customer: true, photos: { orderBy: { order: "asc" } } },
       orderBy: { createdAt: "desc" },
     }),
     prisma.review.aggregate({
@@ -98,7 +98,8 @@ export default async function CompanyDetailEditPage() {
             createdAt: r.createdAt,
             customerName: r.customer.name ?? "익명",
             content: r.content,
-            photoUrl: r.photoUrl,
+            photoUrls:
+              r.photos.length > 0 ? r.photos.map((p) => p.url) : r.photoUrl ? [r.photoUrl] : [],
           }))}
         />
       </div>

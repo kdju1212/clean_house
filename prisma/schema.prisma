@@ -329,13 +329,29 @@ model Review {
   customerId    String
   rating        Int
   content       String
+  // Kept only so a review written before ReviewPhoto existed still has its
+  // one photo — never set for a new review anymore (see createReviewForUser),
+  // which writes into `photos` instead so more than one is possible. Every
+  // display path reads `photos`, falling back to this for old rows with an
+  // empty `photos` list.
   photoUrl      String?
   hidden        Boolean  @default(false)
   createdAt     DateTime @default(now())
 
-  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
-  company     Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  customer    User        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  reservation Reservation    @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  company     Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer    User           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  photos      ReviewPhoto[]
+}
+
+model ReviewPhoto {
+  id        String   @id @default(cuid())
+  reviewId  String
+  url       String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
 }
 
 /// targetId is a loose reference (no DB-level FK) since it can point at
