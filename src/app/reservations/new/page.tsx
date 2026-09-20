@@ -18,13 +18,20 @@ export default async function NewReservationPage({
   const { companyId, categoryId } = await searchParams;
   if (!companyId) notFound();
 
-  const [company, me, categoryProfiles] = await Promise.all([
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  const [company, me, categoryProfiles, blockedDates] = await Promise.all([
     prisma.company.findUnique({
       where: { id: companyId },
       include: { services: { include: { category: true } } },
     }),
     prisma.user.findUniqueOrThrow({ where: { id: session.user.id } }),
     getAllCategoryProfiles(session.user.id),
+    prisma.companyBlockedDate.findMany({
+      where: { companyId, date: { gte: new Date(`${todayStr}T00:00:00`) } },
+      orderBy: { date: "asc" },
+      select: { date: true },
+    }),
   ]);
 
   if (!company || company.status !== "ACTIVE") notFound();
@@ -44,7 +51,6 @@ export default async function NewReservationPage({
     );
   }
 
-  const todayStr = new Date().toISOString().slice(0, 10);
   const defaultCategoryId = company.services.some((s) => s.categoryId === categoryId)
     ? categoryId
     : undefined;
@@ -66,6 +72,7 @@ export default async function NewReservationPage({
         defaultPhone={me.phone ?? ""}
         todayStr={todayStr}
         categoryProfiles={categoryProfiles}
+        blockedDates={blockedDates.map((b) => b.date.toISOString().slice(0, 10))}
       />
     </main>
   );

@@ -195,6 +195,23 @@ model Company {
   reviews        Review[]
   favoritedBy    Favorite[]
   advertisements Advertisement[]
+  blockedDates   CompanyBlockedDate[]
+}
+
+/// A single calendar day this company doesn't take reservations on (휴무일) —
+/// separate from Company.isAvailable, which is an all-or-nothing "예약 가능/
+/// 마감" toggle. Checked both when a customer submits a new reservation
+/// (see createReservationForCustomer) and shown as a hint on the booking
+/// form so they don't pick one in the first place.
+model CompanyBlockedDate {
+  id        String   @id @default(cuid())
+  companyId String
+  date      DateTime @db.Date
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, date])
 }
 
 model CompanyService {

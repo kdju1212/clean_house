@@ -16,6 +16,8 @@ export async function GET(
 ) {
   const { id } = await params;
 
+  const todayStr = new Date().toISOString().slice(0, 10);
+
   const [company, reviews, ratingSummary, userId] = await Promise.all([
     prisma.company.findUnique({
       where: { id },
@@ -23,6 +25,10 @@ export async function GET(
         services: { include: { category: true }, orderBy: { createdAt: "asc" } },
         photos: { orderBy: { createdAt: "desc" } },
         regions: { include: { region: true } },
+        blockedDates: {
+          where: { date: { gte: new Date(`${todayStr}T00:00:00`) } },
+          orderBy: { date: "asc" },
+        },
       },
     }),
     prisma.review.findMany({
@@ -70,6 +76,7 @@ export async function GET(
       description: s.description,
     })),
     photos: company.photos.map((p) => ({ id: p.id, url: p.url, type: p.type, categoryId: p.categoryId })),
+    blockedDates: company.blockedDates.map((b) => b.date.toISOString().slice(0, 10)),
     regionNames: company.regions.map((r) => r.region.name),
     averageRating: ratingSummary._avg.rating ?? 0,
     reviewCount: ratingSummary._count,

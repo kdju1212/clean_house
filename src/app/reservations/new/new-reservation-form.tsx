@@ -18,6 +18,7 @@ export function NewReservationForm({
   defaultPhone,
   todayStr,
   categoryProfiles,
+  blockedDates,
 }: {
   companyId: string;
   services: {
@@ -34,12 +35,19 @@ export function NewReservationForm({
   // — pre-fills these fields so a repeat customer doesn't retype 평수 or
   // 브랜드/형태/대수 every time they book.
   categoryProfiles: Record<string, Record<string, string>>;
+  // "YYYY-MM-DD" strings, today or later — see src/app/company/schedule.
+  // Purely a client-side heads-up; createReservationForCustomer re-checks
+  // this server-side regardless.
+  blockedDates: string[];
 }) {
   const [state, formAction] = useActionState(createReservation, undefined);
   const [address, setAddress] = useState("");
   const [locating, setLocating] = useState(false);
   const [locateError, setLocateError] = useState<string | null>(null);
   const [categoryId, setCategoryId] = useState(defaultCategoryId ?? services[0]?.categoryId);
+  const [desiredDate, setDesiredDate] = useState(todayStr);
+  const blockedDateSet = new Set(blockedDates);
+  const isDesiredDateBlocked = blockedDateSet.has(desiredDate);
 
   const selectedService = services.find((s) => s.categoryId === categoryId);
   const selectedSlug = selectedService?.category.slug;
@@ -213,7 +221,8 @@ export function NewReservationForm({
             name="desiredDate"
             type="date"
             min={todayStr}
-            defaultValue={todayStr}
+            value={desiredDate}
+            onChange={(e) => setDesiredDate(e.target.value)}
             required
             className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
           />
@@ -233,6 +242,11 @@ export function NewReservationForm({
           </select>
         </label>
       </div>
+      {isDesiredDateBlocked && (
+        <p className="text-xs text-red-600">
+          해당 날짜는 업체 휴무일이에요. 다른 날짜를 선택해주세요.
+        </p>
+      )}
 
       <label className="flex flex-col gap-1 text-sm font-medium">
         이름
@@ -274,6 +288,7 @@ export function NewReservationForm({
       <SubmitButton
         className="mt-2 rounded-lg bg-neutral-900 px-4 py-3 text-sm font-medium text-white"
         pendingText="신청 중..."
+        disabled={isDesiredDateBlocked}
       >
         예약 신청하기
       </SubmitButton>

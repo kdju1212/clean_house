@@ -100,6 +100,16 @@ export async function createReservationForCustomer(
     throw new Error("해당 업체가 제공하지 않는 서비스입니다.");
   }
 
+  // The client-side date input only shows a hint for blocked dates (see
+  // src/app/company/schedule) — the server is the actual source of truth,
+  // same reasoning as every other "never trust the client" check here.
+  const isBlocked = await prisma.companyBlockedDate.findUnique({
+    where: { companyId_date: { companyId: company.id, date: desiredDate } },
+  });
+  if (isBlocked) {
+    throw new Error("해당 날짜는 업체 휴무일이에요. 다른 날짜를 선택해주세요.");
+  }
+
   const parsedCategoryAnswers = parseCategoryAnswers(
     company.services[0].category.slug,
     typeof categoryAnswers === "object" && categoryAnswers !== null

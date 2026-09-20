@@ -14,6 +14,7 @@ export function SubmitButton({
   className = "",
   children,
   pendingText,
+  disabled,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { pendingText?: string }) {
   const { pending } = useFormStatus();
@@ -21,7 +22,7 @@ export function SubmitButton({
   return (
     <button
       type="submit"
-      disabled={pending}
+      disabled={pending || disabled}
       aria-busy={pending}
       className={`${className} disabled:cursor-wait disabled:opacity-60`}
       {...props}
