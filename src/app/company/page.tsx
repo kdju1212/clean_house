@@ -18,7 +18,7 @@ const STATUS_LABEL: Record<string, string> = {
 export default async function CompanyDashboardPage() {
   const session = await auth();
   if (!session?.user) {
-    redirect("/login");
+    redirect("/login?callbackUrl=/company");
   }
 
   const company = await prisma.company.findUnique({

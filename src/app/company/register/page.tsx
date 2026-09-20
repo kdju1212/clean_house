@@ -6,7 +6,7 @@ import { RegisterForm } from "./register-form";
 export default async function CompanyRegisterPage() {
   const session = await auth();
   if (!session?.user) {
-    redirect("/login");
+    redirect("/login?callbackUrl=/company/register");
   }
 
   const existing = await prisma.company.findUnique({

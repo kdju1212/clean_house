@@ -42,7 +42,7 @@ export async function Header() {
             </Link>
           )}
           <Link
-            href={session?.user ? "/company" : "/login"}
+            href={session?.user ? "/company" : "/login?callbackUrl=/company"}
             className="text-xs text-neutral-400 hover:text-neutral-600"
           >
             사장님이신가요?
