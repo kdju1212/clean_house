@@ -1,7 +1,7 @@
 "use server";
 
 import { auth } from "@/lib/auth";
-import { saveCategoryProfile } from "@/lib/category-profile-service";
+import { deleteCategoryProfile, saveCategoryProfile } from "@/lib/category-profile-service";
 import { toActionError, type ActionState } from "@/lib/action-state";
 
 /** Called directly (not via <form action>) from CategoryProfileButton, a
@@ -30,6 +30,21 @@ export async function saveMyCategoryProfile(
     }
 
     await saveCategoryProfile(session.user.id, categorySlug, raw);
+  } catch (err) {
+    return toActionError(err);
+  }
+}
+
+/** Called directly (not via <form action>) from CategoryProfileButton's
+ * "초기화" button — plain args instead of FormData since there's nothing
+ * else to send. */
+export async function deleteMyCategoryProfile(categorySlug: string): Promise<ActionState> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      throw new Error("로그인이 필요합니다.");
+    }
+    await deleteCategoryProfile(session.user.id, categorySlug);
   } catch (err) {
     return toActionError(err);
   }

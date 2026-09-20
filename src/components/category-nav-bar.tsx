@@ -17,9 +17,10 @@ const EMOJI_BY_SLUG: Record<string, string> = {
 
 /**
  * Danggeun-style horizontal category bar pinned above a company listing —
- * "전체" (activeSlug null) links back to the home page, each category links
- * to its own /categories/[slug] results page. Shared by both so switching
- * category never requires going back through a separate picker page.
+ * each category links to its own /categories/[slug] results page, so
+ * switching category never requires going back through a separate picker
+ * page. No "전체" (all-categories-merged) entry — / itself just redirects
+ * to the first category, see src/app/page.tsx.
  */
 export function CategoryNavBar({
   categories,
@@ -39,17 +40,6 @@ export function CategoryNavBar({
 
   return (
     <nav className="sticky top-[45px] z-10 -mx-4 flex gap-2 overflow-x-auto bg-white px-4 py-2 shadow-[0_1px_0_0_#f5f5f5]">
-      <Link
-        ref={activeSlug === null ? activeRef : undefined}
-        href="/"
-        className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium ${
-          activeSlug === null
-            ? "border-neutral-900 bg-neutral-900 text-white"
-            : "border-neutral-200 text-neutral-600"
-        }`}
-      >
-        전체
-      </Link>
       {categories.map((c) => (
         <Link
           key={c.slug}

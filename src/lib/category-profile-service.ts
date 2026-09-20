@@ -58,3 +58,18 @@ export async function saveCategoryProfile(
 
   return answers;
 }
+
+/** The "초기화" button's action — clears a saved CategoryProfile entirely
+ * (not just the in-memory form) so the next "정보입력" open starts blank.
+ * A no-op, not an error, when there was nothing saved to begin with. */
+export async function deleteCategoryProfile(
+  customerId: string,
+  categorySlug: string
+): Promise<void> {
+  const category = await prisma.category.findUnique({ where: { slug: categorySlug } });
+  if (!category) throw new Error("존재하지 않는 카테고리입니다.");
+
+  await prisma.categoryProfile.deleteMany({
+    where: { customerId, categoryId: category.id },
+  });
+}

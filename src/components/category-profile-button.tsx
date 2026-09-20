@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { saveMyCategoryProfile } from "@/app/categories/actions";
+import { deleteMyCategoryProfile, saveMyCategoryProfile } from "@/app/categories/actions";
 import { getReservationQuestions } from "@/lib/reservation-questions";
 
 const TIP_SEEN_KEY = "categoryProfileTipSeen";
@@ -39,6 +39,7 @@ export function CategoryProfileButton({
   const [showTip, setShowTip] = useState(false);
   const [values, setValues] = useState<Record<string, string>>(initialAnswers ?? {});
   const [saving, setSaving] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const questionKeys = new Set(questions.map((q) => q.key));
@@ -123,6 +124,23 @@ export function CategoryProfileButton({
     }
   }
 
+  async function handleReset() {
+    setResetting(true);
+    setError(null);
+    try {
+      const result = await deleteMyCategoryProfile(categorySlug);
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
+      setValues({});
+      setOpen(false);
+      router.refresh();
+    } finally {
+      setResetting(false);
+    }
+  }
+
   return (
     <div className="relative">
       <button
@@ -150,7 +168,19 @@ export function CategoryProfileButton({
       {open && (
         <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/40 sm:items-center">
           <div className="w-full max-w-md rounded-t-2xl bg-white p-4 sm:rounded-2xl">
-            <h2 className="text-sm font-semibold">내 정보 입력</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold">내 정보 입력</h2>
+              {initialAnswers && (
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  disabled={resetting}
+                  className="text-xs text-neutral-400 underline disabled:opacity-50"
+                >
+                  {resetting ? "초기화 중..." : "초기화"}
+                </button>
+              )}
+            </div>
             <p className="mt-1 text-xs text-neutral-500">
               업체 목록에서 이 정보를 기준으로 예상 가격을 보여드려요.
             </p>
