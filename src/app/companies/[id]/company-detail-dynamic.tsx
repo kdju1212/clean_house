@@ -34,6 +34,7 @@ export function CompanyDetailDynamic({
   workPhotos,
   beforeAfterPhotos,
   initialCategoryId,
+  websiteUrl,
 }: {
   companyId: string;
   services: Service[];
@@ -41,6 +42,9 @@ export function CompanyDetailDynamic({
   workPhotos: Photo[];
   beforeAfterPhotos: Photo[];
   initialCategoryId: string | null;
+  // The company's own site — when set, ServiceBar sends the customer there
+  // to book instead of into our own reservation flow (see its own comment).
+  websiteUrl: string | null;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(
     initialCategoryId && services.some((s) => s.categoryId === initialCategoryId)
@@ -65,6 +69,7 @@ export function CompanyDetailDynamic({
         services={services}
         selectedId={selectedId}
         onSelect={setSelectedId}
+        websiteUrl={websiteUrl}
       />
 
       <PhotoStack title="작업 사진" photos={workPhotos.filter(matchesSelected)} />

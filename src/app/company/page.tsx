@@ -180,6 +180,7 @@ export default async function CompanyDashboardPage() {
           introText={company.introText ?? ""}
           businessHours={company.businessHours ?? ""}
           isAvailable={company.isAvailable}
+          websiteUrl={company.websiteUrl ?? ""}
         />
       </section>
 

@@ -143,6 +143,7 @@ export async function updateProfile(
       introText: formData.get("introText"),
       businessHours: formData.get("businessHours"),
       isAvailable: formData.get("isAvailable") === "on",
+      websiteUrl: formData.get("websiteUrl"),
     });
 
     revalidatePath("/company");

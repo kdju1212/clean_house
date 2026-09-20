@@ -53,6 +53,7 @@ export async function GET(request: Request) {
       introText: company.introText,
       businessHours: company.businessHours,
       mainImageUrl: company.mainImageUrl,
+      websiteUrl: company.websiteUrl,
     },
     requestedCount,
     averageRating: ratingSummary._avg.rating ?? 0,

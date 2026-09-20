@@ -179,6 +179,12 @@ model Company {
   // NULLs in Postgres, so pre-existing rows don't conflict with each other.
   businessRegistrationNumber String? @unique
   representativeName         String?
+  // A company's own booking site — when set, "예약하기" sends the customer
+  // there instead of into our own reservation flow (see ServiceBar on the
+  // web repo and the detail screen's stickyBar on the app). We're a
+  // directory/matching site, not a payment processor, so a company that
+  // already handles booking (and payment) on its own site keeps doing so.
+  websiteUrl                 String?
   // Set by an admin after checking the business registration off-platform
   // — never self-service, see admin/companies/actions.ts. Shown as a badge
   // wherever the company is listed, purely a trust signal (no automated

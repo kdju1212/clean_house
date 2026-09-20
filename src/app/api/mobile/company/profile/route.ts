@@ -19,6 +19,7 @@ export async function PATCH(request: Request) {
       introText: body?.introText,
       businessHours: body?.businessHours,
       isAvailable: Boolean(body?.isAvailable),
+      websiteUrl: body?.websiteUrl,
     });
     return NextResponse.json({ ok: true });
   } catch (err) {

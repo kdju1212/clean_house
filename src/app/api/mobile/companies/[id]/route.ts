@@ -65,6 +65,7 @@ export async function GET(
       isVerified: company.isVerified,
       hasBusinessRegistration: Boolean(company.businessRegistrationNumber),
       mainImageUrl: company.mainImageUrl,
+      websiteUrl: company.websiteUrl,
     },
     services: company.services.map((s) => ({
       id: s.id,

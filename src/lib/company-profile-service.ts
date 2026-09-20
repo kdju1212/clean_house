@@ -29,6 +29,26 @@ const MAX_INTRO_LENGTH = 1000;
 const MAX_BUSINESS_HOURS_LENGTH = 100;
 const MAX_SERVICE_DESCRIPTION_LENGTH = 200;
 const MAX_SERVICE_PRICE = 10_000_000;
+const MAX_WEBSITE_URL_LENGTH = 300;
+
+/** Accepts "example.com" as well as "https://example.com" — a company
+ * owner typing their own address by hand shouldn't have to remember the
+ * protocol prefix. Rejects anything that still isn't a valid http(s) URL
+ * after that (so this can't be used to store a "tel:"/"javascript:" etc.
+ * value that later gets rendered as a link). */
+function normalizeWebsiteUrl(raw: string): string {
+  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  let parsed: URL;
+  try {
+    parsed = new URL(withProtocol);
+  } catch {
+    throw new Error("올바른 홈페이지 주소를 입력해주세요.");
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error("올바른 홈페이지 주소를 입력해주세요.");
+  }
+  return parsed.toString();
+}
 
 /**
  * Everything below is shared by the web's company Server Actions
@@ -47,11 +67,12 @@ export async function updateCompanyProfileForOwner(
     introText: unknown;
     businessHours: unknown;
     isAvailable: boolean;
+    websiteUrl: unknown;
   }
 ): Promise<void> {
   const company = await requireOwnedCompany(ownerUserId);
 
-  const { name, phone, introText, businessHours, isAvailable } = input;
+  const { name, phone, introText, businessHours, isAvailable, websiteUrl } = input;
 
   if (typeof name !== "string" || name.trim().length === 0) {
     throw new Error("업체명을 입력해주세요.");
@@ -74,6 +95,12 @@ export async function updateCompanyProfileForOwner(
   ) {
     throw new Error("영업시간이 너무 길어요.");
   }
+  const websiteUrlInput = typeof websiteUrl === "string" ? websiteUrl.trim() : "";
+  if (websiteUrlInput.length > MAX_WEBSITE_URL_LENGTH) {
+    throw new Error("홈페이지 주소가 너무 길어요.");
+  }
+  const normalizedWebsiteUrl =
+    websiteUrlInput.length > 0 ? normalizeWebsiteUrl(websiteUrlInput) : null;
 
   await prisma.company.update({
     where: { id: company.id },
@@ -83,6 +110,7 @@ export async function updateCompanyProfileForOwner(
       introText: typeof introText === "string" ? introText.trim() : null,
       businessHours: typeof businessHours === "string" ? businessHours.trim() : null,
       isAvailable,
+      websiteUrl: normalizedWebsiteUrl,
     },
   });
 }

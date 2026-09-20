@@ -34,11 +34,17 @@ export function ServiceBar({
   services,
   selectedId,
   onSelect,
+  websiteUrl,
 }: {
   companyId: string;
   services: Service[];
   selectedId: string | null;
   onSelect: (categoryId: string) => void;
+  // The company's own site — when set, the button below sends the customer
+  // there (new tab) instead of into /reservations/new. We're a directory/
+  // matching site and never handle payment ourselves, so a company that
+  // already has its own booking flow just keeps using it.
+  websiteUrl: string | null;
 }) {
   const cheapest = services.reduce<Service | null>(
     (min, s) => (!min || s.price < min.price ? s : min),
@@ -48,9 +54,11 @@ export function ServiceBar({
   const selected = services.find((s) => s.categoryId === selectedId) ?? null;
   const barService = selected ?? cheapest;
 
-  const reserveHref = selected
-    ? `/reservations/new?companyId=${companyId}&categoryId=${selected.categoryId}`
-    : `/reservations/new?companyId=${companyId}`;
+  const reserveHref = websiteUrl
+    ? websiteUrl
+    : selected
+      ? `/reservations/new?companyId=${companyId}&categoryId=${selected.categoryId}`
+      : `/reservations/new?companyId=${companyId}`;
 
   return (
     <>
@@ -97,9 +105,11 @@ export function ServiceBar({
           </div>
           <Link
             href={reserveHref}
+            target={websiteUrl ? "_blank" : undefined}
+            rel={websiteUrl ? "noopener noreferrer" : undefined}
             className="rounded-xl bg-neutral-900 px-6 py-3 text-center text-sm font-semibold text-white"
           >
-            예약하기
+            {websiteUrl ? "홈페이지에서 예약하기" : "예약하기"}
           </Link>
         </div>
       )}

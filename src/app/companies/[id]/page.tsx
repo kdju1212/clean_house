@@ -152,6 +152,7 @@ export default async function CompanyDetailPage({
           workPhotos={workPhotos}
           beforeAfterPhotos={beforeAfterPhotos}
           initialCategoryId={initialCategoryId ?? null}
+          websiteUrl={company.websiteUrl}
         />
 
         <InfoRows
