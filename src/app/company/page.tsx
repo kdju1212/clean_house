@@ -93,9 +93,16 @@ export default async function CompanyDashboardPage() {
     <main className="mx-auto w-full max-w-md flex-1 px-4 py-6 pb-16">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold">{company.name}</h1>
-        <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-600">
-          {STATUS_LABEL[company.status]}
-        </span>
+        <div className="flex gap-1.5">
+          {company.isVerified && (
+            <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
+              인증업체
+            </span>
+          )}
+          <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-600">
+            {STATUS_LABEL[company.status]}
+          </span>
+        </div>
       </div>
       <p className="mt-1 text-sm text-neutral-500">
         {reviewCount > 0 ? (
@@ -109,6 +116,13 @@ export default async function CompanyDashboardPage() {
           "아직 리뷰가 없어요"
         )}
       </p>
+      {!company.isVerified && (
+        <p className="mt-1 text-xs text-neutral-400">
+          {company.businessRegistrationNumber
+            ? "관리자 확인 후 인증 배지가 표시돼요."
+            : "사업자등록번호가 없어요 — 인증을 받으려면 관리자에게 문의해주세요."}
+        </p>
+      )}
       {company.status === "PENDING" && (
         <p className="mt-1 text-xs text-neutral-500">
           관리자 승인 후 고객에게 노출됩니다. 그 전까지 프로필/서비스/사진은

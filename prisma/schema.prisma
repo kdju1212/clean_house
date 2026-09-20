@@ -171,6 +171,14 @@ model Company {
   businessHours String?
   isAvailable   Boolean       @default(true)
   status        CompanyStatus @default(PENDING)
+  // Collected once at registration (see company/register/register-form.tsx)
+  // so an admin has something to check before flipping isVerified — nullable
+  // because companies registered before this field existed have neither.
+  // Digits only (dashes stripped) so "123-45-67890" and "1234567890" can't
+  // collide as "different" businesses. @unique still allows any number of
+  // NULLs in Postgres, so pre-existing rows don't conflict with each other.
+  businessRegistrationNumber String? @unique
+  representativeName         String?
   // Set by an admin after checking the business registration off-platform
   // — never self-service, see admin/companies/actions.ts. Shown as a badge
   // wherever the company is listed, purely a trust signal (no automated

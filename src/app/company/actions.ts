@@ -19,6 +19,7 @@ const MAX_NAME_LENGTH = 60;
 const MAX_PHONE_LENGTH = 30;
 const MAX_INTRO_LENGTH = 1000;
 const MAX_BUSINESS_HOURS_LENGTH = 100;
+const MAX_REPRESENTATIVE_NAME_LENGTH = 30;
 
 export async function createCompany(
   _prevState: ActionState,
@@ -36,6 +37,8 @@ export async function createCompany(
       const phone = formData.get("phone");
       const introText = formData.get("introText");
       const businessHours = formData.get("businessHours");
+      const businessRegistrationNumberRaw = formData.get("businessRegistrationNumber");
+      const representativeName = formData.get("representativeName");
 
       if (typeof name !== "string" || name.trim().length === 0) {
         throw new Error("업체명을 입력해주세요.");
@@ -58,23 +61,61 @@ export async function createCompany(
       ) {
         throw new Error("영업시간이 너무 길어요.");
       }
+      if (
+        typeof representativeName === "string" &&
+        representativeName.trim().length > MAX_REPRESENTATIVE_NAME_LENGTH
+      ) {
+        throw new Error(`대표자명은 ${MAX_REPRESENTATIVE_NAME_LENGTH}자 이하로 입력해주세요.`);
+      }
 
-      await prisma.$transaction([
-        prisma.company.create({
-          data: {
-            ownerUserId: session.user.id,
-            name: name.trim(),
-            phone: phone.trim(),
-            introText: typeof introText === "string" ? introText.trim() : null,
-            businessHours:
-              typeof businessHours === "string" ? businessHours.trim() : null,
-          },
-        }),
-        prisma.user.update({
-          where: { id: session.user.id },
-          data: { role: "COMPANY" },
-        }),
-      ]);
+      // Only digits are meaningful (사업자등록번호는 항상 10자리) — stripping
+      // dashes here means "123-45-67890" and "1234567890" are recognized as
+      // the same number for both validation and the @unique constraint.
+      if (typeof businessRegistrationNumberRaw !== "string") {
+        throw new Error("사업자등록번호를 입력해주세요.");
+      }
+      const businessRegistrationNumber = businessRegistrationNumberRaw.replace(/\D/g, "");
+      if (businessRegistrationNumber.length !== 10) {
+        throw new Error("사업자등록번호 10자리를 정확히 입력해주세요.");
+      }
+
+      try {
+        await prisma.$transaction([
+          prisma.company.create({
+            data: {
+              ownerUserId: session.user.id,
+              name: name.trim(),
+              phone: phone.trim(),
+              introText: typeof introText === "string" ? introText.trim() : null,
+              businessHours:
+                typeof businessHours === "string" ? businessHours.trim() : null,
+              businessRegistrationNumber,
+              representativeName:
+                typeof representativeName === "string" && representativeName.trim().length > 0
+                  ? representativeName.trim()
+                  : null,
+            },
+          }),
+          prisma.user.update({
+            where: { id: session.user.id },
+            data: { role: "COMPANY" },
+          }),
+        ]);
+      } catch (err) {
+        // Prisma's unique constraint violation (P2002) on
+        // businessRegistrationNumber — surfaced as a plain user-facing
+        // message instead of the generic "알 수 없는 오류" toActionError
+        // would otherwise give for a raw Prisma error.
+        if (
+          err &&
+          typeof err === "object" &&
+          "code" in err &&
+          (err as { code?: string }).code === "P2002"
+        ) {
+          throw new Error("이미 등록된 사업자등록번호예요.");
+        }
+        throw err;
+      }
     }
   } catch (err) {
     return toActionError(err);

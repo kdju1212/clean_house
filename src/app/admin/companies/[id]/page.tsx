@@ -73,6 +73,23 @@ export default async function AdminCompanyDetailPage({
           </span>
         </div>
         <div className="flex justify-between gap-3">
+          <span className="text-neutral-500">사업자등록번호</span>
+          <span className="text-right font-medium">
+            {company.businessRegistrationNumber
+              ? company.businessRegistrationNumber.replace(
+                  /^(\d{3})(\d{2})(\d{5})$/,
+                  "$1-$2-$3"
+                )
+              : "미입력 (인증 전 등록된 업체)"}
+          </span>
+        </div>
+        {company.representativeName && (
+          <div className="flex justify-between gap-3">
+            <span className="text-neutral-500">대표자명</span>
+            <span>{company.representativeName}</span>
+          </div>
+        )}
+        <div className="flex justify-between gap-3">
           <span className="text-neutral-500">연락처</span>
           <span>{company.phone ?? "-"}</span>
         </div>
