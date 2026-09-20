@@ -68,12 +68,12 @@ export default async function CompanyDetailPage({
     (star) => ratingGroups.find((g) => g.rating === star)?._count ?? 0
   );
 
+  // Just the current main image — work/전후 photos already get their own
+  // sections further down (PhotoStack), so the hero no longer needs to
+  // double as a full gallery with a thumbnail strip.
   const galleryPhotos = company.mainImageUrl
-    ? [
-        { id: "main", url: company.mainImageUrl },
-        ...company.photos.filter((p) => p.url !== company.mainImageUrl),
-      ]
-    : company.photos.map((p) => ({ id: p.id, url: p.url }));
+    ? [{ id: "main", url: company.mainImageUrl }]
+    : [];
 
   const workPhotos = company.photos.filter((p) => p.type === "WORK");
   const beforeAfterPhotos = company.photos.filter((p) => p.type === "BEFORE_AFTER");
