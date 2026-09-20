@@ -30,6 +30,7 @@ const MAX_BUSINESS_HOURS_LENGTH = 100;
 const MAX_SERVICE_DESCRIPTION_LENGTH = 200;
 const MAX_SERVICE_PRICE = 10_000_000;
 const MAX_WEBSITE_URL_LENGTH = 300;
+const MAX_REPRESENTATIVE_NAME_LENGTH = 30;
 
 /** Accepts "example.com" as well as "https://example.com" — a company
  * owner typing their own address by hand shouldn't have to remember the
@@ -55,9 +56,110 @@ function normalizeWebsiteUrl(raw: string): string {
  * (src/app/company/actions.ts) and the mobile company-profile API — same
  * field validation, same "re-derive the caller's company from their own
  * userId" ownership check, same Cloudinary verify/re-encode pipeline for
- * photos. Company *registration* (createCompany) stays web-only for now —
- * this file only covers editing an existing company's profile.
+ * photos.
  */
+
+/**
+ * Silently no-ops (no error) when the caller already owns a company — both
+ * callers (the web register-form's Server Action and the mobile /company/
+ * register screen) route away from their registration form entirely once
+ * one exists, so reaching here with an existing company only happens on a
+ * double-submit, which should just behave like the first submit already
+ * succeeded.
+ */
+export async function createCompanyForOwner(
+  ownerUserId: string,
+  input: {
+    name: unknown;
+    phone: unknown;
+    introText: unknown;
+    businessHours: unknown;
+    businessRegistrationNumber: unknown;
+    representativeName: unknown;
+  }
+): Promise<void> {
+  const existing = await prisma.company.findUnique({ where: { ownerUserId } });
+  if (existing) return;
+
+  const { name, phone, introText, businessHours, businessRegistrationNumber: businessRegistrationNumberRaw, representativeName } =
+    input;
+
+  if (typeof name !== "string" || name.trim().length === 0) {
+    throw new Error("업체명을 입력해주세요.");
+  }
+  if (name.trim().length > MAX_NAME_LENGTH) {
+    throw new Error(`업체명은 ${MAX_NAME_LENGTH}자 이하로 입력해주세요.`);
+  }
+  if (typeof phone !== "string" || phone.trim().length === 0) {
+    throw new Error("연락처를 입력해주세요.");
+  }
+  if (phone.trim().length > MAX_PHONE_LENGTH) {
+    throw new Error("연락처가 너무 길어요.");
+  }
+  if (typeof introText === "string" && introText.trim().length > MAX_INTRO_LENGTH) {
+    throw new Error(`업체 소개는 ${MAX_INTRO_LENGTH}자 이하로 입력해주세요.`);
+  }
+  if (
+    typeof businessHours === "string" &&
+    businessHours.trim().length > MAX_BUSINESS_HOURS_LENGTH
+  ) {
+    throw new Error("영업시간이 너무 길어요.");
+  }
+  if (
+    typeof representativeName === "string" &&
+    representativeName.trim().length > MAX_REPRESENTATIVE_NAME_LENGTH
+  ) {
+    throw new Error(`대표자명은 ${MAX_REPRESENTATIVE_NAME_LENGTH}자 이하로 입력해주세요.`);
+  }
+
+  // Optional — a company can register without it, but skips both the
+  // "사업자등록" self-declared badge and eligibility for admin
+  // verification until they add one. Only digits are meaningful
+  // (사업자등록번호는 항상 10자리) — stripping dashes here means
+  // "123-45-67890" and "1234567890" are recognized as the same number
+  // for both validation and the @unique constraint.
+  const businessRegistrationNumberInput =
+    typeof businessRegistrationNumberRaw === "string" ? businessRegistrationNumberRaw.trim() : "";
+  let businessRegistrationNumber: string | null = null;
+  if (businessRegistrationNumberInput.length > 0) {
+    businessRegistrationNumber = businessRegistrationNumberInput.replace(/\D/g, "");
+    if (businessRegistrationNumber.length !== 10) {
+      throw new Error("사업자등록번호 10자리를 정확히 입력해주세요.");
+    }
+  }
+
+  try {
+    await prisma.$transaction([
+      prisma.company.create({
+        data: {
+          ownerUserId,
+          name: name.trim(),
+          phone: phone.trim(),
+          introText: typeof introText === "string" ? introText.trim() : null,
+          businessHours: typeof businessHours === "string" ? businessHours.trim() : null,
+          businessRegistrationNumber,
+          representativeName:
+            typeof representativeName === "string" && representativeName.trim().length > 0
+              ? representativeName.trim()
+              : null,
+        },
+      }),
+      prisma.user.update({
+        where: { id: ownerUserId },
+        data: { role: "COMPANY" },
+      }),
+    ]);
+  } catch (err) {
+    // Prisma's unique constraint violation (P2002) on
+    // businessRegistrationNumber — surfaced as a plain user-facing message
+    // instead of the generic "알 수 없는 오류" toActionError/error handler
+    // would otherwise give for a raw Prisma error.
+    if (err && typeof err === "object" && "code" in err && (err as { code?: string }).code === "P2002") {
+      throw new Error("이미 등록된 사업자등록번호예요.");
+    }
+    throw err;
+  }
+}
 
 export async function updateCompanyProfileForOwner(
   ownerUserId: string,
