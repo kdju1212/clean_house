@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { NOTIFICATION_TYPE_ICON } from "@/lib/notification";
+import { NOTIFICATION_TYPE_ICON, listNotificationsForUser } from "@/lib/notification";
 import { SubmitButton } from "@/components/submit-button";
 import { markAllNotificationsRead, openNotification } from "./actions";
 
@@ -11,11 +10,7 @@ export default async function NotificationsPage() {
     redirect("/login");
   }
 
-  const notifications = await prisma.notification.findMany({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
+  const notifications = await listNotificationsForUser(session.user.id);
   const hasUnread = notifications.some((n) => !n.isRead);
 
   return (

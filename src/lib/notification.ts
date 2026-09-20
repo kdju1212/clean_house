@@ -97,3 +97,43 @@ export async function notifyNewChatMessage(input: {
 export async function getUnreadNotificationCount(userId: string) {
   return prisma.notification.count({ where: { userId, isRead: false } });
 }
+
+/** Shared by the web /notifications page and the mobile equivalent. */
+export async function listNotificationsForUser(userId: string) {
+  return prisma.notification.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    take: 100,
+  });
+}
+
+/** Marks one notification read (only if it's the caller's own — returns
+ * null otherwise, never throws) and hands back where it points, so the
+ * caller can navigate there. */
+export async function markNotificationReadForUser(
+  userId: string,
+  notificationId: string
+): Promise<{ link: string | null } | null> {
+  const notification = await prisma.notification.findUnique({
+    where: { id: notificationId },
+  });
+  if (!notification || notification.userId !== userId) {
+    return null;
+  }
+
+  if (!notification.isRead) {
+    await prisma.notification.update({
+      where: { id: notification.id },
+      data: { isRead: true },
+    });
+  }
+
+  return { link: notification.link };
+}
+
+export async function markAllNotificationsReadForUser(userId: string): Promise<void> {
+  await prisma.notification.updateMany({
+    where: { userId, isRead: false },
+    data: { isRead: true },
+  });
+}
