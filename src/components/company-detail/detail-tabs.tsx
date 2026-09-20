@@ -8,10 +8,10 @@ const TABS = [
 ] as const;
 
 /**
- * Coupang-style sticky tab nav for the company detail page: tapping a tab
- * scrolls to that section, and scrolling manually updates which tab is
- * highlighted. `top-[45px]` sits it right below the global Header (see
- * category-nav-bar.tsx, which uses the same offset for the same reason).
+ * Tab nav for the company detail page: tapping a tab scrolls to that
+ * section, and scrolling manually updates which tab is highlighted. Not
+ * pinned to the top while scrolling — it scrolls away with the rest of the
+ * page like any other section.
  */
 export function DetailTabs({ reviewCount }: { reviewCount: number }) {
   const [active, setActive] = useState<string>(TABS[0].id);
@@ -34,7 +34,7 @@ export function DetailTabs({ reviewCount }: { reviewCount: number }) {
           .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
         if (visible[0]) setActive(visible[0].target.id);
       },
-      { rootMargin: "-90px 0px -70% 0px", threshold: 0 }
+      { rootMargin: "-50px 0px -70% 0px", threshold: 0 }
     );
     sections.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
@@ -50,7 +50,7 @@ export function DetailTabs({ reviewCount }: { reviewCount: number }) {
   }
 
   return (
-    <div className="sticky top-[45px] z-10 -mx-4 flex border-b border-neutral-200 bg-white px-4">
+    <div className="flex border-b border-neutral-200 bg-white px-4">
       {TABS.map((tab) => (
         <button
           key={tab.id}
