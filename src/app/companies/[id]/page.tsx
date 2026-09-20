@@ -103,10 +103,16 @@ export default async function CompanyDetailPage({
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 items-center gap-1.5">
             <h1 className="min-w-0 truncate text-xl font-bold">{company.name}</h1>
-            {company.isVerified && (
+            {company.isVerified ? (
               <span className="shrink-0 rounded bg-blue-100 px-1.5 py-0.5 text-[11px] font-semibold text-blue-700">
                 인증
               </span>
+            ) : (
+              company.businessRegistrationNumber && (
+                <span className="shrink-0 rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] font-semibold text-neutral-500">
+                  사업자등록
+                </span>
+              )
             )}
           </div>
           {session?.user ? (

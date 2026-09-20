@@ -167,6 +167,7 @@ async function HomeResults({
                 mainImageUrl={company.mainImageUrl}
                 isAvailable={company.isAvailable}
                 isVerified={company.isVerified}
+                hasBusinessRegistration={company.hasBusinessRegistration}
                 introText={company.introText}
                 price={company.price}
                 rating={company.rating}

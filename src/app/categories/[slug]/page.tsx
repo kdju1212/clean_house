@@ -162,6 +162,7 @@ export default async function CategoryCompaniesPage({
                 mainImageUrl={company.mainImageUrl}
                 isAvailable={company.isAvailable}
                 isVerified={company.isVerified}
+                hasBusinessRegistration={company.hasBusinessRegistration}
                 introText={company.introText}
                 price={company.price}
                 pricingUnit={company.pricingUnit}
@@ -192,6 +193,7 @@ export default async function CategoryCompaniesPage({
                 mainImageUrl={company.mainImageUrl}
                 isAvailable={company.isAvailable}
                 isVerified={company.isVerified}
+                hasBusinessRegistration={company.hasBusinessRegistration}
                 introText={company.introText}
                 price={company.price}
                 pricingUnit={company.pricingUnit}

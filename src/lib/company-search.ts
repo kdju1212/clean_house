@@ -16,6 +16,11 @@ export type CompanySearchRow = {
   mainImageUrl: string | null;
   isAvailable: boolean;
   isVerified: boolean;
+  // Self-declared: the company entered a business registration number at
+  // signup, but no admin has checked it yet — a lighter trust signal than
+  // isVerified. Never expose the actual number here, just whether one
+  // exists.
+  hasBusinessRegistration: boolean;
   introText: string | null;
   price: number;
   pricingUnit: "FLAT" | "PER_UNIT";
@@ -48,6 +53,7 @@ type CompanyWithRegions = {
   mainImageUrl: string | null;
   isAvailable: boolean;
   isVerified: boolean;
+  businessRegistrationNumber: string | null;
   introText: string | null;
   regions: { region: { name: string } }[];
 };
@@ -130,6 +136,7 @@ export async function searchCompaniesForRegion({
           mainImageUrl: c.mainImageUrl,
           isAvailable: c.isAvailable,
           isVerified: c.isVerified,
+          hasBusinessRegistration: Boolean(c.businessRegistrationNumber),
           introText: c.introText,
           price,
           // "전체" mixes every category a company offers into one "시작가"
@@ -331,6 +338,7 @@ export async function searchCompaniesInCategory({
       mainImageUrl: company.mainImageUrl,
       isAvailable: company.isAvailable,
       isVerified: company.isVerified,
+      hasBusinessRegistration: Boolean(company.businessRegistrationNumber),
       introText: company.introText,
       price,
       pricingUnit,

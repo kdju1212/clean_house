@@ -57,6 +57,7 @@ export async function GET(
       businessHours: company.businessHours,
       isAvailable: company.isAvailable,
       isVerified: company.isVerified,
+      hasBusinessRegistration: Boolean(company.businessRegistrationNumber),
       mainImageUrl: company.mainImageUrl,
     },
     services: company.services.map((s) => ({

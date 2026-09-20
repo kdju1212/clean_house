@@ -81,10 +81,16 @@ export default async function AdminCompaniesPage({
                 <div className="flex items-center justify-between gap-2">
                   <p className="min-w-0 truncate font-semibold">{company.name}</p>
                   <div className="flex shrink-0 gap-1">
-                    {company.isVerified && (
+                    {company.isVerified ? (
                       <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
                         인증업체
                       </span>
+                    ) : (
+                      company.businessRegistrationNumber && (
+                        <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-500">
+                          사업자등록
+                        </span>
+                      )
                     )}
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${COMPANY_STATUS_BADGE_CLASS[company.status]}`}

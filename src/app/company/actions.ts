@@ -68,15 +68,22 @@ export async function createCompany(
         throw new Error(`대표자명은 ${MAX_REPRESENTATIVE_NAME_LENGTH}자 이하로 입력해주세요.`);
       }
 
-      // Only digits are meaningful (사업자등록번호는 항상 10자리) — stripping
-      // dashes here means "123-45-67890" and "1234567890" are recognized as
-      // the same number for both validation and the @unique constraint.
-      if (typeof businessRegistrationNumberRaw !== "string") {
-        throw new Error("사업자등록번호를 입력해주세요.");
-      }
-      const businessRegistrationNumber = businessRegistrationNumberRaw.replace(/\D/g, "");
-      if (businessRegistrationNumber.length !== 10) {
-        throw new Error("사업자등록번호 10자리를 정확히 입력해주세요.");
+      // Optional — a company can register without it, but skips both the
+      // "사업자등록" self-declared badge and eligibility for admin
+      // verification until they add one. Only digits are meaningful
+      // (사업자등록번호는 항상 10자리) — stripping dashes here means
+      // "123-45-67890" and "1234567890" are recognized as the same number
+      // for both validation and the @unique constraint.
+      const businessRegistrationNumberInput =
+        typeof businessRegistrationNumberRaw === "string"
+          ? businessRegistrationNumberRaw.trim()
+          : "";
+      let businessRegistrationNumber: string | null = null;
+      if (businessRegistrationNumberInput.length > 0) {
+        businessRegistrationNumber = businessRegistrationNumberInput.replace(/\D/g, "");
+        if (businessRegistrationNumber.length !== 10) {
+          throw new Error("사업자등록번호 10자리를 정확히 입력해주세요.");
+        }
       }
 
       try {

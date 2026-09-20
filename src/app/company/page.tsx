@@ -94,10 +94,16 @@ export default async function CompanyDashboardPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold">{company.name}</h1>
         <div className="flex gap-1.5">
-          {company.isVerified && (
+          {company.isVerified ? (
             <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
               인증업체
             </span>
+          ) : (
+            company.businessRegistrationNumber && (
+              <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-500">
+                사업자등록
+              </span>
+            )
           )}
           <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-600">
             {STATUS_LABEL[company.status]}
@@ -119,8 +125,8 @@ export default async function CompanyDashboardPage() {
       {!company.isVerified && (
         <p className="mt-1 text-xs text-neutral-400">
           {company.businessRegistrationNumber
-            ? "관리자 확인 후 인증 배지가 표시돼요."
-            : "사업자등록번호가 없어요 — 인증을 받으려면 관리자에게 문의해주세요."}
+            ? "관리자 확인 후 인증 배지로 올라가요."
+            : "사업자등록번호를 등록하면 사업자등록 배지가 붙고, 관리자 확인 후엔 인증 배지로 올라가요. 등록하려면 관리자에게 문의해주세요."}
         </p>
       )}
       {company.status === "PENDING" && (

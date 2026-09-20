@@ -52,10 +52,16 @@ export default async function AdminCompanyDetailPage({
       <div className="flex items-center justify-between gap-2">
         <h1 className="min-w-0 truncate text-lg font-bold">{company.name}</h1>
         <div className="flex shrink-0 gap-1.5">
-          {company.isVerified && (
+          {company.isVerified ? (
             <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
               인증업체
             </span>
+          ) : (
+            company.businessRegistrationNumber && (
+              <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-500">
+                사업자등록
+              </span>
+            )
           )}
           <span
             className={`rounded-full px-2 py-0.5 text-xs font-medium ${COMPANY_STATUS_BADGE_CLASS[company.status]}`}

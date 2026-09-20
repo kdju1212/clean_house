@@ -30,16 +30,16 @@ export function RegisterForm() {
       </label>
 
       <label className="flex flex-col gap-1 text-sm font-medium">
-        사업자등록번호
+        사업자등록번호 (선택)
         <input
           name="businessRegistrationNumber"
-          required
           inputMode="numeric"
           placeholder="000-00-00000"
           className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
         />
         <span className="text-xs font-normal text-neutral-400">
-          관리자가 확인 후 인증 배지를 달아드려요. 대시(-)는 있어도 없어도 괜찮아요.
+          입력하면 &ldquo;사업자등록&rdquo; 배지가 붙고, 관리자가 확인하면 &ldquo;인증&rdquo; 배지로
+          올라가요. 대시(-)는 있어도 없어도 괜찮아요.
         </span>
       </label>
 
