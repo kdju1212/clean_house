@@ -165,6 +165,7 @@ export default async function CategoryCompaniesPage({
                 unitLabel={unitLabel}
                 rating={company.rating}
                 reviewCount={company.reviewCount}
+                completedCount={company.completedCount}
                 regionNames={company.regionNames}
                 isAd
               />
@@ -195,6 +196,7 @@ export default async function CategoryCompaniesPage({
                 unitLabel={unitLabel}
                 rating={company.rating}
                 reviewCount={company.reviewCount}
+                completedCount={company.completedCount}
                 regionNames={company.regionNames}
               />
             </li>

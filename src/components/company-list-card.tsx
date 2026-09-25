@@ -19,6 +19,7 @@ export function CompanyListCard({
   unitLabel,
   rating,
   reviewCount,
+  completedCount,
   regionNames,
   isAd = false,
 }: {
@@ -45,13 +46,19 @@ export function CompanyListCard({
   unitLabel?: string;
   rating: number;
   reviewCount: number;
+  // Completed-reservation count — shown in place of the region list when
+  // there's at least one, since it's a platform-verified trust signal
+  // (unlike a region list the company could otherwise pad by registering
+  // extra areas). Falls back to region names when zero, so new companies
+  // aren't stuck with an empty-looking "0건".
+  completedCount: number;
   regionNames: string[];
   isAd?: boolean;
 }) {
   const meta = [
     isAd ? "광고" : null,
     reviewCount > 0 ? `★ ${rating.toFixed(1)}` : null,
-    regionNames.join(", ") || null,
+    completedCount > 0 ? `시공 ${completedCount.toLocaleString()}건` : regionNames.join(", ") || null,
   ]
     .filter(Boolean)
     .join(" · ");

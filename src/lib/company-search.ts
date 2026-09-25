@@ -33,6 +33,10 @@ export type CompanySearchRow = {
   estimatedPrice: number | null;
   rating: number;
   reviewCount: number;
+  // Count of this company's COMPLETED reservations — shown instead of the
+  // region list as a trust signal, since it's platform-verified rather
+  // than something the company could just claim on their own.
+  completedCount: number;
   regionNames: string[];
 };
 
@@ -217,6 +221,16 @@ export async function searchCompaniesInCategory({
     ])
   );
 
+  const completedByCompanyId =
+    allCompanyIds.size > 0
+      ? await prisma.reservation.groupBy({
+          by: ["companyId"],
+          where: { companyId: { in: [...allCompanyIds] }, status: "COMPLETED" },
+          _count: true,
+        })
+      : [];
+  const completedMap = new Map(completedByCompanyId.map((r) => [r.companyId, r._count]));
+
   function toRow(
     company: CompanyWithRegions,
     service: { price: number; pricingUnit: "FLAT" | "PER_UNIT" } | undefined
@@ -240,6 +254,7 @@ export async function searchCompaniesInCategory({
       estimatedPrice,
       rating: ratingMap.get(company.id)?.average ?? 0,
       reviewCount: ratingMap.get(company.id)?.count ?? 0,
+      completedCount: completedMap.get(company.id) ?? 0,
       regionNames: company.regions.map((r) => r.region.name),
     };
   }
