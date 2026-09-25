@@ -5,9 +5,9 @@ import { useEffect, useRef, useState } from "react";
 
 export type PhotoItem = { id: string; url: string };
 
-// Coupang-style "더 보기" fold height — enough to show roughly one photo's
+// Coupang-style "더 보기" fold height — enough to show a couple of photos'
 // worth before the customer has to opt into the rest, not just a sliver.
-const COLLAPSED_HEIGHT = 560;
+const COLLAPSED_HEIGHT = 800;
 
 /**
  * Coupang-style detail images: full-width, each at its own natural aspect
