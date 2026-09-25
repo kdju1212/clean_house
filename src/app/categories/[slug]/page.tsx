@@ -152,7 +152,7 @@ export default async function CategoryCompaniesPage({
       </div>
 
       {adRows.length > 0 && (
-        <ul className="mt-4 flex flex-col gap-3">
+        <ul className="mt-3 flex flex-col divide-y divide-neutral-100 border-b border-neutral-100">
           {adRows.map((company) => (
             <li key={`ad-${company.id}`}>
               <CompanyListCard
@@ -163,7 +163,6 @@ export default async function CategoryCompaniesPage({
                 isAvailable={company.isAvailable}
                 isVerified={company.isVerified}
                 hasBusinessRegistration={company.hasBusinessRegistration}
-                introText={company.introText}
                 price={company.price}
                 pricingUnit={company.pricingUnit}
                 estimatedPrice={company.estimatedPrice}
@@ -183,7 +182,7 @@ export default async function CategoryCompaniesPage({
           아직 {region.name}에 등록된 {category.name} 업체가 없어요.
         </p>
       ) : rows.length === 0 ? null : (
-        <ul className="mt-4 flex flex-col gap-3">
+        <ul className="mt-3 flex flex-col divide-y divide-neutral-100">
           {rows.map((company) => (
             <li key={company.id}>
               <CompanyListCard
@@ -194,7 +193,6 @@ export default async function CategoryCompaniesPage({
                 isAvailable={company.isAvailable}
                 isVerified={company.isVerified}
                 hasBusinessRegistration={company.hasBusinessRegistration}
-                introText={company.introText}
                 price={company.price}
                 pricingUnit={company.pricingUnit}
                 estimatedPrice={company.estimatedPrice}
