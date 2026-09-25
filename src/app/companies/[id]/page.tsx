@@ -145,19 +145,20 @@ export default async function CompanyDetailPage({
 
       <div className="px-4 pt-4">
         <div className="flex items-start justify-between gap-3">
-          <p className="pt-1 text-[15px] font-bold text-neutral-900">
+          <div className="min-w-0 flex-1">
             {company.isVerified ? (
-              <>
+              <p className="mb-1 text-[15px] font-bold text-neutral-900">
                 <span className="mr-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#18a058] text-[11px] text-white">
                   ✓
                 </span>
                 관리자가 <span className="text-[#ff6f0f]">인증</span>한 업체예요
-              </>
+              </p>
             ) : company.businessRegistrationNumber ? (
-              "사업자등록을 마친 업체예요"
+              <p className="mb-1 text-[15px] font-bold text-neutral-900">사업자등록을 마친 업체예요</p>
             ) : null}
-          </p>
-          <Link href={`/companies/${id}/reviews`} className="shrink-0 text-right">
+            <h1 className="text-[19px] leading-snug text-neutral-900">{company.name}</h1>
+          </div>
+          <Link href={`/companies/${id}/reviews`} className="shrink-0 pt-0.5 text-right">
             {reviewCount > 0 ? (
               <>
                 <span className="block text-[22px] leading-none tracking-tight">
@@ -177,8 +178,6 @@ export default async function CompanyDetailPage({
         <span className="mt-3 inline-block rounded bg-[#6b7684] px-2 py-0.5 text-[13px] font-semibold text-white">
           {company.isAvailable ? "예약 가능" : "예약 마감"}
         </span>
-
-        <h1 className="mt-3 text-[19px] leading-snug text-neutral-900">{company.name}</h1>
 
         <CompanyDetailDynamic
           companyId={company.id}
