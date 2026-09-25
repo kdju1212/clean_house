@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ServiceBar } from "./service-bar";
 import { PhotoStack, type PhotoItem } from "@/components/company-detail/photo-stack";
+import { SparkleIcon } from "@/components/icons";
 
 type Service = {
   id: string;
@@ -19,32 +20,36 @@ type Photo = PhotoItem & { categoryId: string | null };
 /**
  * Everything on the detail page that depends on which of the company's
  * categories the customer is currently looking at — intro text, the
- * service picker, and both photo galleries — lives here as one client
- * component instead of three, so picking a different service (or arriving
- * with ?categoryId= already set from the category listing) updates all
- * three together. A company with only 1개 사진/공통 소개글 never has to tag
+ * option/price block, and both detail photo galleries — lives here as one
+ * client component, so picking a different service (or arriving with
+ * ?categoryId= already set from the category listing) updates them
+ * together. A company with only 1개 사진/공통 소개글 never has to tag
  * anything: an untagged photo (categoryId null) and the company's general
- * introText both show for every category, exactly like before this
- * feature existed.
+ * introText both show for every category.
  */
 export function CompanyDetailDynamic({
   companyId,
   services,
   companyIntroText,
+  attributes,
   workPhotos,
   beforeAfterPhotos,
   initialCategoryId,
   websiteUrl,
+  phone,
 }: {
   companyId: string;
   services: Service[];
   companyIntroText: string | null;
+  /** Coupang's "경도 중간"-style label/value lines under the title. */
+  attributes: { label: string; value: string }[];
   workPhotos: Photo[];
   beforeAfterPhotos: Photo[];
   initialCategoryId: string | null;
   // The company's own site — when set, ServiceBar sends the customer there
   // to book instead of into our own reservation flow (see its own comment).
   websiteUrl: string | null;
+  phone: string | null;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(
     initialCategoryId && services.some((s) => s.categoryId === initialCategoryId)
@@ -59,10 +64,28 @@ export function CompanyDetailDynamic({
 
   const matchesSelected = (photo: Photo) =>
     photo.categoryId === null || photo.categoryId === selectedId;
+  const visibleWork = workPhotos.filter(matchesSelected);
+  const visibleBeforeAfter = beforeAfterPhotos.filter(matchesSelected);
 
   return (
     <>
-      {introText && <p className="mt-2 text-sm text-neutral-600">{introText}</p>}
+      {introText && (
+        <p className="mt-3 flex w-fit max-w-full gap-1.5 rounded-md bg-[#f5f6f8] px-2.5 py-1.5 text-[15px] text-neutral-700">
+          <SparkleIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#346aff]" />
+          <span>{introText}</span>
+        </p>
+      )}
+
+      {attributes.length > 0 && (
+        <dl className="mt-4 space-y-1.5 text-[15px]">
+          {attributes.map((a) => (
+            <div key={a.label} className="flex gap-3">
+              <dt className="w-20 shrink-0 whitespace-nowrap text-neutral-400">{a.label}</dt>
+              <dd className="min-w-0 text-neutral-800">{a.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
 
       <ServiceBar
         companyId={companyId}
@@ -70,10 +93,16 @@ export function CompanyDetailDynamic({
         selectedId={selectedId}
         onSelect={setSelectedId}
         websiteUrl={websiteUrl}
+        phone={phone}
       />
 
-      <PhotoStack title="작업 사진" photos={workPhotos.filter(matchesSelected)} />
-      <PhotoStack title="전/후 비교" photos={beforeAfterPhotos.filter(matchesSelected)} />
+      {(visibleWork.length > 0 || visibleBeforeAfter.length > 0) && (
+        <section id="detail" className="scroll-mt-16">
+          <div className="-mx-4 mt-6 h-2 bg-[#f2f3f6]" />
+          <PhotoStack title="작업 사진" photos={visibleWork} />
+          <PhotoStack title="전/후 비교" photos={visibleBeforeAfter} />
+        </section>
+      )}
     </>
   );
 }
