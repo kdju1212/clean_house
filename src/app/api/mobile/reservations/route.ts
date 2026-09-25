@@ -3,6 +3,7 @@ import { getMobileUserId } from "@/lib/mobile-auth";
 import { prisma } from "@/lib/prisma";
 import { createReservationForCustomer } from "@/lib/reservation-service";
 import type { ReservationStatus } from "@/generated/prisma/client";
+import { RESERVATION_ITEMS_INCLUDE, reservationServiceNames } from "@/lib/reservation";
 
 const STATUS_GROUPS: Record<string, ReservationStatus[]> = {
   REQUESTED: ["REQUESTED"],
@@ -28,7 +29,7 @@ export async function GET(request: Request) {
       customerId,
       ...(statuses ? { status: { in: statuses } } : {}),
     },
-    include: { company: true, category: true, review: true },
+    include: { company: true, items: RESERVATION_ITEMS_INCLUDE, review: true },
     orderBy: { createdAt: "desc" },
   });
 
@@ -38,7 +39,7 @@ export async function GET(request: Request) {
       status: r.status,
       companyId: r.companyId,
       companyName: r.company.name,
-      categoryName: r.category.name,
+      categoryName: reservationServiceNames(r.items),
       price: r.price,
       desiredDate: r.desiredDate.toISOString(),
       desiredTime: r.desiredTime,
@@ -72,12 +73,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "지역을 먼저 선택해주세요." }, { status: 400 });
   }
 
+  const fields = body as Record<string, unknown>;
+  // App bundles from before multi-service booking send a single
+  // categoryId/categoryAnswers — still accepted until every device has
+  // picked up the OTA update that sends `items`.
+  const items =
+    fields.items ??
+    (fields.categoryId ? [{ categoryId: fields.categoryId, categoryAnswers: fields.categoryAnswers }] : []);
+
   try {
     const reservationId = await createReservationForCustomer({
       customerId,
       customerRegionId,
       companyId: (body as Record<string, unknown>).companyId,
-      categoryId: (body as Record<string, unknown>).categoryId,
+      items,
       name: (body as Record<string, unknown>).name,
       phone: (body as Record<string, unknown>).phone,
       address: (body as Record<string, unknown>).address,
@@ -85,7 +94,6 @@ export async function POST(request: Request) {
       desiredDateRaw: (body as Record<string, unknown>).desiredDate,
       desiredTime: (body as Record<string, unknown>).desiredTime,
       requestNote: (body as Record<string, unknown>).requestNote,
-      categoryAnswers: (body as Record<string, unknown>).categoryAnswers,
     });
     return NextResponse.json({ reservationId });
   } catch (err) {

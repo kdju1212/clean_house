@@ -1,10 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin";
-import {
-  RESERVATION_STATUS_BADGE_CLASS,
-  RESERVATION_STATUS_LABEL,
-} from "@/lib/reservation";
+import { RESERVATION_STATUS_BADGE_CLASS, RESERVATION_STATUS_LABEL, reservationServiceNames } from "@/lib/reservation";
 
 const STATUS_FILTERS = [
   { value: "", label: "전체" },
@@ -53,7 +50,7 @@ export default async function AdminReservationsPage({
         price: true,
         status: true,
         company: { select: { name: true } },
-        category: { select: { name: true } },
+        items: { select: { category: { select: { name: true } } }, orderBy: { order: "asc" } },
       },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * PAGE_SIZE,
@@ -113,7 +110,7 @@ export default async function AdminReservationsPage({
               </div>
               <dl className="mt-1 flex flex-col gap-0.5 text-xs text-neutral-500">
                 <div>
-                  {r.category.name}
+                  {reservationServiceNames(r.items)}
                   {r.price ? ` · ${r.price.toLocaleString()}원` : ""}
                 </div>
                 <div>

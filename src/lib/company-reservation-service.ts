@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { requireOwnedCompany } from "@/lib/company-auth";
 import { createNotification } from "@/lib/notification";
+import { RESERVATION_ITEMS_INCLUDE, reservationServiceNames } from "@/lib/reservation";
 
 type ReservationStatus = "REQUESTED" | "ACCEPTED" | "REJECTED" | "COMPLETED" | "NO_SHOW";
 
@@ -48,9 +49,11 @@ async function notifyCustomer(
 ) {
   const reservation = await prisma.reservation.findUnique({
     where: { id: reservationId },
-    include: { category: true },
+    include: { items: RESERVATION_ITEMS_INCLUDE },
   });
   if (!reservation) return;
+
+  const serviceNames = reservationServiceNames(reservation.items);
 
   const detailLink = `/reservations/${reservation.id}`;
 
@@ -61,7 +64,7 @@ async function notifyCustomer(
       userId: reservation.customerId,
       type: "RESERVATION_ACCEPTED",
       title: "예약이 승인됐어요",
-      body: `${companyName}에서 ${reservation.category.name} 예약을 승인했어요.${priceText}`,
+      body: `${companyName}에서 ${serviceNames} 예약을 승인했어요.${priceText}`,
       link: detailLink,
     });
   } else if (to === "REJECTED") {
@@ -69,7 +72,7 @@ async function notifyCustomer(
       userId: reservation.customerId,
       type: "RESERVATION_REJECTED",
       title: "예약이 거절됐어요",
-      body: `${companyName}에서 ${reservation.category.name} 예약을 거절했어요.`,
+      body: `${companyName}에서 ${serviceNames} 예약을 거절했어요.`,
       link: detailLink,
     });
   } else if (to === "NO_SHOW") {
@@ -77,7 +80,7 @@ async function notifyCustomer(
       userId: reservation.customerId,
       type: "RESERVATION_NO_SHOW",
       title: "노쇼로 처리됐어요",
-      body: `${companyName}에서 예약 시간에 방문이 확인되지 않아 ${reservation.category.name} 예약을 노쇼로 처리했어요. 착오가 있다면 업체에 문의해주세요.`,
+      body: `${companyName}에서 예약 시간에 방문이 확인되지 않아 ${serviceNames} 예약을 노쇼로 처리했어요. 착오가 있다면 업체에 문의해주세요.`,
       link: detailLink,
     });
   } else if (to === "COMPLETED") {
@@ -85,7 +88,7 @@ async function notifyCustomer(
       userId: reservation.customerId,
       type: "RESERVATION_COMPLETED",
       title: "청소가 완료됐어요",
-      body: `${companyName}의 ${reservation.category.name} 서비스가 완료됐어요.`,
+      body: `${companyName}의 ${serviceNames} 서비스가 완료됐어요.`,
       link: detailLink,
     });
     await createNotification({

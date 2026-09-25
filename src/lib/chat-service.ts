@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { requireChatAccess } from "@/lib/chat";
+import { RESERVATION_ITEMS_INCLUDE, reservationServiceNames } from "@/lib/reservation";
 import { notifyNewChatMessage } from "@/lib/notification";
 
 const MAX_MESSAGE_LENGTH = 1000;
@@ -84,7 +85,7 @@ export async function getMyChatRooms(userId: string): Promise<
       },
     },
     include: {
-      reservation: { include: { company: true, category: true } },
+      reservation: { include: { company: true, items: RESERVATION_ITEMS_INCLUDE } },
       messages: { orderBy: { createdAt: "desc" }, take: 1 },
     },
   });
@@ -110,7 +111,7 @@ export async function getMyChatRooms(userId: string): Promise<
       return {
         reservationId: room.reservationId,
         otherPartyName: isCustomer ? room.reservation.company.name : room.reservation.customerName,
-        categoryName: room.reservation.category.name,
+        categoryName: reservationServiceNames(room.reservation.items),
         lastMessage: lastMessage?.content ?? null,
         lastMessageAt: (lastMessage?.createdAt ?? room.createdAt).toISOString(),
         unreadCount: unreadMap.get(room.id) ?? 0,

@@ -8,6 +8,7 @@ import { getSelectedRegion } from "@/lib/region";
 import { createReservationForCustomer } from "@/lib/reservation-service";
 import { createNotification } from "@/lib/notification";
 import { toActionError, type ActionState } from "@/lib/action-state";
+import { RESERVATION_ITEMS_INCLUDE, reservationServiceNames } from "@/lib/reservation";
 
 export async function createReservation(
   _prevState: ActionState,
@@ -29,27 +30,34 @@ export async function createReservation(
       throw new Error("지역을 먼저 선택해주세요.");
     }
 
-    // The dynamic per-category question fields are named "answer_<key>" in
-    // the form (see new-reservation-form.tsx) since FormData has no native
-    // nested-object field — reassembled into a plain object here. A
-    // multi-select question (에어컨 형태) submits several entries under the
-    // same key (one per checked checkbox), so every value is collected
-    // before joining, not just the last one.
-    const grouped: Record<string, string[]> = {};
-    for (const [key, value] of formData.entries()) {
-      if (!key.startsWith("answer_") || typeof value !== "string") continue;
-      const answerKey = key.slice("answer_".length);
-      (grouped[answerKey] ??= []).push(value);
-    }
-    const categoryAnswers: Record<string, unknown> = Object.fromEntries(
-      Object.entries(grouped).map(([key, values]) => [key, values.join(",")])
-    );
+    // Each checked service is a "categoryId" entry, and its question fields
+    // are named "answer_<categoryId>_<key>" (see new-reservation-form.tsx)
+    // since FormData has no native nested-object field — reassembled into
+    // one {categoryId, categoryAnswers} per service here. A multi-select
+    // question (에어컨 형태) submits several entries under the same name (one
+    // per checked checkbox), so every value is collected before joining,
+    // not just the last one.
+    const categoryIds = formData.getAll("categoryId").filter((v) => typeof v === "string");
+    const items = categoryIds.map((categoryId) => {
+      const prefix = `answer_${categoryId}_`;
+      const grouped: Record<string, string[]> = {};
+      for (const [key, value] of formData.entries()) {
+        if (!key.startsWith(prefix) || typeof value !== "string") continue;
+        (grouped[key.slice(prefix.length)] ??= []).push(value);
+      }
+      return {
+        categoryId,
+        categoryAnswers: Object.fromEntries(
+          Object.entries(grouped).map(([key, values]) => [key, values.join(",")])
+        ),
+      };
+    });
 
     reservationId = await createReservationForCustomer({
       customerId: session.user.id,
       customerRegionId: customerRegion.id,
       companyId: formData.get("companyId"),
-      categoryId: formData.get("categoryId"),
+      items,
       name: formData.get("name"),
       phone: formData.get("phone"),
       address: formData.get("address"),
@@ -57,7 +65,6 @@ export async function createReservation(
       desiredDateRaw: formData.get("desiredDate"),
       desiredTime: formData.get("desiredTime"),
       requestNote: formData.get("requestNote"),
-      categoryAnswers,
     });
   } catch (err) {
     return toActionError(err);
@@ -93,14 +100,14 @@ export async function cancelReservation(
     if (result.count > 0) {
       const reservation = await prisma.reservation.findUnique({
         where: { id: reservationId },
-        include: { company: true, category: true },
+        include: { company: true, items: RESERVATION_ITEMS_INCLUDE },
       });
       if (reservation) {
         await createNotification({
           userId: reservation.company.ownerUserId,
           type: "RESERVATION_CANCELLED",
           title: "예약이 취소됐어요",
-          body: `${reservation.customerName}님이 ${reservation.category.name} 예약을 취소했어요.`,
+          body: `${reservation.customerName}님이 ${reservationServiceNames(reservation.items)} 예약을 취소했어요.`,
           link: `/company/reservations/${reservation.id}`,
         });
       }

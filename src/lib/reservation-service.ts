@@ -18,7 +18,11 @@ export type CreateReservationInput = {
   // never trusted as already-checked by the caller.
   customerRegionId: string;
   companyId: unknown;
-  categoryId: unknown;
+  // One entry per service booked on this visit — each with its own
+  // category-specific quote details (e.g. 에어컨청소's 형태/대수), a plain
+  // {key: value}-shaped object from the client that's re-validated below
+  // against that category's actual question set before being stored.
+  items: unknown;
   name: unknown;
   phone: unknown;
   address: unknown;
@@ -26,11 +30,9 @@ export type CreateReservationInput = {
   desiredDateRaw: unknown;
   desiredTime: unknown;
   requestNote: unknown;
-  // Category-specific quote details (e.g. 에어컨청소's 형태/대수) — a plain
-  // {key: value}-shaped object from the client, re-validated below against
-  // that category's actual question set before being stored.
-  categoryAnswers: unknown;
 };
+
+const MAX_ITEMS = 10;
 
 /**
  * Core reservation-creation logic shared by the web Server Action
@@ -47,7 +49,7 @@ export async function createReservationForCustomer(
     customerId,
     customerRegionId,
     companyId,
-    categoryId,
+    items,
     name,
     phone,
     address,
@@ -55,14 +57,27 @@ export async function createReservationForCustomer(
     desiredDateRaw,
     desiredTime,
     requestNote,
-    categoryAnswers,
   } = input;
 
   if (typeof companyId !== "string" || companyId.length === 0) {
     throw new Error("업체 정보가 올바르지 않습니다.");
   }
-  if (typeof categoryId !== "string" || categoryId.length === 0) {
+  if (!Array.isArray(items) || items.length === 0) {
     throw new Error("청소 종류를 선택해주세요.");
+  }
+  if (items.length > MAX_ITEMS) {
+    throw new Error("한 번에 예약할 수 있는 서비스 수를 넘었어요.");
+  }
+  const requested = items.map((item) => {
+    const { categoryId, categoryAnswers } = (item ?? {}) as Record<string, unknown>;
+    if (typeof categoryId !== "string" || categoryId.length === 0) {
+      throw new Error("청소 종류를 선택해주세요.");
+    }
+    return { categoryId, categoryAnswers };
+  });
+  const categoryIds = requested.map((r) => r.categoryId);
+  if (new Set(categoryIds).size !== categoryIds.length) {
+    throw new Error("같은 서비스를 중복으로 선택했어요.");
   }
   if (typeof name !== "string" || name.trim().length === 0) {
     throw new Error("이름을 입력해주세요.");
@@ -89,15 +104,15 @@ export async function createReservationForCustomer(
   const company = await prisma.company.findUnique({
     where: { id: companyId },
     include: {
-      services: { where: { categoryId }, include: { category: true } },
+      services: { where: { categoryId: { in: categoryIds } }, include: { category: true } },
       regions: true,
     },
   });
   if (!company || company.status !== "ACTIVE" || !company.isAvailable) {
     throw new Error("현재 예약을 받을 수 없는 업체입니다.");
   }
-  if (company.services.length === 0) {
-    throw new Error("해당 업체가 제공하지 않는 서비스입니다.");
+  if (company.services.length !== categoryIds.length) {
+    throw new Error("해당 업체가 제공하지 않는 서비스가 포함돼 있어요.");
   }
 
   // The client-side date input only shows a hint for blocked dates (see
@@ -110,12 +125,23 @@ export async function createReservationForCustomer(
     throw new Error("해당 날짜는 업체 휴무일이에요. 다른 날짜를 선택해주세요.");
   }
 
-  const parsedCategoryAnswers = parseCategoryAnswers(
-    company.services[0].category.slug,
-    typeof categoryAnswers === "object" && categoryAnswers !== null
-      ? (categoryAnswers as Record<string, unknown>)
-      : {}
-  );
+  const parsedItems = requested.map(({ categoryId, categoryAnswers }, order) => {
+    const service = company.services.find((s) => s.categoryId === categoryId)!;
+    let answers: Record<string, string> | null;
+    try {
+      answers = parseCategoryAnswers(
+        service.category.slug,
+        typeof categoryAnswers === "object" && categoryAnswers !== null
+          ? (categoryAnswers as Record<string, unknown>)
+          : {}
+      );
+    } catch (err) {
+      // With several services on one form, "평수 항목을 입력해주세요" alone
+      // doesn't say which service's section it's in.
+      throw new Error(`[${service.category.name}] ${(err as Error).message}`);
+    }
+    return { service, answers, order };
+  });
 
   // Re-verify region eligibility server-side too — the UI only shows
   // companies that service the customer's selected region, but a direct API
@@ -132,7 +158,6 @@ export async function createReservationForCustomer(
     data: {
       customerId,
       companyId: company.id,
-      categoryId,
       customerName: name.trim(),
       customerPhone: phone.trim(),
       address: address.trim(),
@@ -146,10 +171,18 @@ export async function createReservationForCustomer(
         typeof requestNote === "string" && requestNote.trim().length > 0
           ? requestNote.trim().slice(0, 1000)
           : null,
-      categoryAnswers: parsedCategoryAnswers ?? undefined,
-      // Snapshot the price at booking time — the company's price can change
-      // later, but this reservation should keep showing what was agreed.
-      price: company.services[0].price,
+      // Snapshot the prices at booking time — the company's prices can
+      // change later, but this reservation should keep showing what was
+      // agreed.
+      price: parsedItems.reduce((sum, { service }) => sum + service.price, 0),
+      items: {
+        create: parsedItems.map(({ service, answers, order }) => ({
+          categoryId: service.categoryId,
+          categoryAnswers: answers ?? undefined,
+          price: service.price,
+          order,
+        })),
+      },
       chatRoom: { create: {} },
     },
   });
@@ -158,7 +191,7 @@ export async function createReservationForCustomer(
     userId: company.ownerUserId,
     type: "RESERVATION_REQUESTED",
     title: "새 예약 요청이 들어왔어요",
-    body: `${name.trim()}님이 ${company.services[0].category.name} 예약을 신청했어요.`,
+    body: `${name.trim()}님이 ${parsedItems.map(({ service }) => service.category.name).join(" · ")} 예약을 신청했어요.`,
     link: `/company/reservations/${reservation.id}`,
   });
 

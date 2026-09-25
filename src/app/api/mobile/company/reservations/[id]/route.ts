@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getMobileUserId } from "@/lib/mobile-auth";
 import { prisma } from "@/lib/prisma";
+import { RESERVATION_ITEMS_INCLUDE, reservationServiceNames } from "@/lib/reservation";
 
 /** Mobile equivalent of /company/reservations/[id] — full detail including
  * requestNote, scoped to the caller's own company (never another
@@ -22,7 +23,7 @@ export async function GET(
   const { id } = await params;
   const reservation = await prisma.reservation.findUnique({
     where: { id },
-    include: { category: true },
+    include: { items: RESERVATION_ITEMS_INCLUDE },
   });
 
   if (!reservation || reservation.companyId !== company.id) {
@@ -35,15 +36,19 @@ export async function GET(
       status: reservation.status,
       customerName: reservation.customerName,
       customerPhone: reservation.customerPhone,
-      categoryName: reservation.category.name,
+      categoryName: reservationServiceNames(reservation.items),
       price: reservation.price,
       desiredDate: reservation.desiredDate.toISOString(),
       desiredTime: reservation.desiredTime,
       address: reservation.address,
       addressDetail: reservation.addressDetail,
       requestNote: reservation.requestNote,
-      categorySlug: reservation.category.slug,
-      categoryAnswers: reservation.categoryAnswers,
+      items: reservation.items.map((item) => ({
+        categoryName: item.category.name,
+        categorySlug: item.category.slug,
+        categoryAnswers: item.categoryAnswers,
+        price: item.price,
+      })),
     },
   });
 }

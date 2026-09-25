@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import {
   RESERVATION_STATUS_BADGE_CLASS,
   RESERVATION_STATUS_LABEL,
+  RESERVATION_ITEMS_INCLUDE,
+  reservationServiceNames,
 } from "@/lib/reservation";
 import { SubmitButton } from "@/components/submit-button";
 import { completeReservation, markNoShowReservation, rejectReservation } from "./actions";
@@ -72,7 +74,7 @@ export default async function CompanyReservationsPage({
   const [reservations, statusCounts] = await Promise.all([
     prisma.reservation.findMany({
       where: { companyId: company.id, ...(activeStatus ? { status: activeStatus } : {}) },
-      include: { category: true },
+      include: { items: RESERVATION_ITEMS_INCLUDE },
       orderBy: [{ createdAt: "desc" }],
     }),
     prisma.reservation.groupBy({
@@ -133,7 +135,7 @@ export default async function CompanyReservationsPage({
                 </div>
                 <dl className="mt-2 flex flex-col gap-0.5 text-xs text-neutral-500">
                   <div>
-                    {r.category.name}
+                    {reservationServiceNames(r.items)}
                     {r.price ? ` · ${r.price.toLocaleString()}원` : ""}
                   </div>
                   <div>

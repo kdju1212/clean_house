@@ -27,3 +27,15 @@ export const RESERVATION_STATUS_BADGE_CLASS: Record<string, string> = {
   COMPLETED: "bg-blue-100 text-blue-700",
   NO_SHOW: "bg-red-100 text-red-700",
 };
+
+/** The `include` every reservation query uses to get its services in the
+ * order the customer picked them. */
+export const RESERVATION_ITEMS_INCLUDE = {
+  include: { category: true },
+  orderBy: { order: "asc" },
+} as const;
+
+/** "입주청소 · 에어컨청소" — one label for a reservation's services. */
+export function reservationServiceNames(items: { category: { name: string } }[]): string {
+  return items.map((i) => i.category.name).join(" · ");
+}

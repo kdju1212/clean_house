@@ -99,7 +99,7 @@ function withEunNeun(word: string): string {
 /**
  * Validates raw answer values against a category's question set and
  * returns a plain {key: value} object to store as
- * Reservation.categoryAnswers, or null when the category has no extra
+ * ReservationItem.categoryAnswers, or null when the category has no extra
  * questions (or every optional one was left blank). Throws a Korean,
  * user-facing message on a missing required field or a non-numeric value
  * for a number question.

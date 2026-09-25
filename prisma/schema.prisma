@@ -108,9 +108,9 @@ model Category {
   name  String
   order Int    @default(0)
 
-  services       CompanyService[]
-  reservations   Reservation[]
-  advertisements Advertisement[]
+  services         CompanyService[]
+  reservationItems ReservationItem[]
+  advertisements   Advertisement[]
   categoryProfiles CategoryProfile[]
   photos         CompanyPhoto[]
 }
@@ -119,8 +119,8 @@ model Category {
 /// (see reservation-questions.ts) — reused across every company's listing
 /// in that category (to estimate a PER_UNIT price) and to pre-fill the
 /// reservation form, instead of asking again every time. Separate from
-/// Reservation.categoryAnswers, which is an immutable snapshot of what was
-/// answered for one specific booking.
+/// ReservationItem.categoryAnswers, which is an immutable snapshot of what
+/// was answered for one specific booking.
 model CategoryProfile {
   id         String   @id @default(cuid())
   customerId String
@@ -269,11 +269,13 @@ model CompanyRegion {
   @@id([companyId, regionId])
 }
 
+/// One visit: a single address/date/time, chat room, review and status,
+/// covering one or more of the company's services (items) — e.g. 입주청소 +
+/// 에어컨청소 booked together is one Reservation with two items.
 model Reservation {
   id            String            @id @default(cuid())
   customerId    String
   companyId     String
-  categoryId    String
   customerName  String
   customerPhone String
   address       String
@@ -281,21 +283,38 @@ model Reservation {
   desiredDate   DateTime          @db.Date
   desiredTime   String
   requestNote   String?
-  // Category-specific quote details (e.g. 에어컨청소's 형태/대수, 이사청소's
-  // 평수) — see src/lib/reservation-questions.ts for what's asked per
-  // category. A plain {key: value} object, or null for a category with no
-  // extra questions defined.
-  categoryAnswers Json?
+  // Total for the visit — starts as the sum of the items' listed prices and
+  // is overwritten with the company's actual quote when it accepts.
   price         Int?
   status        ReservationStatus @default(REQUESTED)
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 
-  customer User     @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  category Category @relation(fields: [categoryId], references: [id])
+  customer User              @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  company  Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  items    ReservationItem[]
   chatRoom ChatRoom?
   review   Review?
+}
+
+model ReservationItem {
+  id            String   @id @default(cuid())
+  reservationId String
+  categoryId    String
+  // Category-specific quote details (e.g. 에어컨청소's 형태/대수, 이사청소's
+  // 평수) — see src/lib/reservation-questions.ts for what's asked per
+  // category. A plain {key: value} object, or null for a category with no
+  // extra questions defined.
+  categoryAnswers Json?
+  // The service's listed price at booking time.
+  price         Int?
+  order         Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  category    Category    @relation(fields: [categoryId], references: [id])
+
+  @@unique([reservationId, categoryId])
 }
 
 model ChatRoom {

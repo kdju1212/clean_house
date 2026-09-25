@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
+import { RESERVATION_ITEMS_INCLUDE } from "@/lib/reservation";
 
 /**
  * A chat room is only visible to the two parties tied to its reservation —
@@ -9,7 +10,7 @@ import { prisma } from "@/lib/prisma";
 export async function requireChatAccess(reservationId: string, userId: string) {
   const reservation = await prisma.reservation.findUnique({
     where: { id: reservationId },
-    include: { company: true, chatRoom: true, category: true },
+    include: { company: true, chatRoom: true, items: RESERVATION_ITEMS_INCLUDE },
   });
 
   if (!reservation || !reservation.chatRoom) {

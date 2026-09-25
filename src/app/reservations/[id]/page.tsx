@@ -5,8 +5,10 @@ import { prisma } from "@/lib/prisma";
 import {
   RESERVATION_STATUS_BADGE_CLASS,
   RESERVATION_STATUS_LABEL,
+  RESERVATION_ITEMS_INCLUDE,
+  reservationServiceNames,
 } from "@/lib/reservation";
-import { getReservationQuestions } from "@/lib/reservation-questions";
+import { ReservationEstimateDetails } from "@/components/reservation-estimate-details";
 import { CancelReservationButton } from "../cancel-reservation-button";
 
 export default async function ReservationDetailPage({
@@ -23,18 +25,12 @@ export default async function ReservationDetailPage({
 
   const reservation = await prisma.reservation.findUnique({
     where: { id },
-    include: { company: true, category: true, review: true },
+    include: { company: true, items: RESERVATION_ITEMS_INCLUDE, review: true },
   });
 
   if (!reservation || reservation.customerId !== session.user.id) {
     notFound();
   }
-
-  const answers =
-    reservation.categoryAnswers && typeof reservation.categoryAnswers === "object"
-      ? (reservation.categoryAnswers as Record<string, string>)
-      : null;
-  const questions = getReservationQuestions(reservation.category.slug);
 
   return (
     <main className="mx-auto w-full max-w-md flex-1 px-4 py-6">
@@ -55,7 +51,7 @@ export default async function ReservationDetailPage({
         </div>
         <div className="flex justify-between gap-3">
           <span className="text-neutral-500">서비스</span>
-          <span className="text-right">{reservation.category.name}</span>
+          <span className="text-right">{reservationServiceNames(reservation.items)}</span>
         </div>
         {reservation.price != null && (
           <div className="flex justify-between gap-3">
@@ -79,21 +75,7 @@ export default async function ReservationDetailPage({
             {reservation.addressDetail ? ` ${reservation.addressDetail}` : ""}
           </span>
         </div>
-        {answers && (
-          <div className="flex flex-col gap-1.5 border-t border-neutral-100 pt-3">
-            <span className="text-neutral-500">견적 정보</span>
-            {questions
-              .filter((q) => answers[q.key])
-              .map((q) => (
-                <div key={q.key} className="flex justify-between gap-3">
-                  <span className="text-neutral-500">{q.label}</span>
-                  <span className="text-right font-medium">
-                    {answers[q.key].split(",").join(", ")}
-                  </span>
-                </div>
-              ))}
-          </div>
-        )}
+        <ReservationEstimateDetails items={reservation.items} />
         {reservation.requestNote && (
           <div className="flex flex-col gap-1 border-t border-neutral-100 pt-3">
             <span className="text-neutral-500">요청사항</span>

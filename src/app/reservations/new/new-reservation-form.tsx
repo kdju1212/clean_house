@@ -44,15 +44,21 @@ export function NewReservationForm({
   const [address, setAddress] = useState("");
   const [locating, setLocating] = useState(false);
   const [locateError, setLocateError] = useState<string | null>(null);
-  const [categoryId, setCategoryId] = useState(defaultCategoryId ?? services[0]?.categoryId);
+  const [selectedIds, setSelectedIds] = useState<string[]>(() => {
+    const initial = defaultCategoryId ?? services[0]?.categoryId;
+    return initial ? [initial] : [];
+  });
   const [desiredDate, setDesiredDate] = useState(todayStr);
   const blockedDateSet = new Set(blockedDates);
   const isDesiredDateBlocked = blockedDateSet.has(desiredDate);
 
-  const selectedService = services.find((s) => s.categoryId === categoryId);
-  const selectedSlug = selectedService?.category.slug;
-  const questions = selectedSlug ? getReservationQuestions(selectedSlug) : [];
-  const savedAnswers = selectedSlug ? categoryProfiles[selectedSlug] : undefined;
+  const selectedServices = services.filter((s) => selectedIds.includes(s.categoryId));
+
+  function toggleService(categoryId: string) {
+    setSelectedIds((prev) =>
+      prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId]
+    );
+  }
 
   function handleLocate() {
     setLocateError(null);
@@ -90,98 +96,52 @@ export function NewReservationForm({
     <form action={formAction} className="mt-6 flex flex-col gap-4">
       <input type="hidden" name="companyId" value={companyId} />
 
-      <label className="flex flex-col gap-1 text-sm font-medium">
-        청소 종류
-        <select
-          name="categoryId"
-          required
-          value={categoryId}
-          onChange={(e) => setCategoryId(e.target.value)}
-          className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
-        >
+      <div className="flex flex-col gap-1 text-sm font-medium">
+        청소 종류 {services.length > 1 && <span className="font-normal text-neutral-400">(여러 개 선택 가능)</span>}
+        <div className="flex flex-col gap-2">
           {services.map((s) => {
             const unitLabel =
               s.pricingUnit === "PER_UNIT"
                 ? PRICING_UNIT_LABEL[getPricingQuantityKey(s.category.slug) ?? ""]
                 : null;
+            const checked = selectedIds.includes(s.categoryId);
             return (
-              <option key={s.categoryId} value={s.categoryId}>
-                {s.category.name} (
-                {unitLabel ? `${unitLabel}당 ` : ""}
-                {s.price.toLocaleString()}원~)
-              </option>
+              <label
+                key={s.categoryId}
+                className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 font-normal ${
+                  checked ? "border-neutral-900 bg-neutral-50" : "border-neutral-200"
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    name="categoryId"
+                    value={s.categoryId}
+                    checked={checked}
+                    onChange={() => toggleService(s.categoryId)}
+                  />
+                  {s.category.name}
+                </span>
+                <span className="text-neutral-500">
+                  {unitLabel ? `${unitLabel}당 ` : ""}
+                  {s.price.toLocaleString()}원~
+                </span>
+              </label>
             );
           })}
-        </select>
-      </label>
-
-      {questions.length > 0 && (
-        <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-3">
-          <p className="text-xs text-neutral-500">
-            업체가 정확한 견적을 낼 수 있도록 아래 정보를 알려주세요.
-          </p>
-          {questions.map((q) =>
-            q.type === "select" && q.multiple ? (
-              <div key={`${selectedSlug}-${q.key}`} className="flex flex-col gap-1 text-sm font-medium">
-                {q.label} (복수 선택 가능)
-                <div className="flex flex-wrap gap-2">
-                  {q.options?.map((option) => (
-                    <label
-                      key={option}
-                      className="flex items-center gap-1.5 rounded-full border border-neutral-200 px-3 py-1.5 text-sm font-normal"
-                    >
-                      <input
-                        type="checkbox"
-                        name={`answer_${q.key}`}
-                        value={option}
-                        defaultChecked={(savedAnswers?.[q.key] ?? "").split(",").includes(option)}
-                      />
-                      {option}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            ) : q.type === "select" ? (
-              <label
-                key={`${selectedSlug}-${q.key}`}
-                className="flex flex-col gap-1 text-sm font-medium"
-              >
-                {q.label}
-                <select
-                  name={`answer_${q.key}`}
-                  required={q.required}
-                  defaultValue={savedAnswers?.[q.key] ?? ""}
-                  className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
-                >
-                  <option value="" disabled>
-                    선택해주세요
-                  </option>
-                  {q.options?.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : (
-              <label
-                key={`${selectedSlug}-${q.key}`}
-                className="flex flex-col gap-1 text-sm font-medium"
-              >
-                {q.label}
-                <input
-                  name={`answer_${q.key}`}
-                  type={q.type === "number" ? "number" : "text"}
-                  required={q.required}
-                  defaultValue={savedAnswers?.[q.key] ?? ""}
-                  placeholder={q.placeholder}
-                  className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
-                />
-              </label>
-            )
-          )}
         </div>
-      )}
+      </div>
+
+      {selectedServices.map((service) => (
+        <ServiceQuestions
+          key={service.categoryId}
+          categoryId={service.categoryId}
+          categoryName={service.category.name}
+          categorySlug={service.category.slug}
+          savedAnswers={categoryProfiles[service.category.slug]}
+          showName={selectedServices.length > 1}
+        />
+      ))}
 
       <label className="flex flex-col gap-1 text-sm font-medium">
         서비스 주소
@@ -283,15 +243,103 @@ export function NewReservationForm({
         업체에 미리 연락해주세요.
       </p>
 
+      {selectedIds.length === 0 && (
+        <p className="text-xs text-red-600">청소 종류를 하나 이상 선택해주세요.</p>
+      )}
       {state?.error && <p className="text-xs text-red-600">{state.error}</p>}
 
       <SubmitButton
         className="mt-2 rounded-lg bg-neutral-900 px-4 py-3 text-sm font-medium text-white"
         pendingText="신청 중..."
-        disabled={isDesiredDateBlocked}
+        disabled={isDesiredDateBlocked || selectedIds.length === 0}
       >
         예약 신청하기
       </SubmitButton>
     </form>
+  );
+}
+
+/** One selected service's quote questions (평수, 에어컨 형태/대수, ...).
+ * Fields are named "answer_<categoryId>_<key>" so the server action can
+ * tell which service each answer belongs to. */
+function ServiceQuestions({
+  categoryId,
+  categoryName,
+  categorySlug,
+  savedAnswers,
+  showName,
+}: {
+  categoryId: string;
+  categoryName: string;
+  categorySlug: string;
+  savedAnswers: Record<string, string> | undefined;
+  showName: boolean;
+}) {
+  const questions = getReservationQuestions(categorySlug);
+  if (questions.length === 0) return null;
+
+  const fieldName = (key: string) => `answer_${categoryId}_${key}`;
+
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-3">
+      {showName && <p className="text-sm font-semibold">{categoryName}</p>}
+      <p className="text-xs text-neutral-500">
+        업체가 정확한 견적을 낼 수 있도록 아래 정보를 알려주세요.
+      </p>
+      {questions.map((q) =>
+        q.type === "select" && q.multiple ? (
+          <div key={q.key} className="flex flex-col gap-1 text-sm font-medium">
+            {q.label} (복수 선택 가능)
+            <div className="flex flex-wrap gap-2">
+              {q.options?.map((option) => (
+                <label
+                  key={option}
+                  className="flex items-center gap-1.5 rounded-full border border-neutral-200 px-3 py-1.5 text-sm font-normal"
+                >
+                  <input
+                    type="checkbox"
+                    name={fieldName(q.key)}
+                    value={option}
+                    defaultChecked={(savedAnswers?.[q.key] ?? "").split(",").includes(option)}
+                  />
+                  {option}
+                </label>
+              ))}
+            </div>
+          </div>
+        ) : q.type === "select" ? (
+          <label key={q.key} className="flex flex-col gap-1 text-sm font-medium">
+            {q.label}
+            <select
+              name={fieldName(q.key)}
+              required={q.required}
+              defaultValue={savedAnswers?.[q.key] ?? ""}
+              className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
+            >
+              <option value="" disabled>
+                선택해주세요
+              </option>
+              {q.options?.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <label key={q.key} className="flex flex-col gap-1 text-sm font-medium">
+            {q.label}
+            <input
+              name={fieldName(q.key)}
+              type={q.type === "number" ? "number" : "text"}
+              required={q.required}
+              defaultValue={savedAnswers?.[q.key] ?? ""}
+              placeholder={q.placeholder}
+              className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
+            />
+          </label>
+        )
+      )}
+    </div>
   );
 }

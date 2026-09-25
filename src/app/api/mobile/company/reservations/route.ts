@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getMobileUserId } from "@/lib/mobile-auth";
 import { prisma } from "@/lib/prisma";
 import type { ReservationStatus } from "@/generated/prisma/client";
+import { RESERVATION_ITEMS_INCLUDE, reservationServiceNames } from "@/lib/reservation";
 
 const VALID_STATUSES: ReservationStatus[] = [
   "REQUESTED",
@@ -33,7 +34,7 @@ export async function GET(request: Request) {
 
   const reservations = await prisma.reservation.findMany({
     where: { companyId: company.id, ...(status ? { status } : {}) },
-    include: { category: true },
+    include: { items: RESERVATION_ITEMS_INCLUDE },
     orderBy: { createdAt: "desc" },
   });
 
@@ -53,7 +54,7 @@ export async function GET(request: Request) {
       status: r.status,
       customerName: r.customerName,
       customerPhone: r.customerPhone,
-      categoryName: r.category.name,
+      categoryName: reservationServiceNames(r.items),
       price: r.price,
       desiredDate: r.desiredDate.toISOString(),
       desiredTime: r.desiredTime,
