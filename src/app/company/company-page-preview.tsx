@@ -3,14 +3,23 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { confirmPhotoUpload, deletePhoto, requestPhotoUploadUrl, updateProfile } from "./actions";
+import {
+  confirmPhotoUpload,
+  deletePhoto,
+  requestPhotoUploadUrl,
+  updateDetailPageMode,
+  updatePhotoCaption,
+  updateProfile,
+} from "./actions";
 import { BusinessHoursPicker } from "./business-hours-picker";
 import { formatPhoneNumber } from "./phone-format";
 import { PhotoStack, type PhotoItem } from "@/components/company-detail/photo-stack";
+import { PhotoGrid } from "@/components/company-detail/photo-grid";
 import { RatingDistribution } from "@/components/company-detail/rating-distribution";
 import { ReviewCard, ReviewPhotoStrip, type ReviewItem } from "@/components/company-detail/review-list";
 
-type Photo = PhotoItem & { categoryId: string | null };
+type Photo = PhotoItem & { categoryId: string | null; caption: string | null };
+type DetailPageMode = "CUSTOM_IMAGE" | "SITE_TEMPLATE";
 
 type Service = {
   id: string;
@@ -36,6 +45,7 @@ export function CompanyPagePreview({
   reviewCount,
   ratingCounts,
   workPhotos,
+  detailPageMode: initialDetailPageMode,
   reviews,
 }: {
   company: {
@@ -52,6 +62,7 @@ export function CompanyPagePreview({
   reviewCount: number;
   ratingCounts: number[];
   workPhotos: Photo[];
+  detailPageMode: DetailPageMode;
   reviews: ReviewItem[];
 }) {
   const {
@@ -75,6 +86,20 @@ export function CompanyPagePreview({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [detailPageMode, setDetailPageMode] = useState<DetailPageMode>(initialDetailPageMode);
+  const [modeError, setModeError] = useState<string | null>(null);
+
+  async function handleModeChange(mode: DetailPageMode) {
+    if (mode === detailPageMode) return;
+    const previous = detailPageMode;
+    setDetailPageMode(mode);
+    setModeError(null);
+    const result = await updateDetailPageMode(mode);
+    if ("error" in result) {
+      setDetailPageMode(previous);
+      setModeError(result.error);
+    }
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -180,7 +205,46 @@ export function CompanyPagePreview({
           </ul>
         </section>
 
-        <EditablePhotoStack title="상세페이지" photos={workPhotos} categories={categories} />
+        <section className="mt-5">
+          <h2 className="text-sm font-semibold">상세페이지</h2>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => handleModeChange("CUSTOM_IMAGE")}
+              className={`rounded-lg border px-3 py-2.5 text-left ${
+                detailPageMode === "CUSTOM_IMAGE"
+                  ? "border-neutral-900 bg-neutral-50"
+                  : "border-neutral-200"
+              }`}
+            >
+              <span className="block text-sm font-semibold">직접 올리기</span>
+              <span className="mt-0.5 block text-xs text-neutral-500">
+                준비한 세로로 긴 이미지를 그대로
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleModeChange("SITE_TEMPLATE")}
+              className={`rounded-lg border px-3 py-2.5 text-left ${
+                detailPageMode === "SITE_TEMPLATE"
+                  ? "border-neutral-900 bg-neutral-50"
+                  : "border-neutral-200"
+              }`}
+            >
+              <span className="block text-sm font-semibold">내 사이트 템플릿</span>
+              <span className="mt-0.5 block text-xs text-neutral-500">
+                사진 여러 장을 올리면 자동으로 꾸며드려요
+              </span>
+            </button>
+          </div>
+          {modeError && <p className="mt-1.5 text-xs text-red-600">{modeError}</p>}
+
+          {detailPageMode === "SITE_TEMPLATE" ? (
+            <EditablePhotoGrid photos={workPhotos} categories={categories} />
+          ) : (
+            <EditablePhotoStack photos={workPhotos} categories={categories} />
+          )}
+        </section>
 
         <div className="mt-5">
           <p className="text-sm font-medium">영업시간</p>
@@ -344,12 +408,41 @@ function usePhotoUpload(
   return { inputRef, uploading, error, pick, handleChange };
 }
 
+/** Shared by EditablePhotoStack and EditablePhotoGrid — which category the
+ * *next* uploaded photo gets tagged with. Hidden when there's nothing to
+ * distinguish (0 or 1 registered service). */
+function CategoryTagPicker({
+  value,
+  onChange,
+  categories,
+}: {
+  value: string | null;
+  onChange: (categoryId: string) => void;
+  categories: { id: string; name: string }[];
+}) {
+  if (categories.length <= 1) return null;
+  return (
+    <label className="mt-2 flex items-center gap-1.5 text-xs text-neutral-500">
+      새 사진 태그
+      <select
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value)}
+        className="rounded-md border border-neutral-200 px-1.5 py-1 text-xs"
+      >
+        {categories.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 function EditablePhotoStack({
-  title,
   photos,
   categories,
 }: {
-  title: string;
   photos: Photo[];
   // Offered as "이 사진, 어떤 카테고리 사진인가요?" tag choices — empty when
   // the company hasn't registered any service yet, in which case there's
@@ -369,24 +462,12 @@ function EditablePhotoStack({
 
   return (
     <>
-      {categories.length > 1 && (
-        <label className="mt-2 flex items-center gap-1.5 text-xs text-neutral-500">
-          새 사진 태그
-          <select
-            value={uploadCategoryId ?? ""}
-            onChange={(e) => setUploadCategoryId(e.target.value)}
-            className="rounded-md border border-neutral-200 px-1.5 py-1 text-xs"
-          >
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
+      <CategoryTagPicker
+        value={uploadCategoryId}
+        onChange={setUploadCategoryId}
+        categories={categories}
+      />
       <PhotoStack
-        title={title}
         photos={photos}
         photoOverlay={(photo) => (
           <>
@@ -427,5 +508,103 @@ function EditablePhotoStack({
       />
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
     </>
+  );
+}
+
+/** "내 사이트 템플릿" mode — same upload/tag/delete flow as
+ * EditablePhotoStack, laid out as a grid with an editable caption under
+ * each photo instead of one continuous stacked image. */
+function EditablePhotoGrid({
+  photos,
+  categories,
+}: {
+  photos: Photo[];
+  categories: { id: string; name: string }[];
+}) {
+  const [uploadCategoryId, setUploadCategoryId] = useState<string | null>(
+    categories[0]?.id ?? null
+  );
+  const { inputRef, uploading, error, pick, handleChange } = usePhotoUpload(
+    "WORK",
+    uploadCategoryId
+  );
+
+  return (
+    <>
+      <CategoryTagPicker
+        value={uploadCategoryId}
+        onChange={setUploadCategoryId}
+        categories={categories}
+      />
+      <PhotoGrid
+        photos={photos}
+        photoOverlay={(photo) => (
+          <form action={deletePhoto} className="absolute right-1.5 top-1.5">
+            <input type="hidden" name="photoId" value={photo.id} />
+            <button
+              type="submit"
+              aria-label="사진 삭제"
+              className="flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-xs leading-none text-white"
+            >
+              ×
+            </button>
+          </form>
+        )}
+        captionSlot={(photo) => (
+          <CaptionInput photoId={photo.id} initialCaption={photo.caption} />
+        )}
+        extraTile={
+          <button
+            type="button"
+            onClick={pick}
+            disabled={uploading}
+            className="mt-2 flex h-16 w-full items-center justify-center rounded-lg border border-dashed border-neutral-300 text-2xl text-neutral-400"
+          >
+            {uploading ? <span className="text-sm">업로드중</span> : "+ 사진 추가"}
+          </button>
+        }
+      />
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        onChange={handleChange}
+        className="hidden"
+      />
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+    </>
+  );
+}
+
+/** Saves on blur rather than per-keystroke — a caption per grid tile, so
+ * typing shouldn't fire a Server Action on every character. */
+function CaptionInput({
+  photoId,
+  initialCaption,
+}: {
+  photoId: string;
+  initialCaption: string | null;
+}) {
+  const [value, setValue] = useState(initialCaption ?? "");
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleBlur() {
+    setError(null);
+    const result = await updatePhotoCaption(photoId, value);
+    if ("error" in result) setError(result.error);
+  }
+
+  return (
+    <div className="mt-1.5">
+      <input
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={handleBlur}
+        placeholder="사진 설명 (선택)"
+        maxLength={60}
+        className="w-full rounded-md border border-neutral-200 px-2 py-1 text-xs text-neutral-700 placeholder:text-neutral-400"
+      />
+      {error && <p className="mt-0.5 text-[11px] text-red-600">{error}</p>}
+    </div>
   );
 }

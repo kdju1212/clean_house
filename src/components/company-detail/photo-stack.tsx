@@ -39,7 +39,9 @@ export function PhotoStack({
   extraTile,
   photoOverlay,
 }: {
-  title: string;
+  /** Omit when this stack is nested under a heading the caller already
+   * renders itself (e.g. the dashboard's mode-toggle wrapper). */
+  title?: string;
   photos: PhotoItem[];
   extraTile?: ReactNode;
   photoOverlay?: (photo: PhotoItem) => ReactNode;
@@ -66,7 +68,7 @@ export function PhotoStack({
 
   return (
     <section className="mt-5">
-      <h2 className="text-sm font-semibold">{title}</h2>
+      {title && <h2 className="text-sm font-semibold">{title}</h2>}
       <div className="relative mt-2">
         <div
           ref={contentRef}
@@ -76,7 +78,7 @@ export function PhotoStack({
           {photos.map((photo) => (
             <div key={photo.id} className="relative w-full bg-neutral-100">
               {/* eslint-disable-next-line @next/next/no-img-element -- natural aspect ratio needed; see comment above */}
-              <img src={photo.url} alt={title} loading="lazy" className="block w-full h-auto" />
+              <img src={photo.url} alt={title ?? ""} loading="lazy" className="block w-full h-auto" />
               {photoOverlay?.(photo)}
             </div>
           ))}

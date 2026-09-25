@@ -66,6 +66,7 @@ export async function GET(
       hasBusinessRegistration: Boolean(company.businessRegistrationNumber),
       mainImageUrl: company.mainImageUrl,
       websiteUrl: company.websiteUrl,
+      detailPageMode: company.detailPageMode,
     },
     services: company.services.map((s) => ({
       id: s.id,
@@ -76,7 +77,13 @@ export async function GET(
       pricingUnit: s.pricingUnit,
       description: s.description,
     })),
-    photos: company.photos.map((p) => ({ id: p.id, url: p.url, type: p.type, categoryId: p.categoryId })),
+    photos: company.photos.map((p) => ({
+      id: p.id,
+      url: p.url,
+      type: p.type,
+      categoryId: p.categoryId,
+      caption: p.caption,
+    })),
     blockedDates: company.blockedDates.map((b) => b.date.toISOString().slice(0, 10)),
     regionNames: company.regions.map((r) => r.region.name),
     averageRating: ratingSummary._avg.rating ?? 0,

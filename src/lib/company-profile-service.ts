@@ -217,6 +217,24 @@ export async function updateCompanyProfileForOwner(
   });
 }
 
+const ALLOWED_DETAIL_PAGE_MODES = ["CUSTOM_IMAGE", "SITE_TEMPLATE"] as const;
+
+export async function updateDetailPageModeForOwner(
+  ownerUserId: string,
+  mode: unknown
+): Promise<void> {
+  const company = await requireOwnedCompany(ownerUserId);
+
+  if (!ALLOWED_DETAIL_PAGE_MODES.includes(mode as (typeof ALLOWED_DETAIL_PAGE_MODES)[number])) {
+    throw new Error("올바르지 않은 선택입니다.");
+  }
+
+  await prisma.company.update({
+    where: { id: company.id },
+    data: { detailPageMode: mode as (typeof ALLOWED_DETAIL_PAGE_MODES)[number] },
+  });
+}
+
 export async function addServiceForOwner(
   ownerUserId: string,
   input: {
@@ -449,6 +467,26 @@ export async function confirmPhotoUploadForOwner(
       data: { mainImageUrl: url },
     });
   }
+}
+
+const MAX_CAPTION_LENGTH = 60;
+
+export async function updatePhotoCaptionForOwner(
+  ownerUserId: string,
+  photoId: string,
+  caption: unknown
+): Promise<void> {
+  const company = await requireOwnedCompany(ownerUserId);
+
+  const trimmed = typeof caption === "string" ? caption.trim() : "";
+  if (trimmed.length > MAX_CAPTION_LENGTH) {
+    throw new Error(`설명은 ${MAX_CAPTION_LENGTH}자 이하로 입력해주세요.`);
+  }
+
+  await prisma.companyPhoto.updateMany({
+    where: { id: photoId, companyId: company.id },
+    data: { caption: trimmed.length > 0 ? trimmed : null },
+  });
 }
 
 export async function deletePhotoForOwner(

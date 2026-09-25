@@ -25,6 +25,17 @@ enum PhotoType {
   BEFORE_AFTER
 }
 
+/// How a company's "상세페이지" section (its WORK photos) is laid out on
+/// the public detail page. CUSTOM_IMAGE is the original behavior — photos
+/// stacked edge-to-edge, meant for a company that prepared its own tall
+/// banner-style image(s). SITE_TEMPLATE instead renders them as a grid with
+/// each photo's own caption, for a company that just has ordinary photos
+/// and wants the site to lay them out.
+enum DetailPageMode {
+  CUSTOM_IMAGE
+  SITE_TEMPLATE
+}
+
 enum ReservationStatus {
   REQUESTED
   ACCEPTED
@@ -190,6 +201,11 @@ model Company {
   // wherever the company is listed, purely a trust signal (no automated
   // check backs it).
   isVerified    Boolean       @default(false)
+  // Which layout the "상세페이지" section (WORK photos) uses — see
+  // DetailPageMode. Defaults to the original stacked-image behavior so
+  // every existing company keeps looking exactly as it did before this
+  // field existed.
+  detailPageMode DetailPageMode @default(CUSTOM_IMAGE)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -254,6 +270,9 @@ model CompanyPhoto {
   // every category", so a company that never bothers tagging anything
   // (or just wants one shared photo) keeps working exactly as before.
   categoryId String?
+  // Short caption shown under this photo when the company's
+  // detailPageMode is SITE_TEMPLATE — ignored in CUSTOM_IMAGE mode.
+  caption String?
 
   company  Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)

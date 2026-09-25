@@ -13,6 +13,8 @@ import {
   requestPhotoUploadUrlForOwner,
   setRegionsForOwner,
   updateCompanyProfileForOwner,
+  updateDetailPageModeForOwner,
+  updatePhotoCaptionForOwner,
 } from "@/lib/company-profile-service";
 
 export async function createCompany(
@@ -154,6 +156,38 @@ export async function confirmPhotoUpload(input: {
     // longer shows photos, but keep revalidating it too in case anything
     // there ever reads mainImageUrl again.
     revalidatePath("/company");
+    revalidatePath("/company/detail");
+    return { ok: true };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "알 수 없는 오류가 발생했어요." };
+  }
+}
+
+/** Called directly from a Client Component, same reasoning as
+ * setCompanyRegionIds — an immediate toggle feels wrong routed through a
+ * <form action> submit/reset cycle. */
+export async function updateDetailPageMode(
+  mode: string
+): Promise<{ error: string } | { ok: true }> {
+  try {
+    const session = await requireSession();
+    await updateDetailPageModeForOwner(session.user.id, mode);
+    revalidatePath("/company/detail");
+    return { ok: true };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "알 수 없는 오류가 발생했어요." };
+  }
+}
+
+/** Called directly from a Client Component — a caption field saves on
+ * blur, not via a submit button, so there's no <form> to route through. */
+export async function updatePhotoCaption(
+  photoId: string,
+  caption: string
+): Promise<{ error: string } | { ok: true }> {
+  try {
+    const session = await requireSession();
+    await updatePhotoCaptionForOwner(session.user.id, photoId, caption);
     revalidatePath("/company/detail");
     return { ok: true };
   } catch (err) {

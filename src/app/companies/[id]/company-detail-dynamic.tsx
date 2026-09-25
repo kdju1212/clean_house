@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ServiceBar } from "./service-bar";
 import { PhotoStack, type PhotoItem } from "@/components/company-detail/photo-stack";
+import { PhotoGrid } from "@/components/company-detail/photo-grid";
 import { SparkleIcon } from "@/components/icons";
 
 type Service = {
@@ -15,7 +16,7 @@ type Service = {
   description: string | null;
 };
 
-type Photo = PhotoItem & { categoryId: string | null };
+type Photo = PhotoItem & { categoryId: string | null; caption: string | null };
 
 /**
  * Everything on the detail page that depends on which of the company's
@@ -33,6 +34,7 @@ export function CompanyDetailDynamic({
   companyIntroText,
   attributes,
   workPhotos,
+  detailPageMode,
   initialCategoryId,
   websiteUrl,
   phone,
@@ -43,6 +45,7 @@ export function CompanyDetailDynamic({
   /** Coupang's "경도 중간"-style label/value lines under the title. */
   attributes: { label: string; value: string }[];
   workPhotos: Photo[];
+  detailPageMode: "CUSTOM_IMAGE" | "SITE_TEMPLATE";
   initialCategoryId: string | null;
   // The company's own site — when set, ServiceBar sends the customer there
   // to book instead of into our own reservation flow (see its own comment).
@@ -96,7 +99,11 @@ export function CompanyDetailDynamic({
       {visibleWork.length > 0 && (
         <section id="detail" className="scroll-mt-16">
           <div className="-mx-4 mt-6 h-2 bg-[#f2f3f6]" />
-          <PhotoStack title="상세페이지" photos={visibleWork} />
+          {detailPageMode === "SITE_TEMPLATE" ? (
+            <PhotoGrid title="상세페이지" photos={visibleWork} />
+          ) : (
+            <PhotoStack title="상세페이지" photos={visibleWork} />
+          )}
         </section>
       )}
     </>

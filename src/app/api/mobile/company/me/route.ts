@@ -54,6 +54,7 @@ export async function GET(request: Request) {
       businessHours: company.businessHours,
       mainImageUrl: company.mainImageUrl,
       websiteUrl: company.websiteUrl,
+      detailPageMode: company.detailPageMode,
     },
     requestedCount,
     averageRating: ratingSummary._avg.rating ?? 0,
@@ -74,6 +75,12 @@ export async function GET(request: Request) {
       label: r.region.parent ? `${r.region.parent.name} ${r.region.name}` : r.region.name,
     })),
     legacyRegions,
-    photos: company.photos.map((p) => ({ id: p.id, url: p.url, type: p.type, categoryId: p.categoryId })),
+    photos: company.photos.map((p) => ({
+      id: p.id,
+      url: p.url,
+      type: p.type,
+      categoryId: p.categoryId,
+      caption: p.caption,
+    })),
   });
 }
