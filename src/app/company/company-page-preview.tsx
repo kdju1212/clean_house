@@ -36,7 +36,6 @@ export function CompanyPagePreview({
   reviewCount,
   ratingCounts,
   workPhotos,
-  beforeAfterPhotos,
   reviews,
 }: {
   company: {
@@ -53,7 +52,6 @@ export function CompanyPagePreview({
   reviewCount: number;
   ratingCounts: number[];
   workPhotos: Photo[];
-  beforeAfterPhotos: Photo[];
   reviews: ReviewItem[];
 }) {
   const {
@@ -182,13 +180,7 @@ export function CompanyPagePreview({
           </ul>
         </section>
 
-        <EditablePhotoStack title="작업 사진" type="WORK" photos={workPhotos} categories={categories} />
-        <EditablePhotoStack
-          title="전/후 비교"
-          type="BEFORE_AFTER"
-          photos={beforeAfterPhotos}
-          categories={categories}
-        />
+        <EditablePhotoStack title="상세페이지" photos={workPhotos} categories={categories} />
 
         <div className="mt-5">
           <p className="text-sm font-medium">영업시간</p>
@@ -354,21 +346,22 @@ function usePhotoUpload(
 
 function EditablePhotoStack({
   title,
-  type,
   photos,
   categories,
 }: {
   title: string;
-  type: "WORK" | "BEFORE_AFTER";
   photos: Photo[];
   // Offered as "이 사진, 어떤 카테고리 사진인가요?" tag choices — empty when
   // the company hasn't registered any service yet, in which case there's
-  // nothing to tag against and every photo just stays "전체 공통".
+  // nothing to tag against and every photo just stays untagged (shown for
+  // every category, since there's only ever one).
   categories: { id: string; name: string }[];
 }) {
-  const [uploadCategoryId, setUploadCategoryId] = useState<string | null>(null);
+  const [uploadCategoryId, setUploadCategoryId] = useState<string | null>(
+    categories[0]?.id ?? null
+  );
   const { inputRef, uploading, error, pick, handleChange } = usePhotoUpload(
-    type,
+    "WORK",
     uploadCategoryId
   );
   const categoryName = (id: string | null) =>
@@ -381,10 +374,9 @@ function EditablePhotoStack({
           새 사진 태그
           <select
             value={uploadCategoryId ?? ""}
-            onChange={(e) => setUploadCategoryId(e.target.value || null)}
+            onChange={(e) => setUploadCategoryId(e.target.value)}
             className="rounded-md border border-neutral-200 px-1.5 py-1 text-xs"
           >
-            <option value="">전체 공통</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}

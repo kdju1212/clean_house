@@ -78,7 +78,6 @@ export default async function CompanyDetailPage({
     : [];
 
   const workPhotos = company.photos.filter((p) => p.type === "WORK");
-  const beforeAfterPhotos = company.photos.filter((p) => p.type === "BEFORE_AFTER");
   const services = company.services.map((s) => ({
     id: s.id,
     categoryId: s.categoryId,
@@ -100,7 +99,7 @@ export default async function CompanyDetailPage({
 
   const regionText = company.regions.map((r) => r.region.name).join(", ");
   const roundedStars = Math.round(averageRating);
-  const hasDetailPhotos = workPhotos.length > 0 || beforeAfterPhotos.length > 0;
+  const hasDetailPhotos = workPhotos.length > 0;
 
   return (
     <main className="mx-auto w-full max-w-md flex-1 pb-28">
@@ -187,7 +186,6 @@ export default async function CompanyDetailPage({
             ...(company.businessHours ? [{ label: "영업시간", value: company.businessHours }] : []),
           ]}
           workPhotos={workPhotos}
-          beforeAfterPhotos={beforeAfterPhotos}
           initialCategoryId={initialCategoryId ?? null}
           websiteUrl={company.websiteUrl}
           phone={company.phone}

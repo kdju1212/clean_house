@@ -7,7 +7,9 @@ import { CompanyStatusForm } from "../company-status-form";
 
 const PHOTO_TYPE_LABEL: Record<string, string> = {
   MAIN: "대표",
-  WORK: "작업사진",
+  WORK: "상세페이지",
+  // Historical rows only — the company management UI no longer offers
+  // uploading this type (see company-page-preview.tsx).
   BEFORE_AFTER: "전/후 비교",
 };
 

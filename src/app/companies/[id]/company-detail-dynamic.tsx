@@ -33,7 +33,6 @@ export function CompanyDetailDynamic({
   companyIntroText,
   attributes,
   workPhotos,
-  beforeAfterPhotos,
   initialCategoryId,
   websiteUrl,
   phone,
@@ -44,7 +43,6 @@ export function CompanyDetailDynamic({
   /** Coupang's "경도 중간"-style label/value lines under the title. */
   attributes: { label: string; value: string }[];
   workPhotos: Photo[];
-  beforeAfterPhotos: Photo[];
   initialCategoryId: string | null;
   // The company's own site — when set, ServiceBar sends the customer there
   // to book instead of into our own reservation flow (see its own comment).
@@ -65,7 +63,6 @@ export function CompanyDetailDynamic({
   const matchesSelected = (photo: Photo) =>
     photo.categoryId === null || photo.categoryId === selectedId;
   const visibleWork = workPhotos.filter(matchesSelected);
-  const visibleBeforeAfter = beforeAfterPhotos.filter(matchesSelected);
 
   return (
     <>
@@ -96,11 +93,10 @@ export function CompanyDetailDynamic({
         phone={phone}
       />
 
-      {(visibleWork.length > 0 || visibleBeforeAfter.length > 0) && (
+      {visibleWork.length > 0 && (
         <section id="detail" className="scroll-mt-16">
           <div className="-mx-4 mt-6 h-2 bg-[#f2f3f6]" />
-          <PhotoStack title="작업 사진" photos={visibleWork} />
-          <PhotoStack title="전/후 비교" photos={visibleBeforeAfter} />
+          <PhotoStack title="상세페이지" photos={visibleWork} />
         </section>
       )}
     </>

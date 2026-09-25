@@ -91,7 +91,6 @@ export default async function CompanyDetailEditPage() {
           reviewCount={ratingSummary._count}
           ratingCounts={ratingCounts}
           workPhotos={company.photos.filter((p) => p.type === "WORK")}
-          beforeAfterPhotos={company.photos.filter((p) => p.type === "BEFORE_AFTER")}
           reviews={reviews.map((r) => ({
             id: r.id,
             rating: r.rating,
