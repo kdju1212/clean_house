@@ -50,8 +50,8 @@ export function CompanyListCard({
 }) {
   const meta = [
     isAd ? "광고" : null,
-    regionNames.join(", ") || null,
     reviewCount > 0 ? `★ ${rating.toFixed(1)}` : null,
+    regionNames.join(", ") || null,
   ]
     .filter(Boolean)
     .join(" · ");
