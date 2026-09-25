@@ -157,6 +157,9 @@ export default async function CompanyDetailPage({
               <p className="mb-1 text-[15px] font-bold text-neutral-900">사업자등록을 마친 업체예요</p>
             ) : null}
             <h1 className="text-[19px] leading-snug text-neutral-900">{company.name}</h1>
+            <span className="mt-1.5 inline-block rounded bg-[#6b7684] px-2 py-0.5 text-[13px] font-semibold text-white">
+              {company.isAvailable ? "예약 가능" : "예약 마감"}
+            </span>
           </div>
           <Link href={`/companies/${id}/reviews`} className="shrink-0 pt-0.5 text-right">
             {reviewCount > 0 ? (
@@ -174,10 +177,6 @@ export default async function CompanyDetailPage({
             )}
           </Link>
         </div>
-
-        <span className="mt-3 inline-block rounded bg-[#6b7684] px-2 py-0.5 text-[13px] font-semibold text-white">
-          {company.isAvailable ? "예약 가능" : "예약 마감"}
-        </span>
 
         <CompanyDetailDynamic
           companyId={company.id}
