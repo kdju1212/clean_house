@@ -39,16 +39,16 @@ export function CategoryNavBar({
   }, [activeSlug]);
 
   return (
-    <nav className="sticky top-[45px] z-10 -mx-4 flex gap-2 overflow-x-auto bg-white px-4 py-2 shadow-[0_1px_0_0_#f5f5f5]">
+    <nav className="sticky top-[57px] z-10 -mx-4 flex gap-2 overflow-x-auto bg-white px-4 py-2.5 [scrollbar-width:none]">
       {categories.map((c) => (
         <Link
           key={c.slug}
           ref={activeSlug === c.slug ? activeRef : undefined}
           href={`/categories/${c.slug}`}
-          className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium ${
+          className={`flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-[15px] ${
             activeSlug === c.slug
-              ? "border-neutral-900 bg-neutral-900 text-white"
-              : "border-neutral-200 text-neutral-600"
+              ? "bg-neutral-900 font-semibold text-white"
+              : "bg-[#f2f3f6] font-medium text-neutral-900"
           }`}
         >
           <span aria-hidden>{EMOJI_BY_SLUG[c.slug] ?? "🧽"}</span>

@@ -9,6 +9,7 @@ import { getPricingQuantityKey, PRICING_UNIT_LABEL } from "@/lib/reservation-que
 import { CategoryNavBar } from "@/components/category-nav-bar";
 import { CompanyListCard } from "@/components/company-list-card";
 import { CategoryProfileButton } from "@/components/category-profile-button";
+import { SearchIcon } from "@/components/icons";
 
 const SORT_OPTIONS = [
   { value: "latest", label: "최신순" },
@@ -83,50 +84,34 @@ export default async function CategoryCompaniesPage({
   const unitLabel = quantityKey ? PRICING_UNIT_LABEL[quantityKey] : undefined;
 
   return (
-    <main className="mx-auto w-full max-w-md flex-1 px-4 py-6">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="text-xs text-neutral-400">
-            {region.name} &gt; {category.name}
-          </p>
-          <h1 className="mt-1 text-lg font-bold">{category.name} 업체</h1>
-        </div>
-        {session?.user && (
-          <CategoryProfileButton
-            categorySlug={slug}
-            initialAnswers={categoryProfile}
-            otherProfiles={allProfiles}
-            categories={categories}
-          />
-        )}
-      </div>
+    <main className="mx-auto w-full max-w-md flex-1 px-4 pb-6">
+      <h1 className="sr-only">
+        {region.name} {category.name} 업체
+      </h1>
 
-      <div className="mt-3">
-        <CategoryNavBar categories={categories} activeSlug={slug} />
-      </div>
+      <CategoryNavBar categories={categories} activeSlug={slug} />
 
-      <form method="get" className="mt-3">
+      <form method="get" className="mt-1 flex items-center gap-2 rounded-lg bg-[#f2f3f6] px-3">
         {sort !== "latest" && <input type="hidden" name="sort" value={sort} />}
         {rawMaxPrice && <input type="hidden" name="maxPrice" value={rawMaxPrice} />}
+        <SearchIcon className="h-[18px] w-[18px] shrink-0 text-[#868b94]" />
         <input
           type="text"
           name="q"
           defaultValue={rawQuery ?? ""}
-          placeholder="업체 이름으로 검색"
-          className="w-full rounded-full border border-neutral-200 px-3 py-1.5 text-xs"
+          placeholder={`${category.name} 업체 검색`}
+          className="w-full bg-transparent py-2.5 text-sm outline-none placeholder:text-[#868b94]"
         />
       </form>
 
       <div className="mt-3 flex items-center justify-between gap-2">
-        <div className="flex gap-1 overflow-x-auto">
+        <div className="flex items-center gap-3 overflow-x-auto text-[13px]">
           {SORT_OPTIONS.map((o) => (
             <Link
               key={o.value}
               href={`/categories/${slug}${buildQuery(o.value, rawMaxPrice ?? "", rawQuery ?? "")}`}
-              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium ${
-                sort === o.value
-                  ? "border-neutral-900 bg-neutral-900 text-white"
-                  : "border-neutral-200 text-neutral-600"
+              className={`shrink-0 ${
+                sort === o.value ? "font-bold text-neutral-900" : "text-[#868b94]"
               }`}
             >
               {o.label}
@@ -140,7 +125,7 @@ export default async function CategoryCompaniesPage({
           <select
             name="maxPrice"
             defaultValue={rawMaxPrice ?? ""}
-            className="rounded-full border border-neutral-200 px-2 py-1.5 text-xs"
+            className="rounded-md bg-[#f2f3f6] px-2 py-1 text-[13px] text-neutral-700"
           >
             {MAX_PRICE_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -151,8 +136,19 @@ export default async function CategoryCompaniesPage({
         </form>
       </div>
 
+      {session?.user && (
+        <div className="mt-2 flex justify-end">
+          <CategoryProfileButton
+            categorySlug={slug}
+            initialAnswers={categoryProfile}
+            otherProfiles={allProfiles}
+            categories={categories}
+          />
+        </div>
+      )}
+
       {adRows.length > 0 && (
-        <ul className="mt-3 flex flex-col divide-y divide-neutral-100 border-b border-neutral-100">
+        <ul className="mt-1 flex flex-col divide-y divide-neutral-100 border-b border-neutral-100">
           {adRows.map((company) => (
             <li key={`ad-${company.id}`}>
               <CompanyListCard
@@ -182,7 +178,7 @@ export default async function CategoryCompaniesPage({
           아직 {region.name}에 등록된 {category.name} 업체가 없어요.
         </p>
       ) : rows.length === 0 ? null : (
-        <ul className="mt-3 flex flex-col divide-y divide-neutral-100">
+        <ul className="mt-1 flex flex-col divide-y divide-neutral-100">
           {rows.map((company) => (
             <li key={company.id}>
               <CompanyListCard
