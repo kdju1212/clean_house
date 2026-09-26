@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { RESERVATION_ITEMS_INCLUDE, reservationServiceNames } from "@/lib/reservation";
+import { koreaTodayStr } from "@/lib/company-schedule-service";
 import { ReservationsView } from "./reservations-view";
 
 // Needs-action items first, then soonest by desired date.
@@ -65,7 +66,8 @@ export default async function CompanyReservationsPage({
     );
   }
 
-  const [reservations, statusCounts] = await Promise.all([
+  const todayStr = koreaTodayStr();
+  const [reservations, statusCounts, blockedDates] = await Promise.all([
     prisma.reservation.findMany({
       where: { companyId: company.id, ...(activeStatus ? { status: activeStatus } : {}) },
       include: { items: RESERVATION_ITEMS_INCLUDE },
@@ -75,6 +77,10 @@ export default async function CompanyReservationsPage({
       by: ["status"],
       where: { companyId: company.id },
       _count: true,
+    }),
+    prisma.companyBlockedDate.findMany({
+      where: { companyId: company.id, date: { gte: new Date(`${todayStr}T00:00:00.000Z`) } },
+      select: { date: true },
     }),
   ]);
   reservations.sort(
@@ -108,6 +114,8 @@ export default async function CompanyReservationsPage({
       </div>
 
       <ReservationsView
+        todayStr={todayStr}
+        blockedDates={blockedDates.map((b) => b.date.toISOString().slice(0, 10))}
         reservations={reservations.map((r) => ({
           id: r.id,
           customerName: r.customerName,

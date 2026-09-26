@@ -1,13 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import {
   RESERVATION_STATUS_BADGE_CLASS,
   RESERVATION_STATUS_LABEL,
 } from "@/lib/reservation";
 import { SubmitButton } from "@/components/submit-button";
-import { completeReservation, markNoShowReservation, rejectReservation } from "./actions";
+import {
+  completeReservation,
+  markNoShowReservation,
+  rejectReservation,
+  setBlockedDate,
+} from "./actions";
 
 export type ReservationListItem = {
   id: string;
@@ -32,7 +37,18 @@ const WEEKDAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
  * ReservationCard so accept/reject/complete/no-show work identically in
  * either one.
  */
-export function ReservationsView({ reservations }: { reservations: ReservationListItem[] }) {
+export function ReservationsView({
+  reservations,
+  blockedDates,
+  todayStr,
+}: {
+  reservations: ReservationListItem[];
+  /** Upcoming 휴무일, "YYYY-MM-DD". */
+  blockedDates: string[];
+  /** Today in Korea, "YYYY-MM-DD" — from the server so it can't disagree
+   * with the blocked-date validation. */
+  todayStr: string;
+}) {
   const [view, setView] = useState<"list" | "calendar">("list");
 
   return (
@@ -65,7 +81,11 @@ export function ReservationsView({ reservations }: { reservations: ReservationLi
       {view === "list" ? (
         <ReservationList reservations={reservations} />
       ) : (
-        <ReservationCalendar reservations={reservations} />
+        <ReservationCalendar
+          reservations={reservations}
+          initialBlockedDates={blockedDates}
+          todayStr={todayStr}
+        />
       )}
     </>
   );
@@ -168,13 +188,41 @@ function ReservationCard({ reservation: r }: { reservation: ReservationListItem 
   );
 }
 
-function ReservationCalendar({ reservations }: { reservations: ReservationListItem[] }) {
-  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
-  const [monthCursor, setMonthCursor] = useState(() => {
-    const d = new Date();
-    return { year: d.getFullYear(), month: d.getMonth() };
-  });
+function ReservationCalendar({
+  reservations,
+  initialBlockedDates,
+  todayStr,
+}: {
+  reservations: ReservationListItem[];
+  initialBlockedDates: string[];
+  todayStr: string;
+}) {
+  const [monthCursor, setMonthCursor] = useState(() => ({
+    year: Number(todayStr.slice(0, 4)),
+    month: Number(todayStr.slice(5, 7)) - 1,
+  }));
   const [selectedDate, setSelectedDate] = useState(todayStr);
+  const [blocked, setBlocked] = useState(() => new Set(initialBlockedDates));
+  const [blockError, setBlockError] = useState<string | null>(null);
+  const [blockPending, startBlockTransition] = useTransition();
+
+  function toggleBlocked(date: string) {
+    const next = !blocked.has(date);
+    setBlockError(null);
+    startBlockTransition(async () => {
+      const result = await setBlockedDate(date, next);
+      if (result.error) {
+        setBlockError(result.error);
+        return;
+      }
+      setBlocked((prev) => {
+        const copy = new Set(prev);
+        if (next) copy.add(date);
+        else copy.delete(date);
+        return copy;
+      });
+    });
+  }
 
   const byDate = useMemo(() => {
     const map = new Map<string, ReservationListItem[]>();
@@ -244,21 +292,32 @@ function ReservationCalendar({ reservations }: { reservations: ReservationListIt
           const needsAction = dayReservations.some((r) => r.status === "REQUESTED");
           const isSelected = dateStr === selectedDate;
           const isToday = dateStr === todayStr;
+          const isBlocked = blocked.has(dateStr);
           return (
             <button
               key={dateStr}
               type="button"
-              onClick={() => setSelectedDate(dateStr)}
+              onClick={() => {
+                setSelectedDate(dateStr);
+                setBlockError(null);
+              }}
               className={`flex aspect-square flex-col items-center justify-center gap-0.5 rounded-lg text-xs ${
                 isSelected
                   ? "bg-neutral-900 text-white"
-                  : isToday
-                    ? "bg-neutral-100 font-semibold text-neutral-900"
-                    : "text-neutral-700"
+                  : isBlocked
+                    ? "bg-red-50 text-red-500"
+                    : isToday
+                      ? "bg-neutral-100 font-semibold text-neutral-900"
+                      : "text-neutral-700"
               }`}
             >
               <span>{Number(dateStr.slice(-2))}</span>
-              {dayReservations.length > 0 && (
+              {isBlocked && (
+                <span className={`text-[9px] leading-none ${isSelected ? "text-white" : "text-red-500"}`}>
+                  휴무
+                </span>
+              )}
+              {!isBlocked && dayReservations.length > 0 && (
                 <span
                   className={`h-1.5 w-1.5 rounded-full ${
                     isSelected ? "bg-white" : needsAction ? "bg-amber-500" : "bg-neutral-400"
@@ -270,15 +329,50 @@ function ReservationCalendar({ reservations }: { reservations: ReservationListIt
         })}
       </div>
 
+      <p className="mt-2 flex items-center gap-3 text-[11px] text-neutral-400">
+        <span className="flex items-center gap-1">
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> 신규 예약
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" /> 예약
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="rounded bg-red-50 px-1 text-[9px] text-red-500">휴무</span> 휴무일
+        </span>
+      </p>
+
       <div className="mt-5">
-        <p className="text-xs font-semibold text-neutral-500">
-          {new Date(`${selectedDate}T00:00:00`).toLocaleDateString("ko-KR", {
-            month: "long",
-            day: "numeric",
-            weekday: "short",
-          })}
-          {selectedReservations.length > 0 ? ` · ${selectedReservations.length}건` : ""}
-        </p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-semibold text-neutral-500">
+            {new Date(`${selectedDate}T00:00:00`).toLocaleDateString("ko-KR", {
+              month: "long",
+              day: "numeric",
+              weekday: "short",
+            })}
+            {selectedReservations.length > 0 ? ` · ${selectedReservations.length}건` : ""}
+            {blocked.has(selectedDate) && <span className="ml-1.5 text-red-500">휴무일</span>}
+          </p>
+          {selectedDate >= todayStr && (
+            <button
+              type="button"
+              onClick={() => toggleBlocked(selectedDate)}
+              disabled={blockPending}
+              className={`shrink-0 rounded-lg border px-2.5 py-1 text-xs font-medium disabled:opacity-50 ${
+                blocked.has(selectedDate)
+                  ? "border-neutral-300 text-neutral-600"
+                  : "border-red-300 text-red-600"
+              }`}
+            >
+              {blockPending ? "저장 중..." : blocked.has(selectedDate) ? "휴무 해제" : "이 날 휴무로 설정"}
+            </button>
+          )}
+        </div>
+        {blockError && <p className="mt-1 text-xs text-red-600">{blockError}</p>}
+        {blocked.has(selectedDate) && selectedReservations.some((r) => r.status === "REQUESTED" || r.status === "ACCEPTED") && (
+          <p className="mt-1 text-[11px] text-neutral-400">
+            휴무일이어도 이미 들어온 예약은 그대로 유지돼요. 새 예약만 막혀요.
+          </p>
+        )}
         {selectedReservations.length === 0 ? (
           <p className="mt-3 text-center text-sm text-neutral-400">이 날짜엔 예약이 없어요.</p>
         ) : (

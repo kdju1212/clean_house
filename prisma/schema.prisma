@@ -308,6 +308,11 @@ model Reservation {
   // is overwritten with the company's actual quote when it accepts.
   price         Int?
   status        ReservationStatus @default(REQUESTED)
+  // Set when the company marks it COMPLETED — the review reminder job
+  // (src/lib/review-reminder.ts) counts from here rather than updatedAt.
+  completedAt          DateTime?
+  // At most one follow-up "리뷰를 기다리고 있어요" nudge per reservation.
+  reviewReminderSentAt DateTime?
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 

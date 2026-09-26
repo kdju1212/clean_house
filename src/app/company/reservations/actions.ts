@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/company-auth";
 import { transitionReservationForOwner } from "@/lib/company-reservation-service";
+import { addBlockedDateForOwner, removeBlockedDateForOwner } from "@/lib/company-schedule-service";
 
 type ReservationStatus = "REQUESTED" | "ACCEPTED" | "REJECTED" | "COMPLETED" | "NO_SHOW";
 
@@ -39,4 +40,25 @@ export async function completeReservation(formData: FormData) {
 
 export async function markNoShowReservation(formData: FormData) {
   await transitionStatus(formData, "ACCEPTED", "NO_SHOW");
+}
+
+/** Calendar "휴무로 설정 / 휴무 해제" toggle — returns an error message
+ * instead of throwing so the calendar can show it inline. */
+export async function setBlockedDate(
+  date: string,
+  blocked: boolean
+): Promise<{ error?: string }> {
+  try {
+    const session = await requireSession();
+    if (blocked) {
+      await addBlockedDateForOwner(session.user.id, date);
+    } else {
+      await removeBlockedDateForOwner(session.user.id, date);
+    }
+    revalidatePath("/company/reservations");
+    revalidatePath("/company/schedule");
+    return {};
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "저장에 실패했어요." };
+  }
 }

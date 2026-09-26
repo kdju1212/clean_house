@@ -32,7 +32,11 @@ export async function transitionReservationForOwner(
 
   const result = await prisma.reservation.updateMany({
     where: { id: reservationId, companyId: company.id, status: from },
-    data: { status: to, ...(validPrice ? { price } : {}) },
+    data: {
+      status: to,
+      ...(validPrice ? { price } : {}),
+      ...(to === "COMPLETED" ? { completedAt: new Date() } : {}),
+    },
   });
 
   if (result.count > 0) {
