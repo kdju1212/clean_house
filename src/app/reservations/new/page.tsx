@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAllCategoryProfiles } from "@/lib/category-profile-service";
-import { customerBlockedDates } from "@/lib/company-schedule-service";
+import { customerBlockedDates, koreaTodayStr } from "@/lib/company-schedule-service";
 import { NewReservationForm } from "./new-reservation-form";
 
 export default async function NewReservationPage({
@@ -19,7 +19,7 @@ export default async function NewReservationPage({
   const { companyId, categoryId } = await searchParams;
   if (!companyId) notFound();
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = koreaTodayStr();
 
   const [company, me, categoryProfiles, blockedDates] = await Promise.all([
     prisma.company.findUnique({
@@ -29,7 +29,7 @@ export default async function NewReservationPage({
     prisma.user.findUniqueOrThrow({ where: { id: session.user.id } }),
     getAllCategoryProfiles(session.user.id),
     prisma.companyBlockedDate.findMany({
-      where: { companyId, date: { gte: new Date(`${todayStr}T00:00:00`) } },
+      where: { companyId, date: { gte: new Date(`${todayStr}T00:00:00.000Z`) } },
       orderBy: { date: "asc" },
       select: { date: true },
     }),

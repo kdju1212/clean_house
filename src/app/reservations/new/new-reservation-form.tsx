@@ -8,7 +8,15 @@ import {
   PRICING_UNIT_LABEL,
 } from "@/lib/reservation-questions";
 import { SubmitButton } from "@/components/submit-button";
+import { DateCalendarPicker, formatDateLabel } from "@/components/date-calendar-picker";
 import { createReservation } from "../actions";
+
+/** "YYYY-MM-DD" -> the following day. */
+function nextDateStr(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const next = new Date(Date.UTC(y, m - 1, d + 1));
+  return next.toISOString().slice(0, 10);
+}
 
 export function NewReservationForm({
   companyId,
@@ -48,8 +56,13 @@ export function NewReservationForm({
     const initial = defaultCategoryId ?? services[0]?.categoryId;
     return initial ? [initial] : [];
   });
-  const [desiredDate, setDesiredDate] = useState(todayStr);
   const blockedDateSet = new Set(blockedDates);
+  // Today can itself be a 휴무일 — start on the first day that can be booked.
+  const [desiredDate, setDesiredDate] = useState(() => {
+    let date = todayStr;
+    for (let i = 0; i < 366 && blockedDateSet.has(date); i++) date = nextDateStr(date);
+    return date;
+  });
   const isDesiredDateBlocked = blockedDateSet.has(desiredDate);
 
   const selectedServices = services.filter((s) => selectedIds.includes(s.categoryId));
@@ -174,19 +187,21 @@ export function NewReservationForm({
         />
       </label>
 
-      <div className="flex gap-3">
-        <label className="flex flex-1 flex-col gap-1 text-sm font-medium">
+      <div className="flex flex-col gap-1 text-sm font-medium">
+        <p>
           희망 날짜
-          <input
-            name="desiredDate"
-            type="date"
-            min={todayStr}
-            value={desiredDate}
-            onChange={(e) => setDesiredDate(e.target.value)}
-            required
-            className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
-          />
-        </label>
+          <span className="ml-2 font-normal text-neutral-500">{formatDateLabel(desiredDate)}</span>
+        </p>
+        <input type="hidden" name="desiredDate" value={desiredDate} />
+        <DateCalendarPicker
+          value={desiredDate}
+          onChange={setDesiredDate}
+          minDateStr={todayStr}
+          blockedDates={blockedDates}
+        />
+      </div>
+
+      <div className="flex">
         <label className="flex flex-1 flex-col gap-1 text-sm font-medium">
           희망 시간
           <select
