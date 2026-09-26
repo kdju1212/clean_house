@@ -19,8 +19,8 @@ const HOLDS_TIME_SLOT_STATUSES = ["REQUESTED", "ACCEPTED", "COMPLETED", "NO_SHOW
 /**
  * Every time slot on `dateStr` that's unavailable for a NEW booking at this
  * company — already-booked times expanded by the company's own
- * reservationIntervalHours. Shared by the create-time server check and the
- * client-facing "which times are open" endpoints (web/mobile), so a
+ * reservationIntervalHours/crewCount. Shared by the create-time server check
+ * and the client-facing "which times are open" endpoints (web/mobile), so a
  * customer never sees a time the server would then reject.
  */
 export async function getBlockedTimesForDate(
@@ -30,7 +30,7 @@ export async function getBlockedTimesForDate(
   const [company, existing] = await Promise.all([
     prisma.company.findUnique({
       where: { id: companyId },
-      select: { reservationIntervalHours: true },
+      select: { reservationIntervalHours: true, crewCount: true },
     }),
     prisma.reservation.findMany({
       where: {
@@ -44,7 +44,8 @@ export async function getBlockedTimesForDate(
   if (!company) return [];
   return blockedTimeSlots(
     existing.map((r) => r.desiredTime),
-    company.reservationIntervalHours
+    company.reservationIntervalHours,
+    company.crewCount
   );
 }
 

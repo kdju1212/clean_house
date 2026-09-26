@@ -7,6 +7,7 @@ import { toActionError, type ActionState } from "@/lib/action-state";
 import {
   addBlockedDateForOwner,
   setClosedWeekdaysForOwner,
+  setCrewCountForOwner,
   setReservationIntervalForOwner,
 } from "@/lib/company-schedule-service";
 
@@ -60,6 +61,20 @@ export async function setReservationInterval(hours: number): Promise<{ error?: s
     const session = await requireSession();
     await setReservationIntervalForOwner(session.user.id, hours);
     revalidatePath("/company/schedule");
+    return {};
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "저장에 실패했어요." };
+  }
+}
+
+/** "동시에 몇 팀까지 예약받을 수 있나요" — how many crews can be booked for
+ * the same time slot at once. */
+export async function setCrewCount(count: number): Promise<{ error?: string }> {
+  try {
+    const session = await requireSession();
+    await setCrewCountForOwner(session.user.id, count);
+    revalidatePath("/company/schedule");
+    revalidatePath("/company/reservations");
     return {};
   } catch (err) {
     return { error: err instanceof Error ? err.message : "저장에 실패했어요." };

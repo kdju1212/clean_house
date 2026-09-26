@@ -129,3 +129,25 @@ export async function setReservationIntervalForOwner(
   });
   return hours;
 }
+
+const MIN_CREW_COUNT = 1;
+const MAX_CREW_COUNT = 9;
+
+export async function getCrewCountForOwner(ownerUserId: string): Promise<number> {
+  const company = await requireOwnedCompany(ownerUserId);
+  return company.crewCount;
+}
+
+export async function setCrewCountForOwner(ownerUserId: string, count: unknown): Promise<number> {
+  const company = await requireOwnedCompany(ownerUserId);
+  if (
+    typeof count !== "number" ||
+    !Number.isInteger(count) ||
+    count < MIN_CREW_COUNT ||
+    count > MAX_CREW_COUNT
+  ) {
+    throw new Error("잘못된 팀 수예요.");
+  }
+  await prisma.company.update({ where: { id: company.id }, data: { crewCount: count } });
+  return count;
+}

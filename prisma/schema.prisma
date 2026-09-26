@@ -217,6 +217,11 @@ model Company {
   /// booking leaves 15:00 as the next open slot). See blockedTimeSlots in
   /// src/lib/reservation.ts.
   reservationIntervalHours Int @default(1)
+  /// How many crews the company can send out at once — a time slot only
+  /// gets blocked once this many visits already occupy it, so a company
+  /// with 2+ crews can take that many simultaneous bookings for the same
+  /// hour. Defaults to 1 (one crew, the original behavior).
+  crewCount Int @default(1)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 

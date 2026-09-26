@@ -42,22 +42,28 @@ export function reservationServiceNames(items: { category: { name: string } }[])
 
 /**
  * Expands each already-booked time into the full run of slots it occupies
- * — a company has one crew, so one visit blocks every other booking for
- * `intervalHours` consecutive TIME_SLOTS starting at its own time (1 hour
- * just blocks the exact slot; 2 hours also blocks the following one, e.g.
- * a 13:00 booking leaves 15:00 as the next open slot). Relies on TIME_SLOTS
- * being contiguous hourly entries, so "N slots later" is just "N array
- * indices later".
+ * — one visit ties up a crew for `intervalHours` consecutive TIME_SLOTS
+ * starting at its own time (1 hour just occupies the exact slot; 2 hours
+ * also occupies the following one, e.g. a 13:00 booking leaves 15:00 as the
+ * next open slot). A slot is only reported as blocked once `crewCount`
+ * visits already occupy it — a company with 2+ crews can run that many
+ * bookings for the same hour before it's actually full. Relies on
+ * TIME_SLOTS being contiguous hourly entries, so "N slots later" is just
+ * "N array indices later".
  */
-export function blockedTimeSlots(bookedTimes: string[], intervalHours: number): string[] {
-  const blocked = new Set<string>();
+export function blockedTimeSlots(
+  bookedTimes: string[],
+  intervalHours: number,
+  crewCount: number
+): string[] {
+  const occupancy = new Map<string, number>();
   for (const time of bookedTimes) {
     const idx = TIME_SLOTS.indexOf(time);
     if (idx === -1) continue;
     for (let i = 0; i < intervalHours; i++) {
       const slot = TIME_SLOTS[idx + i];
-      if (slot) blocked.add(slot);
+      if (slot) occupancy.set(slot, (occupancy.get(slot) ?? 0) + 1);
     }
   }
-  return TIME_SLOTS.filter((t) => blocked.has(t));
+  return TIME_SLOTS.filter((t) => (occupancy.get(t) ?? 0) >= crewCount);
 }
