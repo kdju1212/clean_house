@@ -55,6 +55,9 @@ export async function GET(request: Request) {
       mainImageUrl: company.mainImageUrl,
       websiteUrl: company.websiteUrl,
       detailPageMode: company.detailPageMode,
+      // Hand-picked bookable hours (0–23) — see 업체 프로필 관리's
+      // "특정 시간만 예약 받기". Empty means "not customized".
+      customTimeSlots: company.customTimeSlots,
     },
     requestedCount,
     averageRating: ratingSummary._avg.rating ?? 0,
