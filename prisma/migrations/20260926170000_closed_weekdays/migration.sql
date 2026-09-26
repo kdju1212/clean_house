@@ -1,0 +1,1 @@
+ALTER TABLE "Company" ADD COLUMN "closedWeekdays" INTEGER[] DEFAULT ARRAY[]::INTEGER[];

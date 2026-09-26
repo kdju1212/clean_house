@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
+import { isClosedWeekday } from "@/lib/company-schedule-service";
 import { TIME_SLOTS } from "@/lib/reservation";
 import { getRegionAncestorIds } from "@/lib/region";
 import { createNotification } from "@/lib/notification";
@@ -121,7 +122,7 @@ export async function createReservationForCustomer(
   const isBlocked = await prisma.companyBlockedDate.findUnique({
     where: { companyId_date: { companyId: company.id, date: desiredDate } },
   });
-  if (isBlocked) {
+  if (isBlocked || isClosedWeekday(new Date(`${desiredDateRaw}T00:00:00.000Z`), company.closedWeekdays)) {
     throw new Error("해당 날짜는 업체 휴무일이에요. 다른 날짜를 선택해주세요.");
   }
 

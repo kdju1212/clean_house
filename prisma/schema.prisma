@@ -208,6 +208,9 @@ model Company {
   // every existing company keeps looking exactly as it did before this
   // field existed.
   detailPageMode DetailPageMode @default(CUSTOM_IMAGE)
+  /// Regular weekly days off (0=일 … 6=토), on top of the one-off
+  /// CompanyBlockedDate rows — e.g. [1] for "매주 월요일 휴무".
+  closedWeekdays Int[]         @default([])
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 

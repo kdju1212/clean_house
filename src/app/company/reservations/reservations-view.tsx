@@ -13,6 +13,7 @@ import {
   rejectReservation,
   setBlockedDate,
 } from "./actions";
+import { ClosedWeekdaysPicker, WEEKDAY_NAMES } from "../schedule/closed-weekdays-picker";
 
 export type ReservationListItem = {
   id: string;
@@ -40,11 +41,14 @@ const WEEKDAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
 export function ReservationsView({
   reservations,
   blockedDates,
+  closedWeekdays,
   todayStr,
 }: {
   reservations: ReservationListItem[];
-  /** Upcoming 휴무일, "YYYY-MM-DD". */
+  /** Upcoming one-off 휴무일, "YYYY-MM-DD". */
   blockedDates: string[];
+  /** 정기 휴무 weekdays, 0=일 … 6=토. */
+  closedWeekdays: number[];
   /** Today in Korea, "YYYY-MM-DD" — from the server so it can't disagree
    * with the blocked-date validation. */
   todayStr: string;
@@ -84,6 +88,7 @@ export function ReservationsView({
         <ReservationCalendar
           reservations={reservations}
           initialBlockedDates={blockedDates}
+          initialClosedWeekdays={closedWeekdays}
           todayStr={todayStr}
         />
       )}
@@ -191,12 +196,19 @@ function ReservationCard({ reservation: r }: { reservation: ReservationListItem 
 function ReservationCalendar({
   reservations,
   initialBlockedDates,
+  initialClosedWeekdays,
   todayStr,
 }: {
   reservations: ReservationListItem[];
   initialBlockedDates: string[];
+  initialClosedWeekdays: number[];
   todayStr: string;
 }) {
+  const [closedWeekdays, setClosedWeekdays] = useState(initialClosedWeekdays);
+  const weekdayOf = (dateStr: string) => new Date(`${dateStr}T00:00:00`).getDay();
+  // Only from today on — the rule says nothing about Mondays before it was set.
+  const isWeeklyOff = (dateStr: string) =>
+    dateStr >= todayStr && closedWeekdays.includes(weekdayOf(dateStr));
   const [monthCursor, setMonthCursor] = useState(() => ({
     year: Number(todayStr.slice(0, 4)),
     month: Number(todayStr.slice(5, 7)) - 1,
@@ -292,7 +304,7 @@ function ReservationCalendar({
           const needsAction = dayReservations.some((r) => r.status === "REQUESTED");
           const isSelected = dateStr === selectedDate;
           const isToday = dateStr === todayStr;
-          const isBlocked = blocked.has(dateStr);
+          const isOff = blocked.has(dateStr) || isWeeklyOff(dateStr);
           return (
             <button
               key={dateStr}
@@ -304,20 +316,20 @@ function ReservationCalendar({
               className={`flex aspect-square flex-col items-center justify-center gap-0.5 rounded-lg text-xs ${
                 isSelected
                   ? "bg-neutral-900 text-white"
-                  : isBlocked
-                    ? "bg-red-50 text-red-500"
+                  : isOff
+                    ? "bg-neutral-200 text-neutral-400"
                     : isToday
                       ? "bg-neutral-100 font-semibold text-neutral-900"
                       : "text-neutral-700"
               }`}
             >
               <span>{Number(dateStr.slice(-2))}</span>
-              {isBlocked && (
-                <span className={`text-[9px] leading-none ${isSelected ? "text-white" : "text-red-500"}`}>
+              {isOff && (
+                <span className={`text-[9px] leading-none ${isSelected ? "text-white" : "text-neutral-500"}`}>
                   휴무
                 </span>
               )}
-              {!isBlocked && dayReservations.length > 0 && (
+              {!isOff && dayReservations.length > 0 && (
                 <span
                   className={`h-1.5 w-1.5 rounded-full ${
                     isSelected ? "bg-white" : needsAction ? "bg-amber-500" : "bg-neutral-400"
@@ -337,9 +349,14 @@ function ReservationCalendar({
           <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" /> 예약
         </span>
         <span className="flex items-center gap-1">
-          <span className="rounded bg-red-50 px-1 text-[9px] text-red-500">휴무</span> 휴무일
+          <span className="rounded bg-neutral-200 px-1 text-[9px] text-neutral-500">휴무</span> 휴무일
         </span>
       </p>
+
+      <div className="mt-4 rounded-xl border border-neutral-200 p-3">
+        <p className="mb-2 text-xs font-semibold text-neutral-700">정기 휴무</p>
+        <ClosedWeekdaysPicker value={closedWeekdays} onChange={setClosedWeekdays} />
+      </div>
 
       <div className="mt-5">
         <div className="flex items-center justify-between gap-2">
@@ -350,9 +367,15 @@ function ReservationCalendar({
               weekday: "short",
             })}
             {selectedReservations.length > 0 ? ` · ${selectedReservations.length}건` : ""}
-            {blocked.has(selectedDate) && <span className="ml-1.5 text-red-500">휴무일</span>}
+            {isWeeklyOff(selectedDate) ? (
+              <span className="ml-1.5 text-neutral-400">
+                매주 {WEEKDAY_NAMES[weekdayOf(selectedDate)]}요일 정기 휴무
+              </span>
+            ) : (
+              blocked.has(selectedDate) && <span className="ml-1.5 text-neutral-400">휴무일</span>
+            )}
           </p>
-          {selectedDate >= todayStr && (
+          {selectedDate >= todayStr && !isWeeklyOff(selectedDate) && (
             <button
               type="button"
               onClick={() => toggleBlocked(selectedDate)}
@@ -368,7 +391,7 @@ function ReservationCalendar({
           )}
         </div>
         {blockError && <p className="mt-1 text-xs text-red-600">{blockError}</p>}
-        {blocked.has(selectedDate) && selectedReservations.some((r) => r.status === "REQUESTED" || r.status === "ACCEPTED") && (
+        {(blocked.has(selectedDate) || isWeeklyOff(selectedDate)) && selectedReservations.some((r) => r.status === "REQUESTED" || r.status === "ACCEPTED") && (
           <p className="mt-1 text-[11px] text-neutral-400">
             휴무일이어도 이미 들어온 예약은 그대로 유지돼요. 새 예약만 막혀요.
           </p>

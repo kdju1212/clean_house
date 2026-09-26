@@ -116,6 +116,7 @@ export default async function CompanyReservationsPage({
       <ReservationsView
         todayStr={todayStr}
         blockedDates={blockedDates.map((b) => b.date.toISOString().slice(0, 10))}
+        closedWeekdays={company.closedWeekdays}
         reservations={reservations.map((r) => ({
           id: r.id,
           customerName: r.customerName,

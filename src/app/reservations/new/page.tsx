@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAllCategoryProfiles } from "@/lib/category-profile-service";
+import { customerBlockedDates } from "@/lib/company-schedule-service";
 import { NewReservationForm } from "./new-reservation-form";
 
 export default async function NewReservationPage({
@@ -72,7 +73,10 @@ export default async function NewReservationPage({
         defaultPhone={me.phone ?? ""}
         todayStr={todayStr}
         categoryProfiles={categoryProfiles}
-        blockedDates={blockedDates.map((b) => b.date.toISOString().slice(0, 10))}
+        blockedDates={customerBlockedDates(
+          blockedDates.map((b) => b.date),
+          company.closedWeekdays
+        )}
       />
     </main>
   );

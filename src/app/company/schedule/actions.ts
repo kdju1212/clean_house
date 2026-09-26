@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireSession, requireOwnedCompany } from "@/lib/company-auth";
 import { toActionError, type ActionState } from "@/lib/action-state";
-import { addBlockedDateForOwner } from "@/lib/company-schedule-service";
+import { addBlockedDateForOwner, setClosedWeekdaysForOwner } from "@/lib/company-schedule-service";
 
 export async function addBlockedDate(
   _prevState: ActionState,
@@ -33,4 +33,18 @@ export async function removeBlockedDate(formData: FormData) {
 
   revalidatePath("/company/schedule");
   revalidatePath("/company/reservations");
+}
+
+/** "정기 휴무" weekday chips — returns an error instead of throwing so the
+ * picker can show it inline. */
+export async function setClosedWeekdays(weekdays: number[]): Promise<{ error?: string }> {
+  try {
+    const session = await requireSession();
+    await setClosedWeekdaysForOwner(session.user.id, weekdays);
+    revalidatePath("/company/schedule");
+    revalidatePath("/company/reservations");
+    return {};
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "저장에 실패했어요." };
+  }
 }

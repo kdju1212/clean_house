@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { SubmitButton } from "@/components/submit-button";
 import { removeBlockedDate } from "./actions";
 import { AddBlockedDateForm } from "./add-blocked-date-form";
+import { ClosedWeekdaysSection } from "./closed-weekdays-picker";
 
 function startOfToday() {
   const now = new Date();
@@ -50,6 +51,13 @@ export default async function CompanySchedulePage() {
         예약을 받지 않을 날짜를 미리 등록해두면, 고객이 그 날짜로는 예약을
         신청할 수 없어요.
       </p>
+
+      <section className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4">
+        <h2 className="text-sm font-semibold">정기 휴무</h2>
+        <div className="mt-3">
+          <ClosedWeekdaysSection initial={company.closedWeekdays} />
+        </div>
+      </section>
 
       <section className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4">
         <h2 className="text-sm font-semibold">휴무일 추가</h2>

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { customerBlockedDates } from "@/lib/company-schedule-service";
 import { prisma } from "@/lib/prisma";
 import { getMobileUserId } from "@/lib/mobile-auth";
 
@@ -84,7 +85,10 @@ export async function GET(
       categoryId: p.categoryId,
       caption: p.caption,
     })),
-    blockedDates: company.blockedDates.map((b) => b.date.toISOString().slice(0, 10)),
+    blockedDates: customerBlockedDates(
+      company.blockedDates.map((b) => b.date),
+      company.closedWeekdays
+    ),
     regionNames: company.regions.map((r) => r.region.name),
     averageRating: ratingSummary._avg.rating ?? 0,
     reviewCount: ratingSummary._count,
