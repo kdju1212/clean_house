@@ -107,3 +107,25 @@ export function customerBlockedDates(specificDates: Date[], closedWeekdays: numb
   }
   return [...result].sort();
 }
+
+const VALID_INTERVAL_HOURS = [1, 2];
+
+export async function getReservationIntervalForOwner(ownerUserId: string): Promise<number> {
+  const company = await requireOwnedCompany(ownerUserId);
+  return company.reservationIntervalHours;
+}
+
+export async function setReservationIntervalForOwner(
+  ownerUserId: string,
+  hours: unknown
+): Promise<number> {
+  const company = await requireOwnedCompany(ownerUserId);
+  if (typeof hours !== "number" || !VALID_INTERVAL_HOURS.includes(hours)) {
+    throw new Error("잘못된 예약 텀이에요.");
+  }
+  await prisma.company.update({
+    where: { id: company.id },
+    data: { reservationIntervalHours: hours },
+  });
+  return hours;
+}

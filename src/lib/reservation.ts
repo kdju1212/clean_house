@@ -39,3 +39,25 @@ export const RESERVATION_ITEMS_INCLUDE = {
 export function reservationServiceNames(items: { category: { name: string } }[]): string {
   return items.map((i) => i.category.name).join(" · ");
 }
+
+/**
+ * Expands each already-booked time into the full run of slots it occupies
+ * — a company has one crew, so one visit blocks every other booking for
+ * `intervalHours` consecutive TIME_SLOTS starting at its own time (1 hour
+ * just blocks the exact slot; 2 hours also blocks the following one, e.g.
+ * a 13:00 booking leaves 15:00 as the next open slot). Relies on TIME_SLOTS
+ * being contiguous hourly entries, so "N slots later" is just "N array
+ * indices later".
+ */
+export function blockedTimeSlots(bookedTimes: string[], intervalHours: number): string[] {
+  const blocked = new Set<string>();
+  for (const time of bookedTimes) {
+    const idx = TIME_SLOTS.indexOf(time);
+    if (idx === -1) continue;
+    for (let i = 0; i < intervalHours; i++) {
+      const slot = TIME_SLOTS[idx + i];
+      if (slot) blocked.add(slot);
+    }
+  }
+  return TIME_SLOTS.filter((t) => blocked.has(t));
+}

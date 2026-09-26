@@ -4,7 +4,11 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireSession, requireOwnedCompany } from "@/lib/company-auth";
 import { toActionError, type ActionState } from "@/lib/action-state";
-import { addBlockedDateForOwner, setClosedWeekdaysForOwner } from "@/lib/company-schedule-service";
+import {
+  addBlockedDateForOwner,
+  setClosedWeekdaysForOwner,
+  setReservationIntervalForOwner,
+} from "@/lib/company-schedule-service";
 
 export async function addBlockedDate(
   _prevState: ActionState,
@@ -43,6 +47,19 @@ export async function setClosedWeekdays(weekdays: number[]): Promise<{ error?: s
     await setClosedWeekdaysForOwner(session.user.id, weekdays);
     revalidatePath("/company/schedule");
     revalidatePath("/company/reservations");
+    return {};
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "저장에 실패했어요." };
+  }
+}
+
+/** "예약 텀" 1시간/2시간 toggle — returns an error instead of throwing so
+ * the picker can show it inline. */
+export async function setReservationInterval(hours: number): Promise<{ error?: string }> {
+  try {
+    const session = await requireSession();
+    await setReservationIntervalForOwner(session.user.id, hours);
+    revalidatePath("/company/schedule");
     return {};
   } catch (err) {
     return { error: err instanceof Error ? err.message : "저장에 실패했어요." };

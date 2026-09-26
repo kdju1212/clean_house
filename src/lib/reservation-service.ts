@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { isClosedWeekday } from "@/lib/company-schedule-service";
-import { TIME_SLOTS } from "@/lib/reservation";
+import { TIME_SLOTS, blockedTimeSlots } from "@/lib/reservation";
 import { getRegionAncestorIds } from "@/lib/region";
 import { createNotification } from "@/lib/notification";
 import { parseCategoryAnswers } from "@/lib/reservation-questions";
@@ -9,6 +9,43 @@ import { parseCategoryAnswers } from "@/lib/reservation-questions";
 function startOfToday() {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+// A reservation still holds its time slot once accepted or even completed
+// same-day (the crew really was there) — only a rejected/cancelled one
+// frees it back up.
+const HOLDS_TIME_SLOT_STATUSES = ["REQUESTED", "ACCEPTED", "COMPLETED", "NO_SHOW"] as const;
+
+/**
+ * Every time slot on `dateStr` that's unavailable for a NEW booking at this
+ * company — already-booked times expanded by the company's own
+ * reservationIntervalHours. Shared by the create-time server check and the
+ * client-facing "which times are open" endpoints (web/mobile), so a
+ * customer never sees a time the server would then reject.
+ */
+export async function getBlockedTimesForDate(
+  companyId: string,
+  dateStr: string
+): Promise<string[]> {
+  const [company, existing] = await Promise.all([
+    prisma.company.findUnique({
+      where: { id: companyId },
+      select: { reservationIntervalHours: true },
+    }),
+    prisma.reservation.findMany({
+      where: {
+        companyId,
+        desiredDate: new Date(`${dateStr}T00:00:00.000Z`),
+        status: { in: [...HOLDS_TIME_SLOT_STATUSES] },
+      },
+      select: { desiredTime: true },
+    }),
+  ]);
+  if (!company) return [];
+  return blockedTimeSlots(
+    existing.map((r) => r.desiredTime),
+    company.reservationIntervalHours
+  );
 }
 
 export type CreateReservationInput = {
@@ -124,6 +161,14 @@ export async function createReservationForCustomer(
   });
   if (isBlocked || isClosedWeekday(new Date(`${desiredDateRaw}T00:00:00.000Z`), company.closedWeekdays)) {
     throw new Error("해당 날짜는 업체 휴무일이에요. 다른 날짜를 선택해주세요.");
+  }
+
+  // The client-side time select only disables slots it already knows are
+  // blocked (see the blocked-times endpoints) — re-check here regardless,
+  // since two customers can race to book the same opening.
+  const blockedTimes = await getBlockedTimesForDate(company.id, desiredDateRaw);
+  if (blockedTimes.includes(desiredTime)) {
+    throw new Error("이미 예약이 있는 시간이에요. 다른 시간을 선택해주세요.");
   }
 
   const parsedItems = requested.map(({ categoryId, categoryAnswers }, order) => {

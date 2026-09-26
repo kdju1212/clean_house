@@ -211,6 +211,12 @@ model Company {
   /// Regular weekly days off (0=일 … 6=토), on top of the one-off
   /// CompanyBlockedDate rows — e.g. [1] for "매주 월요일 휴무".
   closedWeekdays Int[]         @default([])
+  /// How many consecutive hourly TIME_SLOTS one visit occupies — 1 means
+  /// only the exact booked hour is blocked for anyone else, 2 means the
+  /// booked hour and the one after it are both blocked (e.g. a 13:00
+  /// booking leaves 15:00 as the next open slot). See blockedTimeSlots in
+  /// src/lib/reservation.ts.
+  reservationIntervalHours Int @default(1)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 

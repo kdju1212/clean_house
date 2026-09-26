@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { TIME_SLOTS } from "@/lib/reservation";
 import {
   getPricingQuantityKey,
@@ -64,6 +64,37 @@ export function NewReservationForm({
     return date;
   });
   const isDesiredDateBlocked = blockedDateSet.has(desiredDate);
+  // The user's last explicit pick — reconciled against blockedTimes below
+  // rather than reset from an effect, so a date/fetch change never
+  // silently submits a slot the customer didn't choose.
+  const [desiredTime, setDesiredTime] = useState(TIME_SLOTS[0]);
+  const [fetchedBlockedTimes, setFetchedBlockedTimes] = useState<string[]>([]);
+  const blockedTimes = isDesiredDateBlocked ? [] : fetchedBlockedTimes;
+  const effectiveDesiredTime = blockedTimes.includes(desiredTime)
+    ? (TIME_SLOTS.find((t) => !blockedTimes.includes(t)) ?? desiredTime)
+    : desiredTime;
+  const allTimesBlocked = blockedTimes.length >= TIME_SLOTS.length;
+
+  // Which times are already booked changes per date, so it's fetched fresh
+  // whenever the customer picks a different day — createReservation
+  // re-checks this server-side regardless (see reservation-service.ts).
+  useEffect(() => {
+    if (isDesiredDateBlocked) return;
+    let cancelled = false;
+    fetch(
+      `/api/reservations/blocked-times?companyId=${companyId}&date=${desiredDate}`
+    )
+      .then((res) => res.json())
+      .then((data: { times?: string[] }) => {
+        if (!cancelled) setFetchedBlockedTimes(data.times ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setFetchedBlockedTimes([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [companyId, desiredDate, isDesiredDateBlocked]);
 
   const selectedServices = services.filter((s) => selectedIds.includes(s.categoryId));
 
@@ -206,12 +237,15 @@ export function NewReservationForm({
           희망 시간
           <select
             name="desiredTime"
+            value={effectiveDesiredTime}
+            onChange={(e) => setDesiredTime(e.target.value)}
             required
             className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
           >
             {TIME_SLOTS.map((t) => (
-              <option key={t} value={t}>
+              <option key={t} value={t} disabled={blockedTimes.includes(t)}>
                 {t}
+                {blockedTimes.includes(t) ? " (예약 마감)" : ""}
               </option>
             ))}
           </select>
@@ -220,6 +254,11 @@ export function NewReservationForm({
       {isDesiredDateBlocked && (
         <p className="text-xs text-red-600">
           해당 날짜는 업체 휴무일이에요. 다른 날짜를 선택해주세요.
+        </p>
+      )}
+      {!isDesiredDateBlocked && allTimesBlocked && (
+        <p className="text-xs text-red-600">
+          해당 날짜는 예약이 모두 찼어요. 다른 날짜를 선택해주세요.
         </p>
       )}
 
@@ -266,7 +305,7 @@ export function NewReservationForm({
       <SubmitButton
         className="mt-2 rounded-lg bg-neutral-900 px-4 py-3 text-sm font-medium text-white"
         pendingText="신청 중..."
-        disabled={isDesiredDateBlocked || selectedIds.length === 0}
+        disabled={isDesiredDateBlocked || allTimesBlocked || selectedIds.length === 0}
       >
         예약 신청하기
       </SubmitButton>
