@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { koreaTodayStr } from "@/lib/company-schedule-service";
 import { getPricingQuantityKey, PRICING_UNIT_LABEL } from "@/lib/reservation-questions";
+import { getNextAvailableSlot } from "@/lib/reservation-service";
 import { SubmitButton } from "@/components/submit-button";
 import { toggleFavorite } from "./actions";
 import { Gallery } from "./gallery";
@@ -102,6 +104,11 @@ export default async function CompanyDetailPage({
   const roundedStars = Math.round(averageRating);
   const hasDetailPhotos = workPhotos.length > 0;
 
+  // Only worth showing when the company is actually taking bookings —
+  // otherwise "예약 마감" already says everything a next-slot badge would.
+  const nextAvailable = company.isAvailable ? await getNextAvailableSlot(company.id) : null;
+  const nextAvailableLabel = nextAvailable ? formatNextAvailableLabel(nextAvailable) : null;
+
   return (
     <main className="mx-auto w-full max-w-md flex-1 pb-28">
       <div className="relative">
@@ -160,6 +167,9 @@ export default async function CompanyDetailPage({
             <span className="mt-1.5 inline-block rounded bg-[#6b7684] px-2 py-0.5 text-[13px] font-semibold text-white">
               {company.isAvailable ? "예약 가능" : "예약 마감"}
             </span>
+            {nextAvailableLabel && (
+              <p className="mt-1 text-[13px] font-medium text-[#18a058]">{nextAvailableLabel}</p>
+            )}
           </div>
           <Link href={`/companies/${id}/reviews`} className="shrink-0 pt-0.5 text-right">
             {reviewCount > 0 ? (
@@ -254,3 +264,25 @@ export default async function CompanyDetailPage({
 // Coupang shows a few reviews inline and sends the rest to a dedicated
 // review page (companies/[id]/reviews) rather than one endless scroll.
 const PREVIEW_REVIEW_COUNT = 3;
+
+const WEEKDAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
+
+/** "오늘 15:00부터 예약 가능" / "내일 09:00부터 예약 가능" / "9월 30일(수)
+ * 10:00부터 예약 가능" — makes the booking-availability settings (예약 텀,
+ * 크루 수, 마감시간, 특정 시간만) visible before the customer even opens
+ * the reservation form. */
+function formatNextAvailableLabel(slot: { date: string; time: string }): string {
+  const todayStr = koreaTodayStr();
+  const tomorrowStr = new Date(
+    new Date(`${todayStr}T00:00:00.000Z`).getTime() + 24 * 60 * 60 * 1000
+  )
+    .toISOString()
+    .slice(0, 10);
+
+  if (slot.date === todayStr) return `오늘 ${slot.time}부터 예약 가능`;
+  if (slot.date === tomorrowStr) return `내일 ${slot.time}부터 예약 가능`;
+
+  const [, month, day] = slot.date.split("-").map(Number);
+  const weekday = WEEKDAY_NAMES[new Date(`${slot.date}T00:00:00`).getDay()];
+  return `${month}월 ${day}일(${weekday}) ${slot.time}부터 예약 가능`;
+}

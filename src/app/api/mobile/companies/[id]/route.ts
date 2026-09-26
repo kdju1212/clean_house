@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { customerBlockedDates } from "@/lib/company-schedule-service";
 import { generateTimeSlots } from "@/lib/reservation";
+import { getNextAvailableSlot } from "@/lib/reservation-service";
 import { prisma } from "@/lib/prisma";
 import { getMobileUserId } from "@/lib/mobile-auth";
 
@@ -50,11 +51,16 @@ export async function GET(
     return NextResponse.json({ error: "존재하지 않는 업체입니다." }, { status: 404 });
   }
 
-  const isFavorited = userId
-    ? !!(await prisma.favorite.findUnique({
-        where: { customerId_companyId: { customerId: userId, companyId: id } },
-      }))
-    : false;
+  const [isFavorited, nextAvailable] = await Promise.all([
+    userId
+      ? prisma.favorite
+          .findUnique({ where: { customerId_companyId: { customerId: userId, companyId: id } } })
+          .then(Boolean)
+      : Promise.resolve(false),
+    // Only worth computing when the company is actually taking bookings —
+    // otherwise isAvailable:false already says everything a badge would.
+    company.isAvailable ? getNextAvailableSlot(id) : Promise.resolve(null),
+  ]);
 
   return NextResponse.json({
     company: {
@@ -107,5 +113,8 @@ export async function GET(
       createdAt: r.createdAt.toISOString(),
     })),
     isFavorited,
+    // { date: "YYYY-MM-DD", time: "HH:MM" } | null — soonest bookable slot,
+    // for the "오늘 15:00부터 예약 가능" badge. See getNextAvailableSlot.
+    nextAvailable,
   });
 }

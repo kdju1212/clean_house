@@ -90,6 +90,103 @@ export async function getBlockedTimesForDate(
   return state?.blockedTimes ?? [];
 }
 
+// How far ahead to look for an opening before giving up and reporting
+// "none found" — a company that's fully booked or paused for a month
+// straight isn't worth scanning further just to show a badge.
+const NEXT_AVAILABLE_WINDOW_DAYS = 30;
+
+/**
+ * The soonest bookable {date, time} at this company, scanning forward from
+ * today — null if nothing opens up within the window (fully booked, on a
+ * long break, or every 영업시간 slot ends up filtered out). Used for the
+ * "오늘 15시부터 예약 가능" badge on the public detail page; unlike
+ * getBlockedTimesForDate this loads every input (blocked dates,
+ * reservations) once for the whole window instead of once per day, so
+ * scanning 30 days is still just two queries.
+ */
+export async function getNextAvailableSlot(
+  companyId: string
+): Promise<{ date: string; time: string } | null> {
+  const todayStr = koreaTodayStr();
+  const startDate = new Date(`${todayStr}T00:00:00.000Z`);
+  const endDate = new Date(startDate.getTime() + NEXT_AVAILABLE_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+
+  const [company, blockedDateRows, reservations] = await Promise.all([
+    prisma.company.findUnique({
+      where: { id: companyId },
+      select: {
+        businessHours: true,
+        reservationIntervalHours: true,
+        crewCount: true,
+        sameDayCutoffTime: true,
+        customTimeSlots: true,
+        closedWeekdays: true,
+      },
+    }),
+    prisma.companyBlockedDate.findMany({
+      where: { companyId, date: { gte: startDate, lt: endDate } },
+      select: { date: true },
+    }),
+    prisma.reservation.findMany({
+      where: {
+        companyId,
+        desiredDate: { gte: startDate, lt: endDate },
+        status: { in: [...HOLDS_TIME_SLOT_STATUSES] },
+      },
+      select: { desiredDate: true, desiredTime: true },
+    }),
+  ]);
+  if (!company) return null;
+
+  const slots = generateTimeSlots(
+    company.businessHours,
+    company.reservationIntervalHours,
+    company.customTimeSlots
+  );
+  if (slots.length === 0) return null;
+
+  const blockedDateSet = new Set(blockedDateRows.map((r) => r.date.toISOString().slice(0, 10)));
+  const bookedByDate = new Map<string, string[]>();
+  for (const r of reservations) {
+    const key = r.desiredDate.toISOString().slice(0, 10);
+    const list = bookedByDate.get(key) ?? [];
+    list.push(r.desiredTime);
+    bookedByDate.set(key, list);
+  }
+
+  const nowTime = koreaNowTimeStr();
+  const dayIsClosedByCutoff =
+    company.sameDayCutoffTime !== null && nowTime >= company.sameDayCutoffTime;
+
+  for (let i = 0; i < NEXT_AVAILABLE_WINDOW_DAYS; i++) {
+    const date = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
+    const dateStr = date.toISOString().slice(0, 10);
+    if (blockedDateSet.has(dateStr) || isClosedWeekday(date, company.closedWeekdays)) continue;
+
+    const isToday = dateStr === todayStr;
+    if (isToday && dayIsClosedByCutoff) continue;
+
+    const blocked = new Set(
+      blockedTimeSlots(
+        slots,
+        bookedByDate.get(dateStr) ?? [],
+        company.reservationIntervalHours,
+        company.crewCount
+      )
+    );
+    if (isToday) {
+      for (const slot of slots) {
+        if (slot <= nowTime) blocked.add(slot);
+      }
+    }
+
+    const firstOpen = slots.find((t) => !blocked.has(t));
+    if (firstOpen) return { date: dateStr, time: firstOpen };
+  }
+
+  return null;
+}
+
 export type CreateReservationInput = {
   customerId: string;
   // Resolved region id for the customer — the web caller reads this from
