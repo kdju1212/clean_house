@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import { TIME_SLOTS } from "@/lib/reservation";
 import {
   getPricingQuantityKey,
   getReservationQuestions,
@@ -27,6 +26,7 @@ export function NewReservationForm({
   todayStr,
   categoryProfiles,
   blockedDates,
+  timeSlots,
 }: {
   companyId: string;
   services: {
@@ -47,6 +47,10 @@ export function NewReservationForm({
   // Purely a client-side heads-up; createReservationForCustomer re-checks
   // this server-side regardless.
   blockedDates: string[];
+  // This company's own bookable hours (generateTimeSlots — from its
+  // 영업시간 and 예약 텀), never the fixed 09~17 list every company used to
+  // share.
+  timeSlots: string[];
 }) {
   const [state, formAction] = useActionState(createReservation, undefined);
   const [address, setAddress] = useState("");
@@ -67,13 +71,13 @@ export function NewReservationForm({
   // The user's last explicit pick — reconciled against blockedTimes below
   // rather than reset from an effect, so a date/fetch change never
   // silently submits a slot the customer didn't choose.
-  const [desiredTime, setDesiredTime] = useState(TIME_SLOTS[0]);
+  const [desiredTime, setDesiredTime] = useState(timeSlots[0] ?? "");
   const [fetchedBlockedTimes, setFetchedBlockedTimes] = useState<string[]>([]);
   const blockedTimes = isDesiredDateBlocked ? [] : fetchedBlockedTimes;
   const effectiveDesiredTime = blockedTimes.includes(desiredTime)
-    ? (TIME_SLOTS.find((t) => !blockedTimes.includes(t)) ?? desiredTime)
+    ? (timeSlots.find((t) => !blockedTimes.includes(t)) ?? desiredTime)
     : desiredTime;
-  const allTimesBlocked = blockedTimes.length >= TIME_SLOTS.length;
+  const allTimesBlocked = timeSlots.length === 0 || blockedTimes.length >= timeSlots.length;
 
   // Which times are already booked changes per date, so it's fetched fresh
   // whenever the customer picks a different day — createReservation
@@ -242,7 +246,7 @@ export function NewReservationForm({
             required
             className="rounded-lg border border-neutral-200 px-3 py-2 text-sm font-normal"
           >
-            {TIME_SLOTS.map((t) => (
+            {timeSlots.map((t) => (
               <option key={t} value={t} disabled={blockedTimes.includes(t)}>
                 {t}
                 {blockedTimes.includes(t) ? " (예약 마감)" : ""}

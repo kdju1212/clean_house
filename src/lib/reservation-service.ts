@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { isClosedWeekday, koreaNowTimeStr, koreaTodayStr } from "@/lib/company-schedule-service";
-import { TIME_SLOTS, blockedTimeSlots } from "@/lib/reservation";
+import { blockedTimeSlots, generateTimeSlots } from "@/lib/reservation";
 import { getRegionAncestorIds } from "@/lib/region";
 import { createNotification } from "@/lib/notification";
 import { parseCategoryAnswers } from "@/lib/reservation-questions";
@@ -17,20 +17,20 @@ function startOfToday() {
 const HOLDS_TIME_SLOT_STATUSES = ["REQUESTED", "ACCEPTED", "COMPLETED", "NO_SHOW"] as const;
 
 /**
- * Every time slot on `dateStr` that's unavailable for a NEW booking at this
- * company — already-booked times expanded by the company's own
- * reservationIntervalHours/crewCount. Shared by the create-time server check
- * and the client-facing "which times are open" endpoints (web/mobile), so a
- * customer never sees a time the server would then reject.
+ * This company's own bookable times (from its 영업시간/예약 텀 — see
+ * generateTimeSlots) plus which of those are unavailable on `dateStr`, in
+ * one round trip since almost every caller needs both together.
  */
-export async function getBlockedTimesForDate(
-  companyId: string,
-  dateStr: string
-): Promise<string[]> {
+async function getCompanyTimeSlotState(companyId: string, dateStr: string) {
   const [company, existing] = await Promise.all([
     prisma.company.findUnique({
       where: { id: companyId },
-      select: { reservationIntervalHours: true, crewCount: true, sameDayCutoffTime: true },
+      select: {
+        businessHours: true,
+        reservationIntervalHours: true,
+        crewCount: true,
+        sameDayCutoffTime: true,
+      },
     }),
     prisma.reservation.findMany({
       where: {
@@ -41,10 +41,12 @@ export async function getBlockedTimesForDate(
       select: { desiredTime: true },
     }),
   ]);
-  if (!company) return [];
+  if (!company) return null;
 
+  const slots = generateTimeSlots(company.businessHours, company.reservationIntervalHours);
   const blocked = new Set(
     blockedTimeSlots(
+      slots,
       existing.map((r) => r.desiredTime),
       company.reservationIntervalHours,
       company.crewCount
@@ -57,14 +59,30 @@ export async function getBlockedTimesForDate(
     const nowTime = koreaNowTimeStr();
     const dayIsClosed =
       company.sameDayCutoffTime !== null && nowTime >= company.sameDayCutoffTime;
-    for (const slot of TIME_SLOTS) {
+    for (const slot of slots) {
       // A slot already earlier today is never bookable, cutoff or not.
       // Once the cutoff itself has passed, every remaining slot closes too.
       if (dayIsClosed || slot <= nowTime) blocked.add(slot);
     }
   }
 
-  return TIME_SLOTS.filter((t) => blocked.has(t));
+  return { slots, blockedTimes: slots.filter((t) => blocked.has(t)) };
+}
+
+/**
+ * Every time slot on `dateStr` that's unavailable for a NEW booking at this
+ * company — already-booked times expanded by the company's own
+ * reservationIntervalHours/crewCount, plus same-day cutoff/past-time rules.
+ * Shared by the create-time server check and the client-facing "which
+ * times are open" endpoints (web/mobile), so a customer never sees a time
+ * the server would then reject.
+ */
+export async function getBlockedTimesForDate(
+  companyId: string,
+  dateStr: string
+): Promise<string[]> {
+  const state = await getCompanyTimeSlotState(companyId, dateStr);
+  return state?.blockedTimes ?? [];
 }
 
 export type CreateReservationInput = {
@@ -145,7 +163,7 @@ export async function createReservationForCustomer(
   if (typeof address !== "string" || address.trim().length === 0) {
     throw new Error("서비스 주소를 입력해주세요.");
   }
-  if (typeof desiredTime !== "string" || !TIME_SLOTS.includes(desiredTime)) {
+  if (typeof desiredTime !== "string" || desiredTime.length === 0) {
     throw new Error("희망 시간을 선택해주세요.");
   }
   if (typeof desiredDateRaw !== "string") {
@@ -182,11 +200,12 @@ export async function createReservationForCustomer(
     throw new Error("해당 날짜는 업체 휴무일이에요. 다른 날짜를 선택해주세요.");
   }
 
-  // The client-side time select only disables slots it already knows are
-  // blocked (see the blocked-times endpoints) — re-check here regardless,
-  // since two customers can race to book the same opening.
-  const blockedTimes = await getBlockedTimesForDate(company.id, desiredDateRaw);
-  if (blockedTimes.includes(desiredTime)) {
+  // The client-side time select only offers this company's own slots and
+  // disables the ones it already knows are blocked (see the blocked-times
+  // endpoints) — re-check both here regardless, since a stale client or a
+  // race with another customer could still submit a since-closed time.
+  const timeState = await getCompanyTimeSlotState(company.id, desiredDateRaw);
+  if (!timeState?.slots.includes(desiredTime) || timeState.blockedTimes.includes(desiredTime)) {
     throw new Error("선택하신 시간은 예약할 수 없어요. 다른 시간을 선택해주세요.");
   }
 

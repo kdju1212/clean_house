@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAllCategoryProfiles } from "@/lib/category-profile-service";
 import { customerBlockedDates, koreaTodayStr } from "@/lib/company-schedule-service";
+import { generateTimeSlots } from "@/lib/reservation";
 import { NewReservationForm } from "./new-reservation-form";
 
 export default async function NewReservationPage({
@@ -77,6 +78,7 @@ export default async function NewReservationPage({
           blockedDates.map((b) => b.date),
           company.closedWeekdays
         )}
+        timeSlots={generateTimeSlots(company.businessHours, company.reservationIntervalHours)}
       />
     </main>
   );

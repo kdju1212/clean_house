@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { customerBlockedDates } from "@/lib/company-schedule-service";
+import { generateTimeSlots } from "@/lib/reservation";
 import { prisma } from "@/lib/prisma";
 import { getMobileUserId } from "@/lib/mobile-auth";
 
@@ -89,6 +90,7 @@ export async function GET(
       company.blockedDates.map((b) => b.date),
       company.closedWeekdays
     ),
+    timeSlots: generateTimeSlots(company.businessHours, company.reservationIntervalHours),
     regionNames: company.regions.map((r) => r.region.name),
     averageRating: ratingSummary._avg.rating ?? 0,
     reviewCount: ratingSummary._count,
