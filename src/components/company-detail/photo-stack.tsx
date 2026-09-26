@@ -3,7 +3,14 @@
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 
-export type PhotoItem = { id: string; url: string };
+export type PhotoItem = {
+  id: string;
+  url: string;
+  // Shown as a text block right under this photo (SITE_TEMPLATE mode) —
+  // absent/null in CUSTOM_IMAGE mode, where photos stack with zero gap
+  // instead. See DetailPageMode on the Company model.
+  caption?: string | null;
+};
 
 // Coupang-style "더 보기" fold height — enough to show a couple of photos'
 // worth before the customer has to opt into the rest, not just a sliver.
@@ -14,7 +21,10 @@ const COLLAPSED_HEIGHT = 1500;
  * ratio (never cropped to a square) and stacked with zero gap — so a tall
  * infographic split into several uploads tiles back together seamlessly,
  * the way Coupang's own long detail images are often several images in a
- * row. Plain <img> instead of next/image: we don't know a photo's
+ * row. In SITE_TEMPLATE mode each photo can carry its own caption, shown as
+ * a text block right under it — assembling several ordinary photos into
+ * something that still reads as one continuous long page. Plain <img>
+ * instead of next/image: we don't know a photo's
  * dimensions before it's uploaded, so there's no size to pass next/image's
  * required width/height (or a fill container with a matching aspect-ratio).
  *
@@ -38,6 +48,7 @@ export function PhotoStack({
   photos,
   extraTile,
   photoOverlay,
+  captionSlot,
 }: {
   /** Omit when this stack is nested under a heading the caller already
    * renders itself (e.g. the dashboard's mode-toggle wrapper). */
@@ -45,6 +56,9 @@ export function PhotoStack({
   photos: PhotoItem[];
   extraTile?: ReactNode;
   photoOverlay?: (photo: PhotoItem) => ReactNode;
+  /** Replaces the plain caption <p> — the dashboard's SITE_TEMPLATE editor
+   * uses this to render an editable input instead. */
+  captionSlot?: (photo: PhotoItem) => ReactNode;
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
@@ -76,10 +90,19 @@ export function PhotoStack({
           style={collapsible ? { maxHeight: COLLAPSED_HEIGHT } : undefined}
         >
           {photos.map((photo) => (
-            <div key={photo.id} className="relative w-full bg-neutral-100">
-              {/* eslint-disable-next-line @next/next/no-img-element -- natural aspect ratio needed; see comment above */}
-              <img src={photo.url} alt={title ?? ""} loading="lazy" className="block w-full h-auto" />
-              {photoOverlay?.(photo)}
+            <div key={photo.id}>
+              <div className="relative w-full bg-neutral-100">
+                {/* eslint-disable-next-line @next/next/no-img-element -- natural aspect ratio needed; see comment above */}
+                <img src={photo.url} alt={title ?? ""} loading="lazy" className="block w-full h-auto" />
+                {photoOverlay?.(photo)}
+              </div>
+              {captionSlot
+                ? captionSlot(photo)
+                : photo.caption && (
+                    <p className="px-1 py-3 text-[15px] leading-relaxed text-neutral-700">
+                      {photo.caption}
+                    </p>
+                  )}
             </div>
           ))}
         </div>

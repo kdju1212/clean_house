@@ -14,7 +14,6 @@ import {
 import { BusinessHoursPicker } from "./business-hours-picker";
 import { formatPhoneNumber } from "./phone-format";
 import { PhotoStack, type PhotoItem } from "@/components/company-detail/photo-stack";
-import { PhotoGrid } from "@/components/company-detail/photo-grid";
 import { RatingDistribution } from "@/components/company-detail/rating-distribution";
 import { ReviewCard, ReviewPhotoStrip, type ReviewItem } from "@/components/company-detail/review-list";
 
@@ -316,11 +315,11 @@ export function CompanyPagePreview({
           </div>
           {modeError && <p className="mt-1.5 text-xs text-red-600">{modeError}</p>}
 
-          {detailPageMode === "SITE_TEMPLATE" ? (
-            <EditablePhotoGrid photos={workPhotos} categories={categories} />
-          ) : (
-            <EditablePhotoStack photos={workPhotos} categories={categories} />
-          )}
+          <EditablePhotoStack
+            photos={workPhotos}
+            categories={categories}
+            showCaptions={detailPageMode === "SITE_TEMPLATE"}
+          />
         </section>
 
         <div className="mt-5">
@@ -561,6 +560,7 @@ function CategoryTagPicker({
 function EditablePhotoStack({
   photos,
   categories,
+  showCaptions = false,
 }: {
   photos: Photo[];
   // Offered as "이 사진, 어떤 카테고리 사진인가요?" tag choices — empty when
@@ -568,6 +568,10 @@ function EditablePhotoStack({
   // nothing to tag against and every photo just stays untagged (shown for
   // every category, since there's only ever one).
   categories: { id: string; name: string }[];
+  // SITE_TEMPLATE mode only — CUSTOM_IMAGE photos are meant to be
+  // pre-designed banner slices that don't need one, so the input stays
+  // hidden there (see PhotoStack.captionSlot).
+  showCaptions?: boolean;
 }) {
   const [uploadCategoryId, setUploadCategoryId] = useState<string | null>(
     categories[0]?.id ?? null
@@ -607,71 +611,13 @@ function EditablePhotoStack({
             </form>
           </>
         )}
-        extraTile={
-          <button
-            type="button"
-            onClick={pick}
-            disabled={uploading}
-            className="mt-2 flex h-16 w-full items-center justify-center rounded-lg border border-dashed border-neutral-300 text-2xl text-neutral-400"
-          >
-            {uploading ? <span className="text-sm">업로드중</span> : "+ 사진 추가"}
-          </button>
+        captionSlot={
+          showCaptions
+            ? (photo) => (
+                <CaptionInput photoId={photo.id} initialCaption={(photo as Photo).caption} />
+              )
+            : undefined
         }
-      />
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        onChange={handleChange}
-        className="hidden"
-      />
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
-    </>
-  );
-}
-
-/** "내 사이트 템플릿" mode — same upload/tag/delete flow as
- * EditablePhotoStack, laid out as a grid with an editable caption under
- * each photo instead of one continuous stacked image. */
-function EditablePhotoGrid({
-  photos,
-  categories,
-}: {
-  photos: Photo[];
-  categories: { id: string; name: string }[];
-}) {
-  const [uploadCategoryId, setUploadCategoryId] = useState<string | null>(
-    categories[0]?.id ?? null
-  );
-  const { inputRef, uploading, error, pick, handleChange } = usePhotoUpload(
-    "WORK",
-    uploadCategoryId
-  );
-
-  return (
-    <>
-      <CategoryTagPicker
-        value={uploadCategoryId}
-        onChange={setUploadCategoryId}
-        categories={categories}
-      />
-      <PhotoGrid
-        photos={photos}
-        photoOverlay={(photo) => (
-          <form action={deletePhoto} className="absolute right-1.5 top-1.5">
-            <input type="hidden" name="photoId" value={photo.id} />
-            <button
-              type="submit"
-              aria-label="사진 삭제"
-              className="flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-xs leading-none text-white"
-            >
-              ×
-            </button>
-          </form>
-        )}
-        captionSlot={(photo) => (
-          <CaptionInput photoId={photo.id} initialCaption={photo.caption} />
-        )}
         extraTile={
           <button
             type="button"

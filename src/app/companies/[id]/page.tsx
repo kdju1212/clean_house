@@ -186,7 +186,6 @@ export default async function CompanyDetailPage({
             ...(company.businessHours ? [{ label: "영업시간", value: company.businessHours }] : []),
           ]}
           workPhotos={workPhotos}
-          detailPageMode={company.detailPageMode}
           initialCategoryId={initialCategoryId ?? null}
           websiteUrl={company.websiteUrl}
           phone={company.phone}
