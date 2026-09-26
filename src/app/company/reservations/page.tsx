@@ -2,14 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import {
-  RESERVATION_STATUS_BADGE_CLASS,
-  RESERVATION_STATUS_LABEL,
-  RESERVATION_ITEMS_INCLUDE,
-  reservationServiceNames,
-} from "@/lib/reservation";
-import { SubmitButton } from "@/components/submit-button";
-import { completeReservation, markNoShowReservation, rejectReservation } from "./actions";
+import { RESERVATION_ITEMS_INCLUDE, reservationServiceNames } from "@/lib/reservation";
+import { ReservationsView } from "./reservations-view";
 
 // Needs-action items first, then soonest by desired date.
 const STATUS_ORDER: Record<string, number> = {
@@ -113,94 +107,20 @@ export default async function CompanyReservationsPage({
         })}
       </div>
 
-      {reservations.length === 0 ? (
-        <p className="mt-10 text-center text-sm text-neutral-400">
-          아직 들어온 예약이 없어요.
-        </p>
-      ) : (
-        <ul className="mt-4 flex flex-col gap-3">
-          {reservations.map((r) => (
-            <li
-              key={r.id}
-              className="rounded-2xl border border-neutral-200 bg-white p-4"
-            >
-              <Link href={`/company/reservations/${r.id}`} className="block">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="font-semibold">{r.customerName}</p>
-                  <span
-                    className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${RESERVATION_STATUS_BADGE_CLASS[r.status]}`}
-                  >
-                    {RESERVATION_STATUS_LABEL[r.status]}
-                  </span>
-                </div>
-                <dl className="mt-2 flex flex-col gap-0.5 text-xs text-neutral-500">
-                  <div>
-                    {reservationServiceNames(r.items)}
-                    {r.price ? ` · ${r.price.toLocaleString()}원` : ""}
-                  </div>
-                  <div>
-                    {r.desiredDate.toLocaleDateString("ko-KR")} {r.desiredTime}
-                  </div>
-                  <div>
-                    {r.address}
-                    {r.addressDetail ? ` ${r.addressDetail}` : ""}
-                  </div>
-                  <div>연락처 {r.customerPhone}</div>
-                </dl>
-              </Link>
-
-              <Link
-                href={`/reservations/${r.id}/chat`}
-                className="mt-3 inline-block text-xs font-medium text-neutral-600 underline"
-              >
-                채팅하기
-              </Link>
-
-              {r.status === "REQUESTED" && (
-                <div className="mt-3 flex gap-2">
-                  <Link
-                    href={`/company/reservations/${r.id}`}
-                    className="rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white"
-                  >
-                    견적 확인 후 승인
-                  </Link>
-                  <form action={rejectReservation}>
-                    <input type="hidden" name="reservationId" value={r.id} />
-                    <SubmitButton
-                      className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-medium text-red-600"
-                      pendingText="처리 중..."
-                    >
-                      거절
-                    </SubmitButton>
-                  </form>
-                </div>
-              )}
-              {r.status === "ACCEPTED" && (
-                <div className="mt-3 flex gap-2">
-                  <form action={completeReservation}>
-                    <input type="hidden" name="reservationId" value={r.id} />
-                    <SubmitButton
-                      className="rounded-lg border border-neutral-900 px-3 py-1.5 text-xs font-medium"
-                      pendingText="처리 중..."
-                    >
-                      청소 완료 처리
-                    </SubmitButton>
-                  </form>
-                  <form action={markNoShowReservation}>
-                    <input type="hidden" name="reservationId" value={r.id} />
-                    <SubmitButton
-                      className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-medium text-red-600"
-                      pendingText="처리 중..."
-                    >
-                      노쇼 처리
-                    </SubmitButton>
-                  </form>
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
+      <ReservationsView
+        reservations={reservations.map((r) => ({
+          id: r.id,
+          customerName: r.customerName,
+          customerPhone: r.customerPhone,
+          status: r.status,
+          price: r.price,
+          serviceNames: reservationServiceNames(r.items),
+          desiredDate: r.desiredDate.toISOString().slice(0, 10),
+          desiredTime: r.desiredTime,
+          address: r.address,
+          addressDetail: r.addressDetail,
+        }))}
+      />
     </main>
   );
 }
