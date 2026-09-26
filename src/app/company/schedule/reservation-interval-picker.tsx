@@ -117,7 +117,21 @@ export function ReservationIntervalPicker({ initial }: { initial: number }) {
   );
 }
 
-const CUTOFF_OPTIONS = ["12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"];
+// Business hours can run as late as 23:00 (see BusinessHoursPicker's HOURS),
+// so the cutoff choices need to reach at least that far too.
+const CUTOFF_OPTIONS = [
+  "12:00",
+  "13:00",
+  "14:00",
+  "15:00",
+  "16:00",
+  "17:00",
+  "18:00",
+  "19:00",
+  "20:00",
+  "21:00",
+  "22:00",
+];
 
 /** "당일 예약 마감시간" — after this clock time, today stops accepting new
  * bookings for any remaining slot (not just ones already in the past).
