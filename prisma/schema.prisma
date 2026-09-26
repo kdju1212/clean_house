@@ -19,18 +19,20 @@ enum CompanyStatus {
   SUSPENDED
 }
 
+/// WORK and TEMPLATE are the two separate photo sets behind the
+/// "상세페이지" section — one per DetailPageMode — so switching modes never
+/// mixes a prepared banner image into template photos or vice versa.
 enum PhotoType {
   MAIN
   WORK
   BEFORE_AFTER
+  TEMPLATE
 }
 
-/// How a company's "상세페이지" section (its WORK photos) is laid out on
-/// the public detail page. CUSTOM_IMAGE is the original behavior — photos
-/// stacked edge-to-edge, meant for a company that prepared its own tall
-/// banner-style image(s). SITE_TEMPLATE instead renders them as a grid with
-/// each photo's own caption, for a company that just has ordinary photos
-/// and wants the site to lay them out.
+/// Which photo set the public "상세페이지" section shows. CUSTOM_IMAGE shows
+/// WORK photos stacked edge-to-edge (a company's own prepared tall image);
+/// SITE_TEMPLATE shows TEMPLATE photos with a caption block after each, for
+/// a company that just has ordinary photos and wants the site to lay them out.
 enum DetailPageMode {
   CUSTOM_IMAGE
   SITE_TEMPLATE

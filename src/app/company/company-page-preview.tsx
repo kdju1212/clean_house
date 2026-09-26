@@ -44,9 +44,11 @@ export function CompanyPagePreview({
   reviewCount,
   ratingCounts,
   workPhotos,
+  templatePhotos,
   detailPageMode: initialDetailPageMode,
   reviews,
 }: {
+  templatePhotos: Photo[];
   company: {
     name: string;
     introText: string | null;
@@ -314,11 +316,14 @@ export function CompanyPagePreview({
             </button>
           </div>
           {modeError && <p className="mt-1.5 text-xs text-red-600">{modeError}</p>}
+          <p className="mt-1.5 text-[11px] text-neutral-400">
+            두 방식의 사진은 따로 저장되고, 선택한 방식만 고객에게 보여요.
+          </p>
 
           <EditablePhotoStack
-            photos={workPhotos}
+            photos={detailPageMode === "SITE_TEMPLATE" ? templatePhotos : workPhotos}
             categories={categories}
-            showCaptions={detailPageMode === "SITE_TEMPLATE"}
+            mode={detailPageMode}
           />
         </section>
 
@@ -526,10 +531,10 @@ function usePhotoUpload(
   return { inputRef, uploading, error, pick, handleChange };
 }
 
-/** Shared by EditablePhotoStack and EditablePhotoGrid — which category the
- * *next* uploaded photo gets tagged with. Hidden when there's nothing to
- * distinguish (0 or 1 registered service). */
-function CategoryTagPicker({
+/** One tab per registered service — the editor then shows exactly what a
+ * customer sees with that service picked (its own photos plus untagged
+ * "공통" ones), and new uploads are tagged to it. Hidden with 0–1 services. */
+function CategoryTabs({
   value,
   onChange,
   categories,
@@ -540,63 +545,61 @@ function CategoryTagPicker({
 }) {
   if (categories.length <= 1) return null;
   return (
-    <label className="mt-2 flex items-center gap-1.5 text-xs text-neutral-500">
-      새 사진 태그
-      <select
-        value={value ?? ""}
-        onChange={(e) => onChange(e.target.value)}
-        className="rounded-md border border-neutral-200 px-1.5 py-1 text-xs"
-      >
-        {categories.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
-        ))}
-      </select>
-    </label>
+    <div className="mt-3 flex gap-1.5 overflow-x-auto">
+      {categories.map((c) => (
+        <button
+          key={c.id}
+          type="button"
+          onClick={() => onChange(c.id)}
+          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium ${
+            c.id === value
+              ? "border-neutral-900 bg-neutral-900 text-white"
+              : "border-neutral-200 text-neutral-600"
+          }`}
+        >
+          {c.name}
+        </button>
+      ))}
+    </div>
   );
 }
 
 function EditablePhotoStack({
   photos,
   categories,
-  showCaptions = false,
+  mode,
 }: {
   photos: Photo[];
-  // Offered as "이 사진, 어떤 카테고리 사진인가요?" tag choices — empty when
-  // the company hasn't registered any service yet, in which case there's
-  // nothing to tag against and every photo just stays untagged (shown for
-  // every category, since there's only ever one).
   categories: { id: string; name: string }[];
-  // SITE_TEMPLATE mode only — CUSTOM_IMAGE photos are meant to be
-  // pre-designed banner slices that don't need one, so the input stays
-  // hidden there (see PhotoStack.captionSlot).
-  showCaptions?: boolean;
+  mode: DetailPageMode;
 }) {
-  const [uploadCategoryId, setUploadCategoryId] = useState<string | null>(
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
     categories[0]?.id ?? null
   );
   const { inputRef, uploading, error, pick, handleChange } = usePhotoUpload(
-    "WORK",
-    uploadCategoryId
+    mode === "SITE_TEMPLATE" ? "TEMPLATE" : "WORK",
+    selectedCategoryId
   );
-  const categoryName = (id: string | null) =>
-    id ? categories.find((c) => c.id === id)?.name ?? "" : "전체 공통";
+  const hasTabs = categories.length > 1;
+  const visiblePhotos = hasTabs
+    ? photos.filter((p) => p.categoryId === null || p.categoryId === selectedCategoryId)
+    : photos;
 
   return (
     <>
-      <CategoryTagPicker
-        value={uploadCategoryId}
-        onChange={setUploadCategoryId}
+      <CategoryTabs
+        value={selectedCategoryId}
+        onChange={setSelectedCategoryId}
         categories={categories}
       />
       <PhotoStack
-        photos={photos}
+        photos={visiblePhotos}
+        variant={mode === "SITE_TEMPLATE" ? "template" : "custom"}
         photoOverlay={(photo) => (
           <>
-            {categories.length > 1 && (
+            {hasTabs && (photo as Photo).categoryId === null && (
               <span className="absolute bottom-2 left-2 rounded-full bg-black/55 px-2 py-0.5 text-[10px] text-white">
-                {categoryName((photo as Photo).categoryId)}
+                모든 서비스 공통
               </span>
             )}
             <form action={deletePhoto} className="absolute right-2 top-2">
@@ -611,21 +614,21 @@ function EditablePhotoStack({
             </form>
           </>
         )}
-        captionSlot={
-          showCaptions
-            ? (photo) => (
-                <CaptionInput photoId={photo.id} initialCaption={(photo as Photo).caption} />
-              )
-            : undefined
-        }
+        captionSlot={(photo) => (
+          <CaptionInput photoId={photo.id} initialCaption={(photo as Photo).caption} />
+        )}
         extraTile={
           <button
             type="button"
             onClick={pick}
             disabled={uploading}
-            className="mt-2 flex h-16 w-full items-center justify-center rounded-lg border border-dashed border-neutral-300 text-2xl text-neutral-400"
+            className="mt-3 flex h-16 w-full items-center justify-center rounded-lg border border-dashed border-neutral-300 text-sm font-medium text-neutral-500"
           >
-            {uploading ? <span className="text-sm">업로드중</span> : "+ 사진 추가"}
+            {uploading
+              ? "업로드중"
+              : `+ ${hasTabs ? `${categories.find((c) => c.id === selectedCategoryId)?.name} ` : ""}${
+                  mode === "SITE_TEMPLATE" ? "사진 추가" : "상세 이미지 추가"
+                }`}
           </button>
         }
       />
@@ -660,14 +663,14 @@ function CaptionInput({
   }
 
   return (
-    <div className="mt-1.5">
+    <div className="mt-3">
       <input
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onBlur={handleBlur}
-        placeholder="사진 설명 (선택)"
+        placeholder="이 사진 아래에 들어갈 설명을 적어주세요"
         maxLength={60}
-        className="w-full rounded-md border border-neutral-200 px-2 py-1 text-xs text-neutral-700 placeholder:text-neutral-400"
+        className="w-full rounded-lg border border-dashed border-neutral-300 px-3 py-2.5 text-center text-[15px] font-medium text-neutral-800 placeholder:text-sm placeholder:font-normal placeholder:text-neutral-400"
       />
       {error && <p className="mt-0.5 text-[11px] text-red-600">{error}</p>}
     </div>

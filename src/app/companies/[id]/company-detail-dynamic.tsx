@@ -33,10 +33,12 @@ export function CompanyDetailDynamic({
   companyIntroText,
   attributes,
   workPhotos,
+  detailPageMode,
   initialCategoryId,
   websiteUrl,
   phone,
 }: {
+  detailPageMode: "CUSTOM_IMAGE" | "SITE_TEMPLATE";
   companyId: string;
   services: Service[];
   companyIntroText: string | null;
@@ -96,7 +98,11 @@ export function CompanyDetailDynamic({
       {visibleWork.length > 0 && (
         <section id="detail" className="scroll-mt-16">
           <div className="-mx-4 mt-6 h-2 bg-[#f2f3f6]" />
-          <PhotoStack title="상세페이지" photos={visibleWork} />
+          <PhotoStack
+            title="상세페이지"
+            photos={visibleWork}
+            variant={detailPageMode === "SITE_TEMPLATE" ? "template" : "custom"}
+          />
         </section>
       )}
     </>

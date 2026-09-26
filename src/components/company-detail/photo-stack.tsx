@@ -6,9 +6,7 @@ import { useEffect, useRef, useState } from "react";
 export type PhotoItem = {
   id: string;
   url: string;
-  // Shown as a text block right under this photo (SITE_TEMPLATE mode) —
-  // absent/null in CUSTOM_IMAGE mode, where photos stack with zero gap
-  // instead. See DetailPageMode on the Company model.
+  // Shown under the photo only in the "template" variant.
   caption?: string | null;
 };
 
@@ -49,10 +47,15 @@ export function PhotoStack({
   extraTile,
   photoOverlay,
   captionSlot,
+  variant = "custom",
 }: {
   /** Omit when this stack is nested under a heading the caller already
    * renders itself (e.g. the dashboard's mode-toggle wrapper). */
   title?: string;
+  /** "custom" (CUSTOM_IMAGE): edge-to-edge, no gap, no captions.
+   * "template" (SITE_TEMPLATE): spaced, rounded photos each followed by a
+   * centered caption block. */
+  variant?: "custom" | "template";
   photos: PhotoItem[];
   extraTile?: ReactNode;
   photoOverlay?: (photo: PhotoItem) => ReactNode;
@@ -79,6 +82,7 @@ export function PhotoStack({
   if (photos.length === 0 && !extraTile) return null;
 
   const collapsible = overflowing && !expanded;
+  const isTemplate = variant === "template";
 
   return (
     <section className="mt-5">
@@ -86,23 +90,26 @@ export function PhotoStack({
       <div className="relative mt-2">
         <div
           ref={contentRef}
-          className="flex flex-col overflow-hidden rounded-lg"
+          className={`flex flex-col overflow-hidden ${isTemplate ? "gap-6" : "rounded-lg"}`}
           style={collapsible ? { maxHeight: COLLAPSED_HEIGHT } : undefined}
         >
           {photos.map((photo) => (
             <div key={photo.id}>
-              <div className="relative w-full bg-neutral-100">
+              <div
+                className={`relative w-full bg-neutral-100 ${isTemplate ? "overflow-hidden rounded-2xl" : ""}`}
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element -- natural aspect ratio needed; see comment above */}
                 <img src={photo.url} alt={title ?? ""} loading="lazy" className="block w-full h-auto" />
                 {photoOverlay?.(photo)}
               </div>
-              {captionSlot
-                ? captionSlot(photo)
-                : photo.caption && (
-                    <p className="px-1 py-3 text-[15px] leading-relaxed text-neutral-700">
-                      {photo.caption}
-                    </p>
-                  )}
+              {isTemplate &&
+                (captionSlot
+                  ? captionSlot(photo)
+                  : photo.caption && (
+                      <p className="whitespace-pre-line px-3 pt-4 text-center text-[16px] font-medium leading-relaxed text-neutral-800">
+                        {photo.caption}
+                      </p>
+                    ))}
             </div>
           ))}
         </div>

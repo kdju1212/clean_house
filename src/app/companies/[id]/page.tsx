@@ -77,7 +77,8 @@ export default async function CompanyDetailPage({
     ? [{ id: "main", url: company.mainImageUrl }]
     : [];
 
-  const workPhotos = company.photos.filter((p) => p.type === "WORK");
+  const detailPhotoType = company.detailPageMode === "SITE_TEMPLATE" ? "TEMPLATE" : "WORK";
+  const workPhotos = company.photos.filter((p) => p.type === detailPhotoType);
   const services = company.services.map((s) => ({
     id: s.id,
     categoryId: s.categoryId,
@@ -186,6 +187,7 @@ export default async function CompanyDetailPage({
             ...(company.businessHours ? [{ label: "영업시간", value: company.businessHours }] : []),
           ]}
           workPhotos={workPhotos}
+          detailPageMode={company.detailPageMode}
           initialCategoryId={initialCategoryId ?? null}
           websiteUrl={company.websiteUrl}
           phone={company.phone}

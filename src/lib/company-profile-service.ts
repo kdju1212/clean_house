@@ -348,10 +348,10 @@ export async function setRegionsForOwner(
   ]);
 }
 
-type PhotoType = "MAIN" | "WORK" | "BEFORE_AFTER";
+type PhotoType = "MAIN" | "WORK" | "BEFORE_AFTER" | "TEMPLATE";
 
 function normalizePhotoType(value: unknown): PhotoType {
-  return value === "MAIN" || value === "BEFORE_AFTER" ? value : "WORK";
+  return value === "MAIN" || value === "BEFORE_AFTER" || value === "TEMPLATE" ? value : "WORK";
 }
 
 /** Step 1 of the direct-to-Cloudinary upload flow — see confirmPhotoUploadForOwner

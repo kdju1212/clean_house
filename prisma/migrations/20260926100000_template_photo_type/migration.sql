@@ -1,0 +1,1 @@
+ALTER TYPE "PhotoType" ADD VALUE 'TEMPLATE';
