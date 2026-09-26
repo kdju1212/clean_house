@@ -90,7 +90,11 @@ export async function GET(
       company.blockedDates.map((b) => b.date),
       company.closedWeekdays
     ),
-    timeSlots: generateTimeSlots(company.businessHours, company.reservationIntervalHours),
+    timeSlots: generateTimeSlots(
+      company.businessHours,
+      company.reservationIntervalHours,
+      company.customTimeSlots
+    ),
     regionNames: company.regions.map((r) => r.region.name),
     averageRating: ratingSummary._avg.rating ?? 0,
     reviewCount: ratingSummary._count,

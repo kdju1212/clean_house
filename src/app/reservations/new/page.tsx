@@ -78,7 +78,11 @@ export default async function NewReservationPage({
           blockedDates.map((b) => b.date),
           company.closedWeekdays
         )}
-        timeSlots={generateTimeSlots(company.businessHours, company.reservationIntervalHours)}
+        timeSlots={generateTimeSlots(
+          company.businessHours,
+          company.reservationIntervalHours,
+          company.customTimeSlots
+        )}
       />
     </main>
   );

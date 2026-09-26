@@ -30,6 +30,7 @@ async function getCompanyTimeSlotState(companyId: string, dateStr: string) {
         reservationIntervalHours: true,
         crewCount: true,
         sameDayCutoffTime: true,
+        customTimeSlots: true,
       },
     }),
     prisma.reservation.findMany({
@@ -43,7 +44,11 @@ async function getCompanyTimeSlotState(companyId: string, dateStr: string) {
   ]);
   if (!company) return null;
 
-  const slots = generateTimeSlots(company.businessHours, company.reservationIntervalHours);
+  const slots = generateTimeSlots(
+    company.businessHours,
+    company.reservationIntervalHours,
+    company.customTimeSlots
+  );
   const blocked = new Set(
     blockedTimeSlots(
       slots,

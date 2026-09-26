@@ -1,0 +1,1 @@
+ALTER TABLE "Company" ADD COLUMN "customTimeSlots" INTEGER[] DEFAULT ARRAY[]::INTEGER[];

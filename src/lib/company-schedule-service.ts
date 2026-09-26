@@ -179,3 +179,28 @@ export async function setSameDayCutoffForOwner(
   });
   return time;
 }
+
+/** Validates and normalizes an hour list (0–23): unique, sorted. */
+function parseCustomHours(value: unknown): number[] {
+  if (!Array.isArray(value) || value.some((v) => !Number.isInteger(v) || v < 0 || v > 23)) {
+    throw new Error("잘못된 시간이에요.");
+  }
+  return [...new Set(value as number[])].sort((a, b) => a - b);
+}
+
+export async function getCustomTimeSlotsForOwner(ownerUserId: string): Promise<number[]> {
+  const company = await requireOwnedCompany(ownerUserId);
+  return company.customTimeSlots;
+}
+
+/** Empty array clears it — bookable times go back to being generated from
+ * 영업시간/예약 텀 (see generateTimeSlots). */
+export async function setCustomTimeSlotsForOwner(
+  ownerUserId: string,
+  hours: unknown
+): Promise<number[]> {
+  const company = await requireOwnedCompany(ownerUserId);
+  const parsed = parseCustomHours(hours);
+  await prisma.company.update({ where: { id: company.id }, data: { customTimeSlots: parsed } });
+  return parsed;
+}

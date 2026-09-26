@@ -17,13 +17,23 @@ function parseBusinessHoursRange(businessHours: string | null): [number, number]
 }
 
 /**
- * A company's own bookable times, hourly, from its 영업시간 (see
- * BusinessHoursPicker) — the last slot is early enough that a
- * `intervalHours`-long visit starting there still finishes by closing time,
- * so a company that closes at 18:00 with a 2-hour 예약 텀 never offers
- * 17:00 (that job would run past close); it only ever offers up to 16:00.
+ * This company's bookable times. Two modes:
+ * - `customHours` set (the owner hand-picked specific hours, e.g. [10, 15]
+ *   for "10시, 15시만 받아요") — those exact hours, in order, nothing else.
+ * - `customHours` empty (not customized) — generated hourly from 영업시간
+ *   (see BusinessHoursPicker): the last slot is early enough that an
+ *   `intervalHours`-long visit starting there still finishes by closing
+ *   time, so a company that closes at 18:00 with a 2-hour 예약 텀 never
+ *   offers 17:00 (that job would run past close); only up to 16:00.
  */
-export function generateTimeSlots(businessHours: string | null, intervalHours: number): string[] {
+export function generateTimeSlots(
+  businessHours: string | null,
+  intervalHours: number,
+  customHours: number[] = []
+): string[] {
+  if (customHours.length > 0) {
+    return [...customHours].sort((a, b) => a - b).map((h) => `${String(h).padStart(2, "0")}:00`);
+  }
   const [start, end] = parseBusinessHoursRange(businessHours);
   const lastStart = end - intervalHours;
   const slots: string[] = [];
@@ -63,16 +73,21 @@ export function reservationServiceNames(items: { category: { name: string } }[])
   return items.map((i) => i.category.name).join(" · ");
 }
 
+function slotHour(slot: string): number {
+  return Number(slot.slice(0, 2));
+}
+
 /**
- * Expands each already-booked time into the full run of slots it occupies
- * — one visit ties up a crew for `intervalHours` consecutive entries of
- * `slots` starting at its own time (1 hour just occupies the exact slot; 2
- * hours also occupies the following one, e.g. a 13:00 booking leaves 15:00
- * as the next open slot). A slot is only reported as blocked once
- * `crewCount` visits already occupy it — a company with 2+ crews can run
- * that many bookings for the same hour before it's actually full. `slots`
- * must be this company's own generateTimeSlots() result, contiguous hourly
- * entries, so "N slots later" is just "N array indices later".
+ * Which of `slots` are already fully booked. Each booked time ties up a
+ * crew for `intervalHours` starting at its own hour (1 hour just occupies
+ * that hour; 2 hours also occupies the following one, e.g. a 13:00 booking
+ * leaves 15:00 as the next open slot) — so any offered slot whose hour
+ * falls in that span counts toward it, whether or not the slots in between
+ * are themselves offered (a company with hand-picked, non-contiguous
+ * hours — see generateTimeSlots' customHours — still gets this right). A
+ * slot is only reported as blocked once `crewCount` visits already occupy
+ * it, so a company with 2+ crews can run that many bookings for the same
+ * hour before it's actually full.
  */
 export function blockedTimeSlots(
   slots: string[],
@@ -82,11 +97,12 @@ export function blockedTimeSlots(
 ): string[] {
   const occupancy = new Map<string, number>();
   for (const time of bookedTimes) {
-    const idx = slots.indexOf(time);
-    if (idx === -1) continue;
-    for (let i = 0; i < intervalHours; i++) {
-      const slot = slots[idx + i];
-      if (slot) occupancy.set(slot, (occupancy.get(slot) ?? 0) + 1);
+    const bookedHour = slotHour(time);
+    for (const slot of slots) {
+      const hour = slotHour(slot);
+      if (hour >= bookedHour && hour < bookedHour + intervalHours) {
+        occupancy.set(slot, (occupancy.get(slot) ?? 0) + 1);
+      }
     }
   }
   return slots.filter((t) => (occupancy.get(t) ?? 0) >= crewCount);

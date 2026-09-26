@@ -228,6 +228,12 @@ model Company {
   /// null means no cutoff — same-day booking stays open until the last
   /// slot itself has passed. Doesn't affect any other date.
   sameDayCutoffTime String?
+  /// Hours (0–23) the company hand-picked as its only bookable times —
+  /// e.g. [10, 15] offers just 10:00 and 15:00, skipping every hour in
+  /// between. Empty (the default) means "not customized": bookable times
+  /// are still generated from businessHours/reservationIntervalHours (see
+  /// generateTimeSlots in src/lib/reservation.ts).
+  customTimeSlots Int[] @default([])
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
