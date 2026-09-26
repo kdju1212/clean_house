@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { SubmitButton } from "@/components/submit-button";
 import { updateProfile } from "./actions";
 import { BusinessHoursPicker } from "./business-hours-picker";
+import { CustomTimeSlotsPicker } from "./custom-time-slots-picker";
 import { formatPhoneNumber } from "./phone-format";
 
 export function ProfileForm({
@@ -13,6 +14,7 @@ export function ProfileForm({
   businessHours,
   isAvailable,
   websiteUrl,
+  customTimeSlots,
 }: {
   name: string;
   phone: string;
@@ -20,6 +22,7 @@ export function ProfileForm({
   businessHours: string;
   isAvailable: boolean;
   websiteUrl: string;
+  customTimeSlots: number[];
 }) {
   const [state, formAction] = useActionState(updateProfile, undefined);
   const [phoneValue, setPhoneValue] = useState(phone);
@@ -63,6 +66,7 @@ export function ProfileForm({
         <BusinessHoursPicker value={businessHoursValue} onChange={setBusinessHoursValue} />
         <input type="hidden" name="businessHours" value={businessHoursValue} />
       </div>
+      <CustomTimeSlotsPicker initial={customTimeSlots} />
       <label className="flex flex-col gap-1 text-sm font-medium">
         홈페이지 주소 (선택)
         <input

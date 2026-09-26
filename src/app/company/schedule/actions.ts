@@ -8,7 +8,6 @@ import {
   addBlockedDateForOwner,
   setClosedWeekdaysForOwner,
   setCrewCountForOwner,
-  setCustomTimeSlotsForOwner,
   setSameDayCutoffForOwner,
   setReservationIntervalForOwner,
 } from "@/lib/company-schedule-service";
@@ -96,16 +95,3 @@ export async function setSameDayCutoff(time: string | null): Promise<{ error?: s
   }
 }
 
-/** "특정 시간만 예약 받기" — empty array clears it (bookable times go back
- * to being generated from 영업시간/예약 텀). */
-export async function setCustomTimeSlots(hours: number[]): Promise<{ error?: string }> {
-  try {
-    const session = await requireSession();
-    await setCustomTimeSlotsForOwner(session.user.id, hours);
-    revalidatePath("/company/schedule");
-    revalidatePath("/company/reservations");
-    return {};
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : "저장에 실패했어요." };
-  }
-}

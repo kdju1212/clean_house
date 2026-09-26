@@ -181,6 +181,7 @@ export default async function CompanyDashboardPage() {
           businessHours={company.businessHours ?? ""}
           isAvailable={company.isAvailable}
           websiteUrl={company.websiteUrl ?? ""}
+          customTimeSlots={company.customTimeSlots}
         />
       </section>
 

@@ -8,7 +8,6 @@ import { AddBlockedDateForm } from "./add-blocked-date-form";
 import { ClosedWeekdaysSection } from "./closed-weekdays-picker";
 import {
   CrewCountPicker,
-  CustomTimeSlotsPicker,
   ReservationIntervalPicker,
   SameDayCutoffPicker,
 } from "./reservation-interval-picker";
@@ -65,13 +64,6 @@ export default async function CompanySchedulePage() {
         </div>
         <div className="mt-4 border-t border-neutral-100 pt-4">
           <ReservationIntervalPicker initial={company.reservationIntervalHours} />
-        </div>
-      </section>
-
-      <section className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4">
-        <h2 className="text-sm font-semibold">특정 시간만 예약 받기</h2>
-        <div className="mt-3">
-          <CustomTimeSlotsPicker initial={company.customTimeSlots} />
         </div>
       </section>
 
