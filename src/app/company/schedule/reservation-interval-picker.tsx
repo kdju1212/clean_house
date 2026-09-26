@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { setCrewCount, setReservationInterval } from "./actions";
+import { setCrewCount, setReservationInterval, setSameDayCutoff } from "./actions";
 
 const CREW_COUNTS = [1, 2, 3, 4, 5] as const;
 
@@ -111,6 +111,73 @@ export function ReservationIntervalPicker({ initial }: { initial: number }) {
         한 팀이 한 건을 맡으면 몇 시간짜리 일감인지에 맞춰서, 그 시간 동안은
         같은 팀 몫의 예약이 안 들어오게 해요. 예: 2시간으로 하면 13시 예약이
         있을 때 14시는 막히고 15시부터 다시 예약할 수 있어요.
+      </p>
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+    </div>
+  );
+}
+
+const CUTOFF_OPTIONS = ["12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"];
+
+/** "당일 예약 마감시간" — after this clock time, today stops accepting new
+ * bookings for any remaining slot (not just ones already in the past).
+ * "마감 없음" keeps same-day booking open until each slot's own time passes. */
+export function SameDayCutoffPicker({ initial }: { initial: string | null }) {
+  const [value, setValue] = useState<string | null>(initial);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function choose(time: string | null) {
+    if (time === value) return;
+    const previous = value;
+    setValue(time);
+    setError(null);
+    startTransition(async () => {
+      const result = await setSameDayCutoff(time);
+      if (result.error) {
+        setValue(previous);
+        setError(result.error);
+      }
+    });
+  }
+
+  return (
+    <div>
+      <div className="flex flex-wrap gap-1.5">
+        <button
+          type="button"
+          onClick={() => choose(null)}
+          disabled={pending}
+          aria-pressed={value === null}
+          className={`rounded-full border px-3 py-1.5 text-xs font-medium disabled:opacity-60 ${
+            value === null
+              ? "border-neutral-900 bg-neutral-900 text-white"
+              : "border-neutral-200 text-neutral-600"
+          }`}
+        >
+          마감 없음
+        </button>
+        {CUTOFF_OPTIONS.map((time) => (
+          <button
+            key={time}
+            type="button"
+            onClick={() => choose(time)}
+            disabled={pending}
+            aria-pressed={value === time}
+            className={`rounded-full border px-3 py-1.5 text-xs font-medium disabled:opacity-60 ${
+              value === time
+                ? "border-neutral-900 bg-neutral-900 text-white"
+                : "border-neutral-200 text-neutral-600"
+            }`}
+          >
+            {time}
+          </button>
+        ))}
+      </div>
+      <p className="mt-1.5 text-[11px] text-neutral-400">
+        {value
+          ? `${value} 이후에는 오늘 날짜로 새 예약을 받지 않아요. 내일 이후 날짜는 영향 없어요.`
+          : "당일 예약은 각 시간이 실제로 지나기 전까지 계속 받아요."}
       </p>
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
     </div>

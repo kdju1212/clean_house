@@ -222,6 +222,12 @@ model Company {
   /// with 2+ crews can take that many simultaneous bookings for the same
   /// hour. Defaults to 1 (one crew, the original behavior).
   crewCount Int @default(1)
+  /// "HH:MM" — once it's this time or later in Korea, no more same-day
+  /// bookings for any remaining slot (e.g. "18:00" closes today's booking
+  /// at 6pm even though 17:00 the TIME_SLOT itself hasn't happened yet).
+  /// null means no cutoff — same-day booking stays open until the last
+  /// slot itself has passed. Doesn't affect any other date.
+  sameDayCutoffTime String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 

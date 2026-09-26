@@ -6,7 +6,11 @@ import { SubmitButton } from "@/components/submit-button";
 import { removeBlockedDate } from "./actions";
 import { AddBlockedDateForm } from "./add-blocked-date-form";
 import { ClosedWeekdaysSection } from "./closed-weekdays-picker";
-import { CrewCountPicker, ReservationIntervalPicker } from "./reservation-interval-picker";
+import {
+  CrewCountPicker,
+  ReservationIntervalPicker,
+  SameDayCutoffPicker,
+} from "./reservation-interval-picker";
 
 function startOfToday() {
   const now = new Date();
@@ -60,6 +64,13 @@ export default async function CompanySchedulePage() {
         </div>
         <div className="mt-4 border-t border-neutral-100 pt-4">
           <ReservationIntervalPicker initial={company.reservationIntervalHours} />
+        </div>
+      </section>
+
+      <section className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4">
+        <h2 className="text-sm font-semibold">당일 예약 마감시간</h2>
+        <div className="mt-3">
+          <SameDayCutoffPicker initial={company.sameDayCutoffTime} />
         </div>
       </section>
 

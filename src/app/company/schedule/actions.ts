@@ -8,6 +8,7 @@ import {
   addBlockedDateForOwner,
   setClosedWeekdaysForOwner,
   setCrewCountForOwner,
+  setSameDayCutoffForOwner,
   setReservationIntervalForOwner,
 } from "@/lib/company-schedule-service";
 
@@ -75,6 +76,19 @@ export async function setCrewCount(count: number): Promise<{ error?: string }> {
     await setCrewCountForOwner(session.user.id, count);
     revalidatePath("/company/schedule");
     revalidatePath("/company/reservations");
+    return {};
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "저장에 실패했어요." };
+  }
+}
+
+/** "당일 예약 마감시간" — null clears it (same-day booking stays open all
+ * day, until each slot's own time passes). */
+export async function setSameDayCutoff(time: string | null): Promise<{ error?: string }> {
+  try {
+    const session = await requireSession();
+    await setSameDayCutoffForOwner(session.user.id, time);
+    revalidatePath("/company/schedule");
     return {};
   } catch (err) {
     return { error: err instanceof Error ? err.message : "저장에 실패했어요." };

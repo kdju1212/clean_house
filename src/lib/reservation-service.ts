@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { isClosedWeekday } from "@/lib/company-schedule-service";
+import { isClosedWeekday, koreaNowTimeStr, koreaTodayStr } from "@/lib/company-schedule-service";
 import { TIME_SLOTS, blockedTimeSlots } from "@/lib/reservation";
 import { getRegionAncestorIds } from "@/lib/region";
 import { createNotification } from "@/lib/notification";
@@ -30,7 +30,7 @@ export async function getBlockedTimesForDate(
   const [company, existing] = await Promise.all([
     prisma.company.findUnique({
       where: { id: companyId },
-      select: { reservationIntervalHours: true, crewCount: true },
+      select: { reservationIntervalHours: true, crewCount: true, sameDayCutoffTime: true },
     }),
     prisma.reservation.findMany({
       where: {
@@ -42,11 +42,29 @@ export async function getBlockedTimesForDate(
     }),
   ]);
   if (!company) return [];
-  return blockedTimeSlots(
-    existing.map((r) => r.desiredTime),
-    company.reservationIntervalHours,
-    company.crewCount
+
+  const blocked = new Set(
+    blockedTimeSlots(
+      existing.map((r) => r.desiredTime),
+      company.reservationIntervalHours,
+      company.crewCount
+    )
   );
+
+  // Only "today" has a clock to compare against — every other date is
+  // unaffected by either rule below.
+  if (dateStr === koreaTodayStr()) {
+    const nowTime = koreaNowTimeStr();
+    const dayIsClosed =
+      company.sameDayCutoffTime !== null && nowTime >= company.sameDayCutoffTime;
+    for (const slot of TIME_SLOTS) {
+      // A slot already earlier today is never bookable, cutoff or not.
+      // Once the cutoff itself has passed, every remaining slot closes too.
+      if (dayIsClosed || slot <= nowTime) blocked.add(slot);
+    }
+  }
+
+  return TIME_SLOTS.filter((t) => blocked.has(t));
 }
 
 export type CreateReservationInput = {
@@ -169,7 +187,7 @@ export async function createReservationForCustomer(
   // since two customers can race to book the same opening.
   const blockedTimes = await getBlockedTimesForDate(company.id, desiredDateRaw);
   if (blockedTimes.includes(desiredTime)) {
-    throw new Error("이미 예약이 있는 시간이에요. 다른 시간을 선택해주세요.");
+    throw new Error("선택하신 시간은 예약할 수 없어요. 다른 시간을 선택해주세요.");
   }
 
   const parsedItems = requested.map(({ categoryId, categoryAnswers }, order) => {

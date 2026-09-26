@@ -10,6 +10,11 @@ export function koreaTodayStr(): string {
   return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
+/** Current clock time in Korea as "HH:MM". */
+export function koreaNowTimeStr(): string {
+  return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(11, 16);
+}
+
 function parseDateStr(value: unknown): Date {
   if (typeof value !== "string" || !DATE_RE.test(value)) {
     throw new Error("휴무일을 선택해주세요.");
@@ -150,4 +155,27 @@ export async function setCrewCountForOwner(ownerUserId: string, count: unknown):
   }
   await prisma.company.update({ where: { id: company.id }, data: { crewCount: count } });
   return count;
+}
+
+const TIME_RE = /^\d{2}:\d{2}$/;
+
+export async function getSameDayCutoffForOwner(ownerUserId: string): Promise<string | null> {
+  const company = await requireOwnedCompany(ownerUserId);
+  return company.sameDayCutoffTime;
+}
+
+/** `time` null clears the cutoff (same-day booking stays open all day). */
+export async function setSameDayCutoffForOwner(
+  ownerUserId: string,
+  time: unknown
+): Promise<string | null> {
+  const company = await requireOwnedCompany(ownerUserId);
+  if (time !== null && (typeof time !== "string" || !TIME_RE.test(time))) {
+    throw new Error("잘못된 시각이에요.");
+  }
+  await prisma.company.update({
+    where: { id: company.id },
+    data: { sameDayCutoffTime: time },
+  });
+  return time;
 }
