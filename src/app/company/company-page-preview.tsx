@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
@@ -78,6 +78,8 @@ export function CompanyPagePreview({
   // "이 사진, 어떤 카테고리 사진인가요?" tag choices below.
   const categories = services.map((s) => ({ id: s.categoryId, name: s.categoryName }));
 
+  const router = useRouter();
+
   const [name, setName] = useState(company.name);
   const [phone, setPhone] = useState(company.phone ?? "");
   const [introText, setIntroText] = useState(company.introText ?? "");
@@ -88,6 +90,63 @@ export function CompanyPagePreview({
   const [saved, setSaved] = useState(false);
   const [detailPageMode, setDetailPageMode] = useState<DetailPageMode>(initialDetailPageMode);
   const [modeError, setModeError] = useState<string | null>(null);
+
+  // The fields below only take effect once "저장" is pressed (unlike photos/
+  // mode/captions, which save immediately) — this is what's actually "저장
+  // 안 하면 사라지는" state, so it's what the leave-without-saving guard
+  // below tracks. Updated to the just-saved values after a successful save,
+  // not just set once, so editing again after a save starts from a clean
+  // baseline instead of comparing against the page's original load.
+  const [savedFields, setSavedFields] = useState({
+    name: company.name,
+    phone: company.phone ?? "",
+    introText: company.introText ?? "",
+    businessHours: company.businessHours ?? "",
+    isAvailable: company.isAvailable,
+  });
+  const isDirty =
+    name !== savedFields.name ||
+    phone !== savedFields.phone ||
+    introText !== savedFields.introText ||
+    businessHours !== savedFields.businessHours ||
+    isAvailable !== savedFields.isAvailable;
+
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+
+  // Tab close/refresh/typing a new URL — the browser shows its own generic
+  // "변경사항이 저장되지 않을 수 있습니다" dialog; the exact wording isn't
+  // customizable by design (browsers dropped that to stop abuse).
+  useEffect(() => {
+    if (!isDirty) return;
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      e.preventDefault();
+      e.returnValue = "";
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
+
+  // In-app navigation (clicking any next/link elsewhere on the page, e.g.
+  // "업체 관리로 돌아가기") — Next's App Router has no router-level
+  // "before navigate" hook, so this catches it at the DOM level instead:
+  // any left-click on an internal link while dirty is intercepted and
+  // re-issued after the owner picks save-and-leave or leave-without-saving.
+  useEffect(() => {
+    if (!isDirty) return;
+    function handleClick(e: MouseEvent) {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+        return;
+      }
+      const anchor = (e.target as HTMLElement).closest("a");
+      if (!anchor || anchor.target === "_blank") return;
+      const href = anchor.getAttribute("href");
+      if (!href || href.startsWith("#") || href.startsWith("http")) return;
+      e.preventDefault();
+      setPendingHref(href);
+    }
+    document.addEventListener("click", handleClick, true);
+    return () => document.removeEventListener("click", handleClick, true);
+  }, [isDirty]);
 
   async function handleModeChange(mode: DetailPageMode) {
     if (mode === detailPageMode) return;
@@ -101,7 +160,9 @@ export function CompanyPagePreview({
     }
   }
 
-  async function handleSave() {
+  /** Returns whether it actually saved — the leave-and-save flow needs to
+   * know before it's safe to navigate away. */
+  async function handleSave(): Promise<boolean> {
     setSaving(true);
     setSaveError(null);
     setSaved(false);
@@ -116,12 +177,28 @@ export function CompanyPagePreview({
       const result = await updateProfile(undefined, formData);
       if (result?.error) {
         setSaveError(result.error);
-        return;
+        return false;
       }
+      setSavedFields({ name, phone, introText, businessHours, isAvailable });
       setSaved(true);
+      return true;
     } finally {
       setSaving(false);
     }
+  }
+
+  async function handleSaveAndLeave() {
+    if (await handleSave()) {
+      const href = pendingHref;
+      setPendingHref(null);
+      if (href) router.push(href);
+    }
+  }
+
+  function handleLeaveWithoutSaving() {
+    const href = pendingHref;
+    setPendingHref(null);
+    if (href) router.push(href);
   }
 
   return (
@@ -310,6 +387,48 @@ export function CompanyPagePreview({
           {saving ? "저장 중..." : "저장"}
         </button>
       </div>
+
+      {pendingHref && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6"
+          onClick={() => setPendingHref(null)}
+        >
+          <div
+            className="w-full max-w-xs rounded-2xl bg-white p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-base font-bold text-neutral-900">변경된 사항이 있어요</p>
+            <p className="mt-1 text-sm text-neutral-500">
+              저장하지 않고 나가면 수정한 내용이 사라져요.
+            </p>
+            {saveError && <p className="mt-2 text-xs text-red-600">{saveError}</p>}
+            <div className="mt-4 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={handleSaveAndLeave}
+                disabled={saving}
+                className="w-full rounded-lg bg-neutral-900 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                {saving ? "저장 중..." : "저장하고 나가기"}
+              </button>
+              <button
+                type="button"
+                onClick={handleLeaveWithoutSaving}
+                className="w-full rounded-lg border border-neutral-300 py-2.5 text-sm font-medium text-neutral-700"
+              >
+                저장하지 않고 나가기
+              </button>
+              <button
+                type="button"
+                onClick={() => setPendingHref(null)}
+                className="w-full py-1.5 text-sm text-neutral-400"
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
