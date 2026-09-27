@@ -62,6 +62,7 @@ export async function createReservation(
       desiredDateRaw: formData.get("desiredDate"),
       desiredTime: formData.get("desiredTime"),
       requestNote: formData.get("requestNote"),
+      agreeToCancellationPolicy: formData.get("agreeToCancellationPolicy"),
     });
   } catch (err) {
     return toActionError(err);

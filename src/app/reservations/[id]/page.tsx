@@ -6,8 +6,10 @@ import {
   RESERVATION_STATUS_BADGE_CLASS,
   RESERVATION_STATUS_LABEL,
   RESERVATION_ITEMS_INCLUDE,
+  isReservationCancellable,
   reservationServiceNames,
 } from "@/lib/reservation";
+import { koreaTodayStr } from "@/lib/company-schedule-service";
 import { ReservationEstimateDetails } from "@/components/reservation-estimate-details";
 import { CancelReservationButton } from "../cancel-reservation-button";
 
@@ -31,6 +33,11 @@ export default async function ReservationDetailPage({
   if (!reservation || reservation.customerId !== session.user.id) {
     notFound();
   }
+
+  const cancellable = isReservationCancellable(
+    reservation.desiredDate.toISOString().slice(0, 10),
+    koreaTodayStr()
+  );
 
   return (
     <main className="mx-auto w-full max-w-md flex-1 px-4 py-6">
@@ -86,8 +93,10 @@ export default async function ReservationDetailPage({
 
       {(reservation.status === "REQUESTED" || reservation.status === "ACCEPTED") && (
         <p className="mt-3 text-xs text-neutral-400">
-          취소하시려면 업체에 미리 연락해주세요. 예약 시간에 연락 없이 방문하지 않으면
-          노쇼로 처리될 수 있어요.
+          {cancellable
+            ? "예약일 하루 전부터(당일 포함)는 취소할 수 없어요."
+            : "예약일이 임박해 더 이상 취소할 수 없어요. 업체에 직접 연락해주세요."}{" "}
+          예약 시간에 연락 없이 방문하지 않으면 노쇼로 처리될 수 있어요.
         </p>
       )}
       {reservation.status === "NO_SHOW" && (
@@ -103,13 +112,13 @@ export default async function ReservationDetailPage({
         >
           채팅하기
         </Link>
-        {(reservation.status === "REQUESTED" ||
-          reservation.status === "ACCEPTED") && (
-          <CancelReservationButton
-            reservationId={reservation.id}
-            className="rounded-lg px-4 py-2 text-sm text-neutral-500 underline"
-          />
-        )}
+        {(reservation.status === "REQUESTED" || reservation.status === "ACCEPTED") &&
+          cancellable && (
+            <CancelReservationButton
+              reservationId={reservation.id}
+              className="rounded-lg px-4 py-2 text-sm text-neutral-500 underline"
+            />
+          )}
         {reservation.status === "COMPLETED" &&
           (reservation.review ? (
             <span className="text-sm text-neutral-400">리뷰 작성 완료</span>

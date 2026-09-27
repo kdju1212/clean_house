@@ -6,8 +6,10 @@ import {
   RESERVATION_STATUS_BADGE_CLASS,
   RESERVATION_STATUS_LABEL,
   RESERVATION_ITEMS_INCLUDE,
+  isReservationCancellable,
   reservationServiceNames,
 } from "@/lib/reservation";
+import { koreaTodayStr } from "@/lib/company-schedule-service";
 import { CancelReservationButton } from "./cancel-reservation-button";
 
 const STATUS_FILTERS = [
@@ -57,6 +59,7 @@ export default async function MyReservationsPage({
   ]);
   const countByStatus = new Map(statusCounts.map((s) => [s.status, s._count]));
   const totalCount = statusCounts.reduce((sum, s) => sum + s._count, 0);
+  const todayStr = koreaTodayStr();
 
   return (
     <main className="mx-auto w-full max-w-md flex-1 px-4 py-6">
@@ -132,12 +135,15 @@ export default async function MyReservationsPage({
                 >
                   채팅하기
                 </Link>
-                {(r.status === "REQUESTED" || r.status === "ACCEPTED") && (
-                  <CancelReservationButton
-                    reservationId={r.id}
-                    className="text-xs text-neutral-400 underline"
-                  />
-                )}
+                {(r.status === "REQUESTED" || r.status === "ACCEPTED") &&
+                  (isReservationCancellable(r.desiredDate.toISOString().slice(0, 10), todayStr) ? (
+                    <CancelReservationButton
+                      reservationId={r.id}
+                      className="text-xs text-neutral-400 underline"
+                    />
+                  ) : (
+                    <span className="text-xs text-neutral-300">취소 기한 지남</span>
+                  ))}
                 {r.status === "COMPLETED" &&
                   (r.review ? (
                     <span className="text-xs text-neutral-400">

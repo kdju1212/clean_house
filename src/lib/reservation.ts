@@ -107,3 +107,30 @@ export function blockedTimeSlots(
   }
   return slots.filter((t) => (occupancy.get(t) ?? 0) >= crewCount);
 }
+
+// A reservation can't be cancelled once it's this close — "당일과 전날은
+// 취소 불가": the earliest still-cancellable desiredDate is today + 2, so
+// today and tomorrow are both too late. The customer agrees to this at
+// booking time (see the reservation form's checkbox), and
+// cancelReservationForCustomer re-checks it server-side regardless.
+export const CANCELLATION_CUTOFF_DAYS = 2;
+
+/** "YYYY-MM-DD" plus `days` days, via Date.UTC so it's never off by one
+ * from a DST shift. */
+function addDaysToDateStr(dateStr: string, days: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
+/** The earliest desiredDate ("YYYY-MM-DD") still cancellable, given today's
+ * date (also "YYYY-MM-DD", in Korea — see koreaTodayStr). */
+export function cancellationCutoffDateStr(todayStr: string): string {
+  return addDaysToDateStr(todayStr, CANCELLATION_CUTOFF_DAYS);
+}
+
+/** Whether a reservation for `desiredDateStr` can still be cancelled today
+ * — used to decide whether to even show a 취소 button; the actual cancel
+ * re-checks this server-side (via cancellationCutoffDateStr) regardless. */
+export function isReservationCancellable(desiredDateStr: string, todayStr: string): boolean {
+  return desiredDateStr >= cancellationCutoffDateStr(todayStr);
+}

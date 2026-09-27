@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { isClosedWeekday, koreaNowTimeStr, koreaTodayStr } from "@/lib/company-schedule-service";
 import {
   blockedTimeSlots,
+  cancellationCutoffDateStr,
   generateTimeSlots,
   RESERVATION_ITEMS_INCLUDE,
   reservationServiceNames,
@@ -212,6 +213,11 @@ export type CreateReservationInput = {
   desiredDateRaw: unknown;
   desiredTime: unknown;
   requestNote: unknown;
+  // Must be truthy — the customer has to explicitly agree to the
+  // cancellation policy (see CANCELLATION_CUTOFF_DAYS below) before a
+  // reservation can be created. The web form sends a checked checkbox as
+  // the string "on"; the mobile app sends a JSON boolean.
+  agreeToCancellationPolicy: unknown;
 };
 
 const MAX_ITEMS = 10;
@@ -239,8 +245,12 @@ export async function createReservationForCustomer(
     desiredDateRaw,
     desiredTime,
     requestNote,
+    agreeToCancellationPolicy,
   } = input;
 
+  if (!agreeToCancellationPolicy || agreeToCancellationPolicy === "off") {
+    throw new Error("취소 정책에 동의해주세요.");
+  }
   if (typeof companyId !== "string" || companyId.length === 0) {
     throw new Error("업체 정보가 올바르지 않습니다.");
   }
@@ -398,14 +408,25 @@ export async function cancelReservationForCustomer(
   customerId: string,
   reservationId: string
 ): Promise<{ error?: string }> {
-  // Scoped to the caller's own reservation and only from a cancellable
-  // state — an already-completed/rejected/cancelled booking can't change.
+  const cutoffDateStr = cancellationCutoffDateStr(koreaTodayStr());
+
+  // Scoped to the caller's own reservation, only from a cancellable state
+  // (an already-completed/rejected/cancelled booking can't change), and
+  // only while its desiredDate is still far enough out — see
+  // CANCELLATION_CUTOFF_DAYS in reservation.ts.
   const result = await prisma.reservation.updateMany({
-    where: { id: reservationId, customerId, status: { in: ["REQUESTED", "ACCEPTED"] } },
+    where: {
+      id: reservationId,
+      customerId,
+      status: { in: ["REQUESTED", "ACCEPTED"] },
+      desiredDate: { gte: new Date(`${cutoffDateStr}T00:00:00`) },
+    },
     data: { status: "CANCELLED" },
   });
   if (result.count === 0) {
-    return { error: "취소할 수 없는 예약이에요." };
+    return {
+      error: "취소할 수 없는 예약이에요. 예약일 하루 전부터는 취소할 수 없어요 — 업체에 직접 문의해주세요.",
+    };
   }
 
   const reservation = await prisma.reservation.findUnique({

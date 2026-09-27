@@ -72,6 +72,7 @@ export function NewReservationForm({
   // rather than reset from an effect, so a date/fetch change never
   // silently submits a slot the customer didn't choose.
   const [desiredTime, setDesiredTime] = useState(timeSlots[0] ?? "");
+  const [agreeToCancellationPolicy, setAgreeToCancellationPolicy] = useState(false);
   const [fetchedBlockedTimes, setFetchedBlockedTimes] = useState<string[]>([]);
   const blockedTimes = isDesiredDateBlocked ? [] : fetchedBlockedTimes;
   const effectiveDesiredTime = blockedTimes.includes(desiredTime)
@@ -297,9 +298,25 @@ export function NewReservationForm({
       </label>
 
       <p className="text-xs text-neutral-400">
-        예약 시간에 연락 없이 방문하지 않으면 노쇼로 처리될 수 있어요. 취소하실 경우
-        업체에 미리 연락해주세요.
+        예약 시간에 연락 없이 방문하지 않으면 노쇼로 처리될 수 있어요.
       </p>
+
+      <label className="flex items-start gap-2 rounded-lg bg-neutral-50 p-3 text-xs text-neutral-600">
+        <input
+          type="checkbox"
+          name="agreeToCancellationPolicy"
+          checked={agreeToCancellationPolicy}
+          onChange={(e) => setAgreeToCancellationPolicy(e.target.checked)}
+          className="mt-0.5"
+        />
+        <span>
+          <span className="font-medium text-neutral-800">
+            예약일 하루 전부터(당일 포함)는 예약을 취소할 수 없어요.
+          </span>{" "}
+          그 전에 취소하려면 예약 목록에서 직접 취소하거나 업체에 미리 연락해주세요. 위
+          내용에 동의합니다.
+        </span>
+      </label>
 
       {selectedIds.length === 0 && (
         <p className="text-xs text-red-600">청소 종류를 하나 이상 선택해주세요.</p>
@@ -309,7 +326,12 @@ export function NewReservationForm({
       <SubmitButton
         className="mt-2 rounded-lg bg-neutral-900 px-4 py-3 text-sm font-medium text-white"
         pendingText="신청 중..."
-        disabled={isDesiredDateBlocked || allTimesBlocked || selectedIds.length === 0}
+        disabled={
+          isDesiredDateBlocked ||
+          allTimesBlocked ||
+          selectedIds.length === 0 ||
+          !agreeToCancellationPolicy
+        }
       >
         예약 신청하기
       </SubmitButton>
