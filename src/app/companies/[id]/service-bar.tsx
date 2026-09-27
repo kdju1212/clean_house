@@ -19,10 +19,11 @@ function formatPrice(service: Service): string {
 /**
  * Coupang-style purchase block: the picked (or cheapest) service's price in
  * big red type, plus a fixed bottom bar with 전화문의 / 예약하기. Multiple
- * services no longer get an in-page picker here — that used to open a
- * bottom sheet, but the reservation form itself already lets the customer
- * pick (and multi-select) services, so this just says "추가 옵션 가능" and
- * leaves the actual choice to 예약하기.
+ * services (categories) no longer get an in-page picker here — that used
+ * to open a bottom sheet, but the reservation form itself already lets the
+ * customer pick (and multi-select) which of the company's OTHER cleaning
+ * types (e.g. 이사청소, 에어컨청소) to book, so this just flags that they
+ * exist ("다른 청소도 가능해요") and leaves the actual choice to 예약하기.
  */
 export function ServiceBar({
   companyId,
@@ -70,7 +71,7 @@ export function ServiceBar({
             {!selected && <span className="text-lg font-bold text-[#e52528]">~</span>}
           </p>
           {services.length > 1 && (
-            <p className="mt-1 text-sm text-neutral-500">추가 옵션 가능</p>
+            <p className="mt-1 text-sm text-neutral-500">다른 청소도 가능해요</p>
           )}
         </div>
       )}
