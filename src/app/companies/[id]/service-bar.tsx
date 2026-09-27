@@ -18,12 +18,12 @@ function formatPrice(service: Service): string {
 
 /**
  * Coupang-style purchase block: the picked (or cheapest) service's price in
- * big red type, plus a fixed bottom bar with 전화문의 / 예약하기. Multiple
- * services (categories) no longer get an in-page picker here — that used
- * to open a bottom sheet, but the reservation form itself already lets the
- * customer pick (and multi-select) which of the company's OTHER cleaning
- * types (e.g. 이사청소, 에어컨청소) to book, so this just flags that they
- * exist ("다른 청소도 가능해요") and leaves the actual choice to 예약하기.
+ * big red type, a plain list of the company's other cleaning types (e.g.
+ * 이사청소, 에어컨청소) with their own prices, and a fixed bottom bar with
+ * 전화문의 / 예약하기. The list used to be a clickable bottom sheet that
+ * changed the selection right here, but the reservation form itself
+ * already lets the customer pick (and multi-select) services, so this is
+ * read-only — just informs, and leaves the actual choice to 예약하기.
  */
 export function ServiceBar({
   companyId,
@@ -48,6 +48,9 @@ export function ServiceBar({
   );
   const selected = services.find((s) => s.categoryId === selectedId) ?? null;
   const priceService = selected ?? cheapest;
+  // Everything except the one already shown big above, so the list below
+  // never repeats it.
+  const otherServices = services.filter((s) => s.categoryId !== priceService?.categoryId);
 
   const reserveHref = websiteUrl
     ? websiteUrl
@@ -70,8 +73,21 @@ export function ServiceBar({
             </span>
             {!selected && <span className="text-lg font-bold text-[#e52528]">~</span>}
           </p>
-          {services.length > 1 && (
-            <p className="mt-1 text-sm text-neutral-500">다른 청소도 가능해요</p>
+          {otherServices.length > 0 && (
+            <div className="mt-3">
+              <p className="text-sm text-neutral-500">다른 청소도 가능해요</p>
+              <ul className="mt-1.5 flex flex-col gap-1">
+                {otherServices.map((service) => (
+                  <li
+                    key={service.id}
+                    className="flex items-center justify-between text-sm text-neutral-700"
+                  >
+                    <span>{service.categoryName}</span>
+                    <span className="font-medium">{formatPrice(service)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
       )}
