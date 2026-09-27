@@ -76,6 +76,7 @@ enum NotificationType {
   REVIEW_REQUEST
   COMPANY_SUSPENDED
   COMPANY_REACTIVATED
+  REPORT_RECEIVED
 }
 
 /// FLAT: `price` is the whole job's price, same for everyone.

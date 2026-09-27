@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/company-auth";
+import { notifyAdminsOfReport } from "@/lib/notification";
 import { toActionError, type ActionState } from "@/lib/action-state";
 
 export async function reportCompany(
@@ -29,14 +30,16 @@ export async function reportCompany(
       throw new Error("존재하지 않는 업체예요.");
     }
 
+    const trimmedReason = reason.trim().slice(0, 500);
     await prisma.report.create({
       data: {
         reporterId: session.user.id,
         targetType: "COMPANY",
         targetId: company.id,
-        reason: reason.trim().slice(0, 500),
+        reason: trimmedReason,
       },
     });
+    await notifyAdminsOfReport({ targetType: "COMPANY", reason: trimmedReason });
 
     redirectTo = `/companies/${company.id}/report?done=1`;
   } catch (err) {

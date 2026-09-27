@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/company-auth";
+import { notifyAdminsOfReport } from "@/lib/notification";
 import { toActionError, type ActionState } from "@/lib/action-state";
 
 export async function reportReview(
@@ -29,14 +30,16 @@ export async function reportReview(
       throw new Error("존재하지 않는 리뷰예요.");
     }
 
+    const trimmedReason = reason.trim().slice(0, 500);
     await prisma.report.create({
       data: {
         reporterId: session.user.id,
         targetType: "REVIEW",
         targetId: review.id,
-        reason: reason.trim().slice(0, 500),
+        reason: trimmedReason,
       },
     });
+    await notifyAdminsOfReport({ targetType: "REVIEW", reason: trimmedReason });
 
     redirectTo = `/reviews/${review.id}/report?done=1`;
   } catch (err) {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getMobileUserId } from "@/lib/mobile-auth";
 import { prisma } from "@/lib/prisma";
+import { notifyAdminsOfReport } from "@/lib/notification";
 
 /** Mobile equivalent of the web repo's /companies/[id]/report page — reports
  * the company itself (fraud, no-show, unfair charges, etc.), same Report
@@ -23,14 +24,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "존재하지 않는 업체예요." }, { status: 404 });
   }
 
+  const trimmedReason = reason.trim().slice(0, 500);
   await prisma.report.create({
     data: {
       reporterId: userId,
       targetType: "COMPANY",
       targetId: company.id,
-      reason: reason.trim().slice(0, 500),
+      reason: trimmedReason,
     },
   });
+  await notifyAdminsOfReport({ targetType: "COMPANY", reason: trimmedReason });
 
   return NextResponse.json({ ok: true });
 }

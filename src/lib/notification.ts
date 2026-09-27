@@ -12,7 +12,8 @@ type NotificationType =
   | "CHAT_MESSAGE"
   | "REVIEW_REQUEST"
   | "COMPANY_SUSPENDED"
-  | "COMPANY_REACTIVATED";
+  | "COMPANY_REACTIVATED"
+  | "REPORT_RECEIVED";
 
 export const NOTIFICATION_TYPE_ICON: Record<NotificationType, string> = {
   RESERVATION_REQUESTED: "📥",
@@ -25,6 +26,7 @@ export const NOTIFICATION_TYPE_ICON: Record<NotificationType, string> = {
   REVIEW_REQUEST: "⭐",
   COMPANY_SUSPENDED: "⛔",
   COMPANY_REACTIVATED: "🔓",
+  REPORT_RECEIVED: "🚨",
 };
 
 export async function createNotification(input: {
@@ -96,6 +98,36 @@ export async function notifyNewChatMessage(input: {
     body: input.preview,
     link: input.link,
   });
+}
+
+/**
+ * Fans out a "someone filed a report" notification to every admin — there's
+ * no assignment/routing system, so every admin sees every new report and
+ * whoever gets to it first handles it at /admin/reports.
+ */
+export async function notifyAdminsOfReport(input: {
+  targetType: "REVIEW" | "COMPANY";
+  reason: string;
+}) {
+  const admins = await prisma.user.findMany({
+    where: { role: "ADMIN" },
+    select: { id: true },
+  });
+
+  const title =
+    input.targetType === "COMPANY" ? "업체 신고가 접수됐어요" : "리뷰 신고가 접수됐어요";
+
+  await Promise.all(
+    admins.map((admin) =>
+      createNotification({
+        userId: admin.id,
+        type: "REPORT_RECEIVED",
+        title,
+        body: input.reason,
+        link: "/admin/reports",
+      })
+    )
+  );
 }
 
 export async function getUnreadNotificationCount(userId: string) {
