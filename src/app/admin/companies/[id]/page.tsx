@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { COMPANY_STATUS_BADGE_CLASS, COMPANY_STATUS_LABEL } from "@/lib/company";
@@ -100,7 +101,13 @@ export default async function AdminCompanyDetailPage({
         )}
         <div className="flex justify-between gap-3">
           <span className="text-neutral-500">연락처</span>
-          <span>{company.phone ?? "-"}</span>
+          {company.phone ? (
+            <a href={`tel:${company.phone}`} className="font-medium text-[#346aff] underline">
+              {company.phone}
+            </a>
+          ) : (
+            <span>-</span>
+          )}
         </div>
         <div className="flex justify-between gap-3">
           <span className="text-neutral-500">등록일</span>
@@ -221,6 +228,12 @@ export default async function AdminCompanyDetailPage({
         ) : (
           <CompanyStatusForm companyId={company.id} action="verify" size="md" />
         )}
+        <Link
+          href={`/admin/companies/${company.id}/chat`}
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-600"
+        >
+          채팅하기
+        </Link>
       </div>
     </div>
   );

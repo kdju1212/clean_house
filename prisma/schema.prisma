@@ -112,6 +112,7 @@ model User {
   company      Company?
   reservations  Reservation[]
   chatMessages  ChatMessage[]
+  adminChatMessages AdminChatMessage[]
   reviews       Review[]
   reports       Report[]
   notifications Notification[]
@@ -254,6 +255,7 @@ model Company {
   favoritedBy    Favorite[]
   advertisements Advertisement[]
   blockedDates   CompanyBlockedDate[]
+  adminChatRoom  AdminChatRoom?
 }
 
 /// A single calendar day this company doesn't take reservations on (휴무일) —
@@ -397,6 +399,33 @@ model ChatMessage {
 
   chatRoom ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
   sender   User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([senderId, createdAt])
+}
+
+/// One persistent 관리자 문의 room per company — unlike ChatRoom (one per
+/// reservation, between that reservation's customer and company), this is
+/// between the company owner and admins in general, not tied to any one
+/// booking. Created lazily on first message (see admin-chat.ts).
+model AdminChatRoom {
+  id        String   @id @default(cuid())
+  companyId String   @unique
+  createdAt DateTime @default(now())
+
+  company  Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  messages AdminChatMessage[]
+}
+
+model AdminChatMessage {
+  id         String   @id @default(cuid())
+  chatRoomId String
+  senderId   String
+  content    String
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  chatRoom AdminChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  sender   User          @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([senderId, createdAt])
 }
