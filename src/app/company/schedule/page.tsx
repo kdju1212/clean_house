@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { koreaTodayStr } from "@/lib/company-schedule-service";
 import { SubmitButton } from "@/components/submit-button";
 import { removeBlockedDate } from "./actions";
 import { AddBlockedDateForm } from "./add-blocked-date-form";
@@ -11,11 +12,6 @@ import {
   ReservationIntervalPicker,
   SameDayCutoffPicker,
 } from "./reservation-interval-picker";
-
-function startOfToday() {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-}
 
 export default async function CompanySchedulePage() {
   const session = await auth();
@@ -42,12 +38,12 @@ export default async function CompanySchedulePage() {
     );
   }
 
+  const todayStr = koreaTodayStr();
+
   const blockedDates = await prisma.companyBlockedDate.findMany({
-    where: { companyId: company.id, date: { gte: startOfToday() } },
+    where: { companyId: company.id, date: { gte: new Date(`${todayStr}T00:00:00.000Z`) } },
     orderBy: { date: "asc" },
   });
-
-  const todayStr = new Date().toISOString().slice(0, 10);
 
   return (
     <main className="mx-auto w-full max-w-md flex-1 px-4 py-6">

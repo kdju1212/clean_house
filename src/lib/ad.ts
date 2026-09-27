@@ -36,7 +36,14 @@ export function getAdStatus(ad: {
   return "ACTIVE";
 }
 
-export function startOfToday() {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+/** Today's date in Korea, as a UTC-midnight Date — matches how the
+ * startDate/endDate @db.Date columns store their calendar date. Same idiom
+ * as koreaTodayStr() in company-schedule-service.ts, just returned as a
+ * Date instead of a string (this file is imported from client code too, so
+ * it can't pull in that "server-only" module just for one helper). */
+export function startOfToday(): Date {
+  const koreaNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  return new Date(
+    Date.UTC(koreaNow.getUTCFullYear(), koreaNow.getUTCMonth(), koreaNow.getUTCDate())
+  );
 }
