@@ -12,11 +12,6 @@ import { getRegionAncestorIds } from "@/lib/region";
 import { createNotification } from "@/lib/notification";
 import { parseCategoryAnswers } from "@/lib/reservation-questions";
 
-function startOfToday() {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-}
-
 // A reservation still holds its time slot once accepted or even completed
 // same-day (the crew really was there) — only a rejected/cancelled one
 // frees it back up.
@@ -287,7 +282,7 @@ export async function createReservationForCustomer(
     throw new Error("희망 날짜를 선택해주세요.");
   }
   const desiredDate = new Date(`${desiredDateRaw}T00:00:00`);
-  if (Number.isNaN(desiredDate.getTime()) || desiredDate < startOfToday()) {
+  if (Number.isNaN(desiredDate.getTime()) || desiredDateRaw < koreaTodayStr()) {
     throw new Error("오늘 이후 날짜를 선택해주세요.");
   }
 
