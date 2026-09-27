@@ -51,6 +51,7 @@ enum ReservationStatus {
 
 enum ReportTargetType {
   REVIEW
+  COMPANY
 }
 
 enum ReportStatus {
@@ -73,6 +74,8 @@ enum NotificationType {
   RESERVATION_NO_SHOW
   CHAT_MESSAGE
   REVIEW_REQUEST
+  COMPANY_SUSPENDED
+  COMPANY_REACTIVATED
 }
 
 /// FLAT: `price` is the whole job's price, same for everyone.
@@ -203,6 +206,10 @@ model Company {
   // wherever the company is listed, purely a trust signal (no automated
   // check backs it).
   isVerified    Boolean       @default(false)
+  // Set by an admin when suspending (status -> SUSPENDED), either directly
+  // or by acting on a customer's COMPANY report — shown to the owner (via
+  // Notification) and on the admin company page. Cleared on reactivation.
+  suspendedReason String?
   // Which layout the "상세페이지" section (WORK photos) uses — see
   // DetailPageMode. Defaults to the original stacked-image behavior so
   // every existing company keeps looking exactly as it did before this

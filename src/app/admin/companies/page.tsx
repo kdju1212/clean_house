@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { COMPANY_STATUS_BADGE_CLASS, COMPANY_STATUS_LABEL } from "@/lib/company";
 import { requireAdmin } from "@/lib/admin";
 import { CompanyStatusForm } from "./company-status-form";
+import { SuspendCompanyForm } from "./suspend-company-form";
 
 const STATUS_FILTERS = [
   { value: "", label: "전체" },
@@ -121,13 +122,11 @@ export default async function AdminCompaniesPage({
                 </dl>
               </Link>
 
-              <div className="mt-3 flex gap-2">
+              <div className="mt-3 flex flex-wrap gap-2">
                 {company.status === "PENDING" && (
                   <CompanyStatusForm companyId={company.id} action="approve" />
                 )}
-                {company.status === "ACTIVE" && (
-                  <CompanyStatusForm companyId={company.id} action="suspend" />
-                )}
+                {company.status === "ACTIVE" && <SuspendCompanyForm companyId={company.id} />}
                 {company.status === "SUSPENDED" && (
                   <CompanyStatusForm companyId={company.id} action="reactivate" />
                 )}

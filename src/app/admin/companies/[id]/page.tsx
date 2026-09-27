@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { COMPANY_STATUS_BADGE_CLASS, COMPANY_STATUS_LABEL } from "@/lib/company";
 import { requireAdmin } from "@/lib/admin";
 import { CompanyStatusForm } from "../company-status-form";
+import { SuspendCompanyForm } from "../suspend-company-form";
 
 const PHOTO_TYPE_LABEL: Record<string, string> = {
   MAIN: "대표",
@@ -127,6 +128,12 @@ export default async function AdminCompanyDetailPage({
             <p className="mt-1">{company.introText}</p>
           </div>
         )}
+        {company.status === "SUSPENDED" && company.suspendedReason && (
+          <div className="border-t border-neutral-100 pt-2">
+            <p className="text-red-500">정지 사유</p>
+            <p className="mt-1">{company.suspendedReason}</p>
+          </div>
+        )}
       </section>
 
       <section className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4 text-sm">
@@ -205,9 +212,7 @@ export default async function AdminCompanyDetailPage({
         {company.status === "PENDING" && (
           <CompanyStatusForm companyId={company.id} action="approve" size="md" />
         )}
-        {company.status === "ACTIVE" && (
-          <CompanyStatusForm companyId={company.id} action="suspend" size="md" />
-        )}
+        {company.status === "ACTIVE" && <SuspendCompanyForm companyId={company.id} size="md" />}
         {company.status === "SUSPENDED" && (
           <CompanyStatusForm companyId={company.id} action="reactivate" size="md" />
         )}

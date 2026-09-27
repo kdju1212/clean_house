@@ -5,14 +5,16 @@ import { SubmitButton } from "@/components/submit-button";
 import { resolveReport } from "./actions";
 import type { ActionState } from "@/lib/action-state";
 
-const STYLE: Record<"hide" | "dismiss", string> = {
+const STYLE: Record<"hide" | "dismiss" | "suspend", string> = {
   hide: "rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white",
+  suspend: "rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white",
   dismiss:
     "rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-600",
 };
 
-const LABEL: Record<"hide" | "dismiss", string> = {
+const LABEL: Record<"hide" | "dismiss" | "suspend", string> = {
   hide: "리뷰 숨기기",
+  suspend: "업체 정지",
   dismiss: "반려",
 };
 
@@ -21,7 +23,7 @@ export function ResolveReportForm({
   action,
 }: {
   reportId: string;
-  action: "hide" | "dismiss";
+  action: "hide" | "dismiss" | "suspend";
 }) {
   const [state, formAction] = useActionState<ActionState, FormData>(
     resolveReport,

@@ -215,6 +215,12 @@ export default async function CompanyDetailPage({
             ...(company.phone ? [{ label: "연락처", value: company.phone }] : []),
           ]}
         />
+        <Link
+          href={`/companies/${id}/report`}
+          className="mt-3 inline-block text-[11px] text-neutral-400 underline"
+        >
+          업체 신고
+        </Link>
       </section>
 
       <div className="h-2 bg-[#f2f3f6]" />

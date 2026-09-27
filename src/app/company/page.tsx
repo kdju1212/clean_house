@@ -12,7 +12,7 @@ import { RegionSelectForm } from "./region-select-form";
 const STATUS_LABEL: Record<string, string> = {
   PENDING: "심사중",
   ACTIVE: "활성 (고객에게 노출됨)",
-  SUSPENDED: "비활성화됨",
+  SUSPENDED: "정지됨",
 };
 
 export default async function CompanyDashboardPage() {
@@ -133,6 +133,12 @@ export default async function CompanyDashboardPage() {
         <p className="mt-1 text-xs text-neutral-500">
           관리자 승인 후 고객에게 노출됩니다. 그 전까지 프로필/서비스/사진은
           자유롭게 준비해주세요.
+        </p>
+      )}
+      {company.status === "SUSPENDED" && (
+        <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
+          관리자에 의해 정지되어 고객에게 노출되지 않고 새 예약도 받을 수 없어요.
+          {company.suspendedReason && <> 사유: {company.suspendedReason}</>}
         </p>
       )}
 

@@ -62,6 +62,9 @@ export async function GET(request: Request) {
       reservationIntervalHours: company.reservationIntervalHours,
       crewCount: company.crewCount,
       sameDayCutoffTime: company.sameDayCutoffTime,
+      // Set by an admin when status is SUSPENDED — see admin/companies'
+      // suspendCompany on the web repo. Null otherwise.
+      suspendedReason: company.suspendedReason,
     },
     requestedCount,
     averageRating: ratingSummary._avg.rating ?? 0,

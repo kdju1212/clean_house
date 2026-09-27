@@ -10,7 +10,9 @@ type NotificationType =
   | "RESERVATION_COMPLETED"
   | "RESERVATION_NO_SHOW"
   | "CHAT_MESSAGE"
-  | "REVIEW_REQUEST";
+  | "REVIEW_REQUEST"
+  | "COMPANY_SUSPENDED"
+  | "COMPANY_REACTIVATED";
 
 export const NOTIFICATION_TYPE_ICON: Record<NotificationType, string> = {
   RESERVATION_REQUESTED: "📥",
@@ -21,6 +23,8 @@ export const NOTIFICATION_TYPE_ICON: Record<NotificationType, string> = {
   RESERVATION_NO_SHOW: "🚷",
   CHAT_MESSAGE: "💬",
   REVIEW_REQUEST: "⭐",
+  COMPANY_SUSPENDED: "⛔",
+  COMPANY_REACTIVATED: "🔓",
 };
 
 export async function createNotification(input: {
