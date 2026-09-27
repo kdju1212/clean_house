@@ -5,10 +5,7 @@ import { setCrewCount, setReservationInterval, setSameDayCutoff } from "./action
 
 const CREW_COUNTS = [1, 2, 3, 4, 5] as const;
 
-const INTERVAL_OPTIONS = [
-  { hours: 1, label: "1시간", desc: "바로 다음 시간부터 예약 가능" },
-  { hours: 2, label: "2시간", desc: "한 시간 건너뛰고 예약 가능" },
-] as const;
+const INTERVAL_OPTIONS = [1, 2, 3, 4, 5] as const;
 
 /** "동시에 몇 팀까지 예약받을 수 있나요" — a company with 여러 팀 can take
  * that many bookings for the same time slot before it's actually full,
@@ -88,22 +85,21 @@ export function ReservationIntervalPicker({ initial }: { initial: number }) {
   return (
     <div>
       <p className="text-xs font-semibold text-neutral-700">청소 한 건당 소요 시간</p>
-      <div className="mt-2 grid grid-cols-2 gap-2">
-        {INTERVAL_OPTIONS.map((opt) => (
+      <div className="mt-2 flex gap-1.5">
+        {INTERVAL_OPTIONS.map((hours) => (
           <button
-            key={opt.hours}
+            key={hours}
             type="button"
-            onClick={() => choose(opt.hours)}
+            onClick={() => choose(hours)}
             disabled={pending}
-            aria-pressed={value === opt.hours}
-            className={`rounded-lg border px-3 py-2.5 text-left disabled:opacity-60 ${
-              value === opt.hours
-                ? "border-neutral-900 bg-neutral-50"
-                : "border-neutral-200"
+            aria-pressed={value === hours}
+            className={`h-9 flex-1 rounded-lg border text-sm font-medium disabled:opacity-60 ${
+              value === hours
+                ? "border-neutral-900 bg-neutral-900 text-white"
+                : "border-neutral-200 text-neutral-600"
             }`}
           >
-            <span className="block text-sm font-semibold">{opt.label}</span>
-            <span className="mt-0.5 block text-xs text-neutral-500">{opt.desc}</span>
+            {hours}시간
           </button>
         ))}
       </div>

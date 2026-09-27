@@ -113,7 +113,7 @@ export function customerBlockedDates(specificDates: Date[], closedWeekdays: numb
   return [...result].sort();
 }
 
-const VALID_INTERVAL_HOURS = [1, 2];
+const VALID_INTERVAL_HOURS = [1, 2, 3, 4, 5];
 
 export async function getReservationIntervalForOwner(ownerUserId: string): Promise<number> {
   const company = await requireOwnedCompany(ownerUserId);
