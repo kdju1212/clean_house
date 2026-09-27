@@ -20,10 +20,12 @@ function formatPrice(service: Service): string {
  * Coupang-style purchase block: the picked (or cheapest) service's price in
  * big red type, a plain list of the company's other cleaning types (e.g.
  * 이사청소, 에어컨청소) with their own prices, and a fixed bottom bar with
- * 전화문의 / 예약하기. The list used to be a clickable bottom sheet that
- * changed the selection right here, but the reservation form itself
- * already lets the customer pick (and multi-select) services, so this is
- * read-only — just informs, and leaves the actual choice to 예약하기.
+ * 전화문의 / 예약하기. Tapping one of the other services re-visits this
+ * same detail page with ?categoryId= set to it — a plain link, not local
+ * state, so CompanyDetailDynamic's selectedId (derived straight from the
+ * URL) just picks it up and the price/intro/photos update to match. The
+ * reservation form itself still owns actual multi-select booking, reached
+ * via 예약하기.
  */
 export function ServiceBar({
   companyId,
@@ -78,12 +80,14 @@ export function ServiceBar({
               <p className="text-sm text-neutral-500">다른 청소도 가능해요</p>
               <ul className="mt-1.5 flex flex-col gap-1">
                 {otherServices.map((service) => (
-                  <li
-                    key={service.id}
-                    className="flex items-center justify-between text-sm text-neutral-700"
-                  >
-                    <span>{service.categoryName}</span>
-                    <span className="font-medium">{formatPrice(service)}</span>
+                  <li key={service.id}>
+                    <Link
+                      href={`/companies/${companyId}?categoryId=${service.categoryId}`}
+                      className="flex items-center justify-between py-0.5 text-sm text-neutral-700"
+                    >
+                      <span className="underline underline-offset-2">{service.categoryName}</span>
+                      <span className="font-medium">{formatPrice(service)}</span>
+                    </Link>
                   </li>
                 ))}
               </ul>
