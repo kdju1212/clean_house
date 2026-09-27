@@ -1,5 +1,6 @@
 import "server-only";
 import { SignJWT, jwtVerify } from "jose";
+import { prisma } from "@/lib/prisma";
 
 // Mobile has no browser cookie jar, so it can't use Auth.js's session cookie
 // like the web app does. Instead the app stores this token itself (secure
@@ -46,4 +47,19 @@ export async function getMobileUserId(request: Request): Promise<string | null> 
   } catch {
     return null;
   }
+}
+
+/**
+ * Same as getMobileUserId, but also re-checks the caller's role against the
+ * DB (never trusts the token's own `role` claim, which could be stale for
+ * up to the token's 30-day lifetime if an account is ever demoted) and
+ * returns null unless they're currently ADMIN — the mobile equivalent of
+ * the web admin layout's redirect-away-if-not-ADMIN guard.
+ */
+export async function getMobileAdminUserId(request: Request): Promise<string | null> {
+  const userId = await getMobileUserId(request);
+  if (!userId) return null;
+
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+  return user?.role === "ADMIN" ? userId : null;
 }
