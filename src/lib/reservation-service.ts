@@ -1,7 +1,12 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { isClosedWeekday, koreaNowTimeStr, koreaTodayStr } from "@/lib/company-schedule-service";
-import { blockedTimeSlots, generateTimeSlots } from "@/lib/reservation";
+import {
+  blockedTimeSlots,
+  generateTimeSlots,
+  RESERVATION_ITEMS_INCLUDE,
+  reservationServiceNames,
+} from "@/lib/reservation";
 import { getRegionAncestorIds } from "@/lib/region";
 import { createNotification } from "@/lib/notification";
 import { parseCategoryAnswers } from "@/lib/reservation-questions";
@@ -382,4 +387,40 @@ export async function createReservationForCustomer(
   });
 
   return reservation.id;
+}
+
+/**
+ * Shared by the web cancelReservation Server Action and the mobile API
+ * route — same eligibility check (own reservation, still REQUESTED or
+ * ACCEPTED) and same company notification either way.
+ */
+export async function cancelReservationForCustomer(
+  customerId: string,
+  reservationId: string
+): Promise<{ error?: string }> {
+  // Scoped to the caller's own reservation and only from a cancellable
+  // state — an already-completed/rejected/cancelled booking can't change.
+  const result = await prisma.reservation.updateMany({
+    where: { id: reservationId, customerId, status: { in: ["REQUESTED", "ACCEPTED"] } },
+    data: { status: "CANCELLED" },
+  });
+  if (result.count === 0) {
+    return { error: "취소할 수 없는 예약이에요." };
+  }
+
+  const reservation = await prisma.reservation.findUnique({
+    where: { id: reservationId },
+    include: { company: true, items: RESERVATION_ITEMS_INCLUDE },
+  });
+  if (reservation) {
+    await createNotification({
+      userId: reservation.company.ownerUserId,
+      type: "RESERVATION_CANCELLED",
+      title: "예약이 취소됐어요",
+      body: `${reservation.customerName}님이 ${reservationServiceNames(reservation.items)} 예약을 취소했어요.`,
+      link: `/company/reservations/${reservation.id}`,
+    });
+  }
+
+  return {};
 }

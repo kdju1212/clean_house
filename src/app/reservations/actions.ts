@@ -3,12 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import { getSelectedRegion } from "@/lib/region";
-import { createReservationForCustomer } from "@/lib/reservation-service";
-import { createNotification } from "@/lib/notification";
+import { cancelReservationForCustomer, createReservationForCustomer } from "@/lib/reservation-service";
 import { toActionError, type ActionState } from "@/lib/action-state";
-import { RESERVATION_ITEMS_INCLUDE, reservationServiceNames } from "@/lib/reservation";
 
 export async function createReservation(
   _prevState: ActionState,
@@ -86,32 +83,8 @@ export async function cancelReservation(
     const reservationId = formData.get("reservationId");
     if (typeof reservationId !== "string") return;
 
-    // Scoped to the caller's own reservation and only from a cancellable
-    // state — an already-completed/rejected/cancelled booking can't change.
-    const result = await prisma.reservation.updateMany({
-      where: {
-        id: reservationId,
-        customerId: session.user.id,
-        status: { in: ["REQUESTED", "ACCEPTED"] },
-      },
-      data: { status: "CANCELLED" },
-    });
-
-    if (result.count > 0) {
-      const reservation = await prisma.reservation.findUnique({
-        where: { id: reservationId },
-        include: { company: true, items: RESERVATION_ITEMS_INCLUDE },
-      });
-      if (reservation) {
-        await createNotification({
-          userId: reservation.company.ownerUserId,
-          type: "RESERVATION_CANCELLED",
-          title: "예약이 취소됐어요",
-          body: `${reservation.customerName}님이 ${reservationServiceNames(reservation.items)} 예약을 취소했어요.`,
-          link: `/company/reservations/${reservation.id}`,
-        });
-      }
-    }
+    const result = await cancelReservationForCustomer(session.user.id, reservationId);
+    if (result.error) throw new Error(result.error);
 
     revalidatePath("/reservations");
     revalidatePath(`/reservations/${reservationId}`);
