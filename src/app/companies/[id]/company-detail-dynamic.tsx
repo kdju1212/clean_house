@@ -1,6 +1,3 @@
-"use client";
-
-import { useState } from "react";
 import { ServiceBar } from "./service-bar";
 import { PhotoStack, type PhotoItem } from "@/components/company-detail/photo-stack";
 import { SparkleIcon } from "@/components/icons";
@@ -19,13 +16,15 @@ type Photo = PhotoItem & { categoryId: string | null; caption: string | null };
 
 /**
  * Everything on the detail page that depends on which of the company's
- * categories the customer is currently looking at — intro text, the
- * option/price block, and both detail photo galleries — lives here as one
- * client component, so picking a different service (or arriving with
- * ?categoryId= already set from the category listing) updates them
- * together. A company with only 1개 사진/공통 소개글 never has to tag
- * anything: an untagged photo (categoryId null) and the company's general
- * introText both show for every category.
+ * categories is currently in view — intro text, the price block, and both
+ * detail photo galleries — derives from one selectedId here, so arriving
+ * with ?categoryId= already set (from the category listing) or a company
+ * with only one service both resolve consistently. Multiple services with
+ * no preselected category just show the cheapest price; picking among
+ * them happens in the reservation form itself, not on this page. A company
+ * with only 1개 사진/공통 소개글 never has to tag anything: an untagged
+ * photo (categoryId null) and the company's general introText both show
+ * regardless of selectedId.
  */
 export function CompanyDetailDynamic({
   companyId,
@@ -51,13 +50,12 @@ export function CompanyDetailDynamic({
   websiteUrl: string | null;
   phone: string | null;
 }) {
-  const [selectedId, setSelectedId] = useState<string | null>(
+  const selectedId =
     initialCategoryId && services.some((s) => s.categoryId === initialCategoryId)
       ? initialCategoryId
       : services.length === 1
         ? services[0].categoryId
-        : null
-  );
+        : null;
 
   const selectedService = services.find((s) => s.categoryId === selectedId) ?? null;
   const introText = selectedService?.description || companyIntroText;
@@ -90,7 +88,6 @@ export function CompanyDetailDynamic({
         companyId={companyId}
         services={services}
         selectedId={selectedId}
-        onSelect={setSelectedId}
         websiteUrl={websiteUrl}
         phone={phone}
       />
