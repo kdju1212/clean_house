@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 
 const NAV = [
   { href: "/admin", label: "대시보드" },
+  { href: "/admin/stats", label: "통계" },
   { href: "/admin/companies", label: "업체" },
   { href: "/admin/reports", label: "신고" },
   { href: "/admin/users", label: "사용자" },
