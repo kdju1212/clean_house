@@ -51,6 +51,7 @@ export default async function CompanyReviewsPage({
     customerName: r.customer.name ?? "익명",
     content: r.content,
     photoUrls: r.photos.length > 0 ? r.photos.map((p) => p.url) : r.photoUrl ? [r.photoUrl] : [],
+    ownerReply: r.ownerReply,
   }));
 
   return (

@@ -98,6 +98,7 @@ export default async function CompanyDetailPage({
     content: r.content,
     photoUrls:
       r.photos.length > 0 ? r.photos.map((p) => p.url) : r.photoUrl ? [r.photoUrl] : [],
+    ownerReply: r.ownerReply,
   }));
 
   const regionText = company.regions.map((r) => r.region.name).join(", ");

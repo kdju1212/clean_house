@@ -2,6 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { requireReviewableReservation } from "@/lib/review";
+import { createNotification } from "@/lib/notification";
 import {
   cloudinaryDeliveryUrl,
   createSignedUploadParams,
@@ -143,4 +144,89 @@ export async function createReviewForUser(
   });
 
   return { companyId: reservation.companyId };
+}
+
+const MAX_REPLY_LENGTH = 1000;
+
+/** Every review shown on the company's own management page — including
+ * ones the customer left hidden-from-public via a report (still worth
+ * replying to internally, or just seeing), unlike every customer-facing
+ * review list which filters those out. */
+export async function listReviewsForOwner(ownerUserId: string) {
+  const company = await prisma.company.findUnique({ where: { ownerUserId } });
+  if (!company) {
+    throw new Error("등록된 업체가 없습니다.");
+  }
+
+  return prisma.review.findMany({
+    where: { companyId: company.id },
+    include: { customer: true, photos: { orderBy: { order: "asc" } } },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+/** A review can only be replied to by the company it's about — shared by
+ * the web Server Action and the mobile API route, same as every other
+ * *ForOwner function in this codebase. */
+async function requireOwnReview(ownerUserId: string, reviewId: string) {
+  const review = await prisma.review.findUnique({
+    where: { id: reviewId },
+    include: { company: true },
+  });
+  if (!review || review.company.ownerUserId !== ownerUserId) {
+    return null;
+  }
+  return review;
+}
+
+export async function replyToReviewForOwner(
+  ownerUserId: string,
+  reviewId: string,
+  rawReply: unknown
+): Promise<{ error?: string }> {
+  const review = await requireOwnReview(ownerUserId, reviewId);
+  if (!review) {
+    return { error: "존재하지 않거나 권한이 없는 리뷰예요." };
+  }
+  if (typeof rawReply !== "string" || rawReply.trim().length === 0) {
+    return { error: "답글 내용을 입력해주세요." };
+  }
+  const reply = rawReply.trim().slice(0, MAX_REPLY_LENGTH);
+
+  await prisma.review.update({
+    where: { id: review.id },
+    data: { ownerReply: reply, ownerReplyAt: new Date() },
+  });
+
+  // Only the first reply is worth a push — an edit is still the same
+  // notification row's concern, and re-notifying on every edit would be
+  // noisy for something this low-stakes.
+  if (!review.ownerReply) {
+    await createNotification({
+      userId: review.customerId,
+      type: "REVIEW_REPLY",
+      title: "작성하신 리뷰에 답글이 달렸어요",
+      body: reply,
+      link: `/companies/${review.companyId}`,
+    });
+  }
+
+  return {};
+}
+
+export async function deleteReviewReplyForOwner(
+  ownerUserId: string,
+  reviewId: string
+): Promise<{ error?: string }> {
+  const review = await requireOwnReview(ownerUserId, reviewId);
+  if (!review) {
+    return { error: "존재하지 않거나 권한이 없는 리뷰예요." };
+  }
+
+  await prisma.review.update({
+    where: { id: review.id },
+    data: { ownerReply: null, ownerReplyAt: null },
+  });
+
+  return {};
 }

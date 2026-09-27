@@ -111,6 +111,7 @@ export async function GET(
       photoUrls: r.photos.length > 0 ? r.photos.map((p) => p.url) : r.photoUrl ? [r.photoUrl] : [],
       customerName: r.customer.name ?? "익명",
       createdAt: r.createdAt.toISOString(),
+      ownerReply: r.ownerReply,
     })),
     isFavorited,
     // { date: "YYYY-MM-DD", time: "HH:MM" } | null — soonest bookable slot,

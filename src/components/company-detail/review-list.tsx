@@ -12,6 +12,9 @@ export type ReviewItem = {
   // photoUrl for a review written before that existed) — see
   // src/app/companies/[id]/page.tsx.
   photoUrls: string[];
+  // The company owner's public reply, if they've written one — see
+  // src/company/reviews for where that's managed.
+  ownerReply: string | null;
 };
 
 /** Horizontal strip of review photos, Coupang-style, above the review cards
@@ -65,6 +68,12 @@ export function ReviewCard({ review, reportHref }: { review: ReviewItem; reportH
               <Image src={url} alt="리뷰 사진" fill sizes="96px" className="object-cover" />
             </ImageZoom>
           ))}
+        </div>
+      )}
+      {review.ownerReply && (
+        <div className="mt-2 rounded-lg bg-blue-50 p-3">
+          <p className="text-xs font-semibold text-blue-700">사장님 답글</p>
+          <p className="mt-1 text-sm text-neutral-700">{review.ownerReply}</p>
         </div>
       )}
       {reportHref && (

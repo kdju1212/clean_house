@@ -77,6 +77,7 @@ enum NotificationType {
   COMPANY_SUSPENDED
   COMPANY_REACTIVATED
   REPORT_RECEIVED
+  REVIEW_REPLY
 }
 
 /// FLAT: `price` is the whole job's price, same for everyone.
@@ -445,6 +446,12 @@ model Review {
   photoUrl      String?
   hidden        Boolean  @default(false)
   createdAt     DateTime @default(now())
+  // The company owner's public reply — one per review, shown right under
+  // it wherever the review itself is shown. Both null until the owner
+  // writes one; ownerReplyAt is cleared along with ownerReply on delete so
+  // "has a reply" is always just `ownerReply !== null`.
+  ownerReply    String?
+  ownerReplyAt  DateTime?
 
   reservation Reservation    @relation(fields: [reservationId], references: [id], onDelete: Cascade)
   company     Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
