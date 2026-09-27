@@ -58,6 +58,10 @@ export async function GET(request: Request) {
       // Hand-picked bookable hours (0–23) — see 업체 프로필 관리's
       // "특정 시간만 예약 받기". Empty means "not customized".
       customTimeSlots: company.customTimeSlots,
+      // "예약 텀" — see /api/mobile/company/schedule for how these are set.
+      reservationIntervalHours: company.reservationIntervalHours,
+      crewCount: company.crewCount,
+      sameDayCutoffTime: company.sameDayCutoffTime,
     },
     requestedCount,
     averageRating: ratingSummary._avg.rating ?? 0,
