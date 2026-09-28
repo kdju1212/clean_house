@@ -608,3 +608,16 @@ model VerificationToken {
 
   @@unique([identifier, token])
 }
+
+/// One row per request that counts toward a rate limit (see rate-limit.ts).
+/// DB-backed rather than an in-memory counter because Vercel runs separate
+/// serverless instances that don't share memory — same reasoning as the
+/// chat rate limit in chat-service.ts. Rows older than a day are pruned.
+model RateLimitHit {
+  id        String   @id @default(cuid())
+  key       String
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
+  @@index([createdAt])
+}

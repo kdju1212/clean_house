@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { findRegionByAddressPath } from "@/lib/region";
+import { clientIp, consumeRateLimit, KAKAO_GEO_LIMITS } from "@/lib/rate-limit";
 
 type KakaoRegionDocument = {
   region_type: "H" | "B";
@@ -38,6 +39,13 @@ export async function GET(request: Request) {
     return NextResponse.json(
       { error: "위치로 지역 찾기가 아직 설정되지 않았어요." },
       { status: 503 }
+    );
+  }
+
+  if (!(await consumeRateLimit(`kakao-geo:${clientIp(request)}`, KAKAO_GEO_LIMITS))) {
+    return NextResponse.json(
+      { error: "요청이 너무 많아요. 잠시 후 다시 시도해주세요." },
+      { status: 429 }
     );
   }
 
