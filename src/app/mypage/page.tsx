@@ -211,6 +211,9 @@ export default async function MyPage() {
       {user.role !== "ADMIN" && <DeleteAccountSection />}
 
       <div className="mt-4 flex gap-3 text-xs text-neutral-400">
+        <Link href="/faq" className="underline">
+          자주 묻는 질문
+        </Link>
         <Link href="/terms" className="underline">
           이용약관
         </Link>

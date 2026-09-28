@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getSupportChatMessages } from "@/lib/support-chat";
@@ -17,7 +18,11 @@ export default async function SupportPage() {
       <div className="border-b border-neutral-200 pb-3">
         <h1 className="text-lg font-bold">고객센터</h1>
         <p className="mt-1 text-xs text-neutral-500">
-          궁금한 점이나 불편한 점을 남겨주시면 확인 후 답변드릴게요.
+          궁금한 점이나 불편한 점을 남겨주시면 확인 후 답변드릴게요.{" "}
+          <Link href="/faq" className="underline">
+            자주 묻는 질문
+          </Link>
+          을 먼저 확인해보셔도 좋아요.
         </p>
       </div>
 
