@@ -5,6 +5,7 @@ import { auth, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SubmitButton } from "@/components/submit-button";
 import { PhoneForm } from "./phone-form";
+import { DeleteAccountSection } from "./delete-account-section";
 import { toggleFavorite } from "../companies/[id]/actions";
 
 const PROVIDER_LABEL: Record<string, string> = {
@@ -193,6 +194,11 @@ export default async function MyPage() {
           로그아웃
         </SubmitButton>
       </form>
+
+      {/* 관리자 계정은 이 화면에서 스스로 탈퇴하지 않도록 숨김 — 실수로 유일한
+          운영 계정을 잃는 것을 막기 위함일 뿐, 서버 쪽 탈퇴 로직 자체는
+          역할을 가리지 않음(admin-bootstrap이 ADMIN_EMAILS로 복구 가능). */}
+      {user.role !== "ADMIN" && <DeleteAccountSection />}
 
       <div className="mt-4 flex gap-3 text-xs text-neutral-400">
         <Link href="/terms" className="underline">

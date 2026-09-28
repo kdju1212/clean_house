@@ -105,6 +105,13 @@ model User {
   // time, overwritten on the next login/app start rather than tracked
   // per-device). Null for anyone who has only ever used the web app.
   pushToken     String?
+  // Soft-delete marker for 회원 탈퇴. The row itself is never hard-deleted —
+  // Reservation/Review/ChatMessage all cascade from User, and this account
+  // may be the customer side of another company's business records (or the
+  // owner side of a Company other customers have reservations/reviews
+  // against) — so deletion instead anonymizes this row (see
+  // account-deletion-service.ts) and leaves every other party's data intact.
+  deletedAt     DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
