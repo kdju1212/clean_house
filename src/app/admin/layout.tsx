@@ -7,6 +7,7 @@ const NAV = [
   { href: "/admin/stats", label: "통계" },
   { href: "/admin/companies", label: "업체" },
   { href: "/admin/reports", label: "신고" },
+  { href: "/admin/support", label: "고객센터" },
   { href: "/admin/users", label: "사용자" },
   { href: "/admin/reservations", label: "예약" },
 ] as const;

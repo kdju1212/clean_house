@@ -126,6 +126,8 @@ model User {
   notifications Notification[]
   favorites     Favorite[]
   categoryProfiles CategoryProfile[]
+  supportChatRoom  SupportChatRoom?
+  supportMessages  SupportMessage[]
 }
 
 model Category {
@@ -434,6 +436,33 @@ model AdminChatMessage {
 
   chatRoom AdminChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
   sender   User          @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([senderId, createdAt])
+}
+
+/// One persistent 고객센터 문의 room per user (any role) — same "lazily
+/// created on first message, any admin can answer" shape as AdminChatRoom,
+/// just keyed by the person asking instead of by a company, since a
+/// customer with no company still needs somewhere to ask a question.
+model SupportChatRoom {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  createdAt DateTime @default(now())
+
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages SupportMessage[]
+}
+
+model SupportMessage {
+  id        String   @id @default(cuid())
+  roomId    String
+  senderId  String
+  content   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  room   SupportChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  sender User            @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([senderId, createdAt])
 }

@@ -12,14 +12,15 @@ type Message = {
 const POLL_INTERVAL_MS = 4000;
 
 /** Same shape as the reservation chat's ChatBox (src/app/reservations/[id]/
- * chat/chat-box.tsx) — polling + optimistic send — just pointed at the
- * 관리자 문의 room's own API instead of a reservation's. */
+ * chat/chat-box.tsx) — polling + optimistic send — just pointed at
+ * whichever admin-visible room's own messages API the caller passes
+ * (관리자 문의 for a company, or 고객센터 문의 for a user). */
 export function AdminChatBox({
-  companyId,
+  endpoint,
   viewerId,
   initialMessages,
 }: {
-  companyId: string;
+  endpoint: string;
   viewerId: string;
   initialMessages: Message[];
 }) {
@@ -34,7 +35,7 @@ export function AdminChatBox({
 
     async function poll() {
       try {
-        const res = await fetch(`/api/admin-chat/${companyId}/messages`);
+        const res = await fetch(endpoint);
         if (!res.ok || cancelled) return;
         const data = await res.json();
         setMessages(data.messages);
@@ -48,7 +49,7 @@ export function AdminChatBox({
       cancelled = true;
       clearInterval(interval);
     };
-  }, [companyId]);
+  }, [endpoint]);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
@@ -62,7 +63,7 @@ export function AdminChatBox({
     setSending(true);
     setError(null);
     try {
-      const res = await fetch(`/api/admin-chat/${companyId}/messages`, {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content }),

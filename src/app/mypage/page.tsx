@@ -77,6 +77,16 @@ export default async function MyPage() {
       </section>
 
       <Link
+        href="/support"
+        className="mt-4 flex items-center justify-between rounded-2xl border border-neutral-200 bg-white p-4 text-sm font-semibold"
+      >
+        고객센터 문의하기
+        <span aria-hidden className="text-neutral-400">
+          →
+        </span>
+      </Link>
+
+      <Link
         href="/reservations"
         className="mt-4 block rounded-2xl border border-neutral-200 bg-white p-4"
       >

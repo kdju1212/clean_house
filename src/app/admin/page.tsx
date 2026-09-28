@@ -9,12 +9,13 @@ export default async function AdminDashboardPage() {
   // ever reused from somewhere the layout doesn't guard.
   await requireAdmin();
 
-  const [pendingCompanies, pendingReports, requestedReservations, totalUsers] =
+  const [pendingCompanies, pendingReports, requestedReservations, totalUsers, unreadSupportMessages] =
     await Promise.all([
       prisma.company.count({ where: { status: "PENDING" } }),
       prisma.report.count({ where: { status: "PENDING" } }),
       prisma.reservation.count({ where: { status: "REQUESTED" } }),
       prisma.user.count(),
+      prisma.supportMessage.count({ where: { isRead: false, sender: { role: { not: "ADMIN" } } } }),
     ]);
 
   const cards = [
@@ -29,6 +30,12 @@ export default async function AdminDashboardPage() {
       label: "처리 대기 신고",
       value: pendingReports,
       highlight: pendingReports > 0,
+    },
+    {
+      href: "/admin/support",
+      label: "읽지 않은 문의",
+      value: unreadSupportMessages,
+      highlight: unreadSupportMessages > 0,
     },
     {
       href: "/admin/reservations?status=REQUESTED",

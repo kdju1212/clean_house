@@ -40,7 +40,11 @@ export default async function CompanyChatPage() {
         <h1 className="text-lg font-bold">관리자에게 문의</h1>
       </div>
 
-      <AdminChatBox companyId={company.id} viewerId={session.user.id} initialMessages={messages} />
+      <AdminChatBox
+        endpoint={`/api/admin-chat/${company.id}/messages`}
+        viewerId={session.user.id}
+        initialMessages={messages}
+      />
     </main>
   );
 }
