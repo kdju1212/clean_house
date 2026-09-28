@@ -39,13 +39,19 @@ export async function Header() {
             <HomeIcon className="h-6 w-6" />
           </Link>
           {session?.user && (
-            <Link href="/notifications" aria-label="알림" className="relative">
+            <Link
+              href="/notifications"
+              aria-label={unreadCount > 0 ? `알림 ${unreadCount}개` : "알림"}
+              className="relative"
+            >
               <BellIcon className="h-6 w-6" />
               {unreadCount > 0 && (
                 <span
                   aria-hidden
-                  className="absolute right-0 top-0 h-2 w-2 rounded-full border-[1.5px] border-white bg-[#ff6f0f]"
-                />
+                  className="absolute -right-2 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border-[1.5px] border-white bg-[#ff6f0f] px-1 text-[10px] font-bold leading-none text-white"
+                >
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
               )}
             </Link>
           )}
