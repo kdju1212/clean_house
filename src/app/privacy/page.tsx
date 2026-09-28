@@ -138,7 +138,7 @@ export default function PrivacyPolicyPage() {
         </p>
         <ul className="list-disc pl-5">
           <li>Vercel Inc.: 싱가포르 (서버 호스팅)</li>
-          <li>Neon Inc.: [데이터베이스 리전 국가] (데이터베이스 저장)</li>
+          <li>Neon Inc.: 싱가포르 (데이터베이스 저장)</li>
           <li>Cloudinary Ltd.: 미국 (이미지 저장)</li>
           <li>Expo (650 Industries, Inc.): 미국 (푸시 알림 토큰·알림 내용)</li>
         </ul>
