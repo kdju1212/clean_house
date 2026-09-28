@@ -38,11 +38,6 @@ export default function FaqPage() {
         로 문의해주세요.
       </p>
 
-      <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-700">
-        결제 방식 등 [대괄호]로 표시된 부분은 실제 운영 정책에 맞게 사장님이
-        확인·수정해야 하는 초안이에요.
-      </p>
-
       <Section title="예약 · 이용">
         <QA q="예약은 어떻게 하나요?">
           <p>
@@ -67,9 +62,9 @@ export default function FaqPage() {
         <QA q="결제는 어떻게 하나요?">
           <p>
             예약 시 보이는 금액은 업체가 등록한 견적이고, 업체가 예약을
-            수락하면서 실제 견적으로 조정할 수 있어요. 결제는 [현장 결제 /
-            계좌이체 등] 업체와 직접 진행하며, 서비스 내에서 별도로 결제가
-            이루어지지는 않아요.
+            수락하면서 실제 견적으로 조정할 수 있어요. 결제는 서비스가
+            끝난 뒤 현장에서 업체와 직접 진행하며, 서비스 내에서 별도로
+            결제가 이루어지지는 않아요.
           </p>
         </QA>
       </Section>
