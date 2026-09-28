@@ -1,4 +1,5 @@
 import "server-only";
+import { timingSafeEqual } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 
 // A lightweight ID/password-free "test login" for internal QA — lets the
@@ -23,7 +24,16 @@ export function isTestLoginEnabled(): boolean {
 
 export function verifyTestLoginSecret(secret: string | null | undefined): boolean {
   const expected = process.env.TEST_LOGIN_SECRET;
-  return Boolean(expected) && secret === expected;
+  if (!expected || typeof secret !== "string") return false;
+
+  // Constant-time compare — this gates an ADMIN-capable login, so a regular
+  // ===/length check would leak how many leading characters matched via
+  // response timing.
+  const expectedBuf = Buffer.from(expected);
+  const secretBuf = Buffer.from(secret);
+  return (
+    expectedBuf.length === secretBuf.length && timingSafeEqual(expectedBuf, secretBuf)
+  );
 }
 
 export function isTestLoginRole(role: unknown): role is TestLoginRole {

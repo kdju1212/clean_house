@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Third-party Claude Code skill files (installed via `npx skills add`) —
+    // not project code, so they don't follow this project's lint rules.
+    ".agents/**",
+    ".claude/**",
   ]),
 ]);
 
