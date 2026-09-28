@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { issueMobileToken } from "@/lib/mobile-auth";
 import { bootstrapAdminRole } from "@/lib/admin-bootstrap";
+import { hasAllRequiredConsents, recordTermsAgreement } from "@/lib/signup-consent";
 
 type KakaoUserResponse = {
   id: number;
@@ -26,6 +27,9 @@ export async function POST(request: Request) {
     typeof body?.accessToken === "string" ? body.accessToken : null;
   if (!kakaoAccessToken) {
     return NextResponse.json({ error: "accessToken이 필요합니다." }, { status: 400 });
+  }
+  if (!hasAllRequiredConsents(body)) {
+    return NextResponse.json({ error: "필수 항목에 모두 동의해주세요." }, { status: 400 });
   }
 
   const kakaoRes = await fetch("https://kapi.kakao.com/v2/user/me", {
@@ -78,6 +82,7 @@ export async function POST(request: Request) {
     }
   }
 
+  await recordTermsAgreement(user.id);
   const role = await bootstrapAdminRole({ id: user.id, email: user.email, role: user.role });
   const token = await issueMobileToken(user.id, role);
 

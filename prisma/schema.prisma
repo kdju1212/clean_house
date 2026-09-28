@@ -112,6 +112,11 @@ model User {
   // against) — so deletion instead anonymizes this row (see
   // account-deletion-service.ts) and leaves every other party's data intact.
   deletedAt     DateTime?
+  // When this account agreed to 만 14세 이상 확인 + 이용약관 + 개인정보
+  // 수집·이용 on the login screen (see signup-consent.ts) — kept as proof
+  // of consent. Null only for accounts created before the checkboxes
+  // existed, and for internal test-login personas.
+  termsAgreedAt DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 

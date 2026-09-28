@@ -8,6 +8,7 @@ import Credentials from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import { bootstrapAdminRole } from "@/lib/admin-bootstrap";
 import { isTestLoginRole, upsertTestUser, verifyTestLoginSecret } from "@/lib/test-login";
+import { recordTermsAgreement } from "@/lib/signup-consent";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -40,8 +41,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/login",
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
       if (user) {
+        // Every social login starts from the login page's socialSignIn
+        // action, which refuses to proceed without the required consents —
+        // so reaching here via OAuth means they were just given.
+        if (user.id && account?.provider !== "test-login") {
+          await recordTermsAgreement(user.id);
+        }
+
         const role = await bootstrapAdminRole({
           id: user.id ?? "",
           email: user.email ?? null,
